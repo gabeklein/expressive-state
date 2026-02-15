@@ -135,7 +135,7 @@ declare namespace ReactState {
   export import Effect = State.Effect;
   export import EffectCallback = State.EffectCallback;
 
-  export { GetFactory, GetEffect, UseArgs, Props as ValidProps, Component };
+  export { GetFactory, GetEffect, UseArgs, Props, Component };
 }
 
 abstract class ReactState extends State {
