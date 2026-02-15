@@ -1,4 +1,4 @@
-import { State, Context, watch, METHOD } from '@expressive/mvc';
+import { State, Context, watch, METHOD } from '@expressive/state';
 
 import Runtime from 'react/jsx-runtime';
 import React from 'react';

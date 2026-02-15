@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Expressive MVC is a class-based state management library for reactive UI frameworks. The core package (`@expressive/mvc`) provides framework-agnostic reactive primitives, with framework-specific adapters for React, Preact, and Solid.
+Expressive MVC is a class-based state management library for reactive UI frameworks. The core package (`@expressive/state`) provides framework-agnostic reactive primitives, with framework-specific adapters for React, Preact, and Solid.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ Expressive MVC is a class-based state management library for reactive UI framewo
 
 This is a Lerna-managed monorepo with pnpm workspaces:
 
-- `packages/mvc/` - Core framework-agnostic reactive state primitives
+- `packages/state/` - Core framework-agnostic reactive state primitives
 - `packages/react/` - React adapter (main published package: `@expressive/react`)
 - `packages/preact/` - Preact adapter
 - `packages/solid/` - Solid.js adapter
@@ -22,21 +22,21 @@ This is a Lerna-managed monorepo with pnpm workspaces:
 
 The system is built on three foundational components:
 
-1. **State** (`packages/mvc/src/state.ts`) - Base class that users extend. Manages:
+1. **State** (`packages/state/src/state.ts`) - Base class that users extend. Manages:
    - Property access tracking via Proxy
    - Parent-child state relationships (nested States)
    - Lifecycle hooks (`new()` method for initialization, cleanup)
    - Value export/import (flattening state to plain objects)
    - WeakMaps for internal state: `STATE`, `NOTIFY`, `PARENT`, `METHODS`, `ID`
 
-2. **Control/Observable** (`packages/mvc/src/control.ts`) - Event dispatch system:
+2. **Control/Observable** (`packages/state/src/control.ts`) - Event dispatch system:
    - `addListener()` - Subscribe to state changes
    - `watch()` - Auto-recomputing effects based on accessed properties
    - `event()` - Trigger updates (batched via `DISPATCH` set and setTimeout)
    - Event types: `true` (ready), `false` (update complete), `null` (destroyed), or property key
    - `PENDING` and `PENDING_KEYS` WeakMaps track queued events
 
-3. **Context** (`packages/mvc/src/context.ts`) - Dependency injection:
+3. **Context** (`packages/state/src/context.ts`) - Dependency injection:
    - Hierarchical context system using prototypal inheritance
    - `Context.push()` creates child contexts
    - `Context.get()` retrieves States by class type (uses Symbol keys)
@@ -44,7 +44,7 @@ The system is built on three foundational components:
 
 ### Instruction System
 
-The `packages/mvc/src/instruction/` directory contains "exotic values" - special property types:
+The `packages/state/src/instruction/` directory contains "exotic values" - special property types:
 
 - **`ref`** - Mutable references (like React refs) with `.current` property
 - **`use`** - Instanciates instructions, creates child State
@@ -86,15 +86,15 @@ pnpm build
 pnpm test
 
 # Build specific package
-cd packages/mvc && pnpm build
+cd packages/state && pnpm build
 cd packages/react && pnpm build
 
 # Test specific package
-cd packages/mvc && pnpm test
+cd packages/state && pnpm test
 cd packages/react && pnpm test
 
 # Type-check without running tests
-cd packages/mvc && pnpm tsc --noEmit
+cd packages/state && pnpm tsc --noEmit
 ```
 
 ### Development Workflow
@@ -107,7 +107,7 @@ pnpm install
 pnpm clean
 
 # Run tests with coverage
-cd packages/mvc && jest --collectCoverage
+cd packages/state && jest --collectCoverage
 ```
 
 ### Publishing

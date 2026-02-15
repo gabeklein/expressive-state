@@ -1,5 +1,5 @@
 import { expect, afterEach, afterAll, vi } from 'vitest';
-import { State } from './packages/mvc/src';
+import { State } from './packages/state/src';
 
 // Add @testing-library matchers for React tests
 // expect.extend(matchers);

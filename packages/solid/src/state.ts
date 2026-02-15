@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { State } from '@expressive/state';
 import { Signal, createSignal, onCleanup, useContext } from 'solid-js';
 
 import { Lookup } from './context';

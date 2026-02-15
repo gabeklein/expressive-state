@@ -1,4 +1,4 @@
-import State, { Context } from '@expressive/mvc';
+import State, { Context } from '@expressive/state';
 import {
   createContext,
   createElement,
@@ -11,7 +11,7 @@ import {
 
 export const Layers = createContext(new Context());
 
-declare module '@expressive/mvc' {
+declare module '@expressive/state' {
   namespace Context {
     function use(create?: true): Context;
     function use(create: boolean): Context | null | undefined;

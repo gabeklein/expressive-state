@@ -1,18 +1,19 @@
 {
-  "name": "@expressive/mvc",
+  "name": "@expressive/state",
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@termtm.com",
     "url": "https://github.com/gabeklein"
   },
   "license": "MIT",
-  "repository": "https://github.com/gabeklein/expressive-mvc",
+  "repository": "https://github.com/gabeklein/expressive-state",
   "publishConfig": {
     "access": "public"
   },
   "keywords": [
     "expressive",
-    "mvc"
+    "state",
+    "state"
   ],
   "type": "module",
   "main": "dist/index.js",

@@ -1,4 +1,4 @@
-import { Context } from '@expressive/mvc';
+import { Context } from '@expressive/state';
 import { ComponentChildren, createContext, createElement } from 'preact';
 import { useContext, useEffect, useMemo } from 'preact/hooks';
 
@@ -6,7 +6,7 @@ import { ReactState as State } from '@expressive/react/state';
 
 const Lookup = createContext(new Context());
 
-declare module '@expressive/mvc' {
+declare module '@expressive/state' {
   namespace Context {
     function use(create?: true): Context;
     function use(create: boolean): Context | null | undefined;
