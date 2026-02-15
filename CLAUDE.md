@@ -1,192 +1,148 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance for working in this repository.
 
 ## Overview
 
-Expressive MVC is a class-based state management library for reactive UI frameworks. The core package (`@expressive/mvc`) provides framework-agnostic reactive primitives, with framework-specific adapters for React, Preact, and Solid.
+Expressive MVC is a class-based state management library for reactive UI frameworks.
 
-## Architecture
+- `@expressive/mvc` provides framework-agnostic state, observable, context, and instruction primitives.
+- `@expressive/react` is the primary adapter and reference implementation.
+- `@expressive/preact` and `@expressive/solid` provide additional framework adapters.
 
-### Monorepo Structure
+The repo is a pnpm workspace managed with lerna.
 
-This is a Lerna-managed monorepo with pnpm workspaces:
+## Repository Structure
 
-- `packages/mvc/` - Core framework-agnostic reactive state primitives
-- `packages/react/` - React adapter (main published package: `@expressive/react`)
-- `packages/preact/` - Preact adapter
-- `packages/solid/` - Solid.js adapter
-- `examples/` - Example applications demonstrating usage
+- `packages/mvc/` — core primitives (`State`, `Observable`, `Context`, instructions)
+- `packages/react/` — React adapter (`State.use`, `State.get`, `State.as`, context components, JSX runtime)
+- `packages/preact/` — Preact adapter
+- `packages/solid/` — Solid adapter
+- `examples/` — framework usage examples
 
-### Core Architecture
+## Core Architecture
 
-The system is built on three foundational components:
+### 1) State (`packages/mvc/src/state.ts`)
 
-1. **State** (`packages/mvc/src/state.ts`) - Base class that users extend. Manages:
-   - Property access tracking via Proxy
-   - Parent-child state relationships (nested States)
-   - Lifecycle hooks (`new()` method for initialization, cleanup)
-   - Value export/import (flattening state to plain objects)
-   - WeakMaps for internal state: `STATE`, `NOTIFY`, `PARENT`, `METHODS`, `ID`
+`State` is the base class users extend.
 
-2. **Control/Observable** (`packages/mvc/src/control.ts`) - Event dispatch system:
-   - `addListener()` - Subscribe to state changes
-   - `watch()` - Auto-recomputing effects based on accessed properties
-   - `event()` - Trigger updates (batched via `DISPATCH` set and setTimeout)
-   - Event types: `true` (ready), `false` (update complete), `null` (destroyed), or property key
-   - `PENDING` and `PENDING_KEYS` WeakMaps track queued events
+Key responsibilities:
 
-3. **Context** (`packages/mvc/src/context.ts`) - Dependency injection:
-   - Hierarchical context system using prototypal inheritance
-   - `Context.push()` creates child contexts
-   - `Context.get()` retrieves States by class type (uses Symbol keys)
-   - `LOOKUP` WeakMap associates States with their Context
+- lifecycle initialization with optional `new()` hook
+- managed field assignment and updates via overloaded `set(...)`
+- reactive reads and effects via overloaded `get(...)`
+- export/import-safe value handling for instruction/exotic values
+- internal privacy via WeakMaps (`STATE`, `PARENT`, `METHOD`, etc.)
 
-### Instruction System
+Behavioral note:
 
-The `packages/mvc/src/instruction/` directory contains "exotic values" - special property types:
+- object assignment through `set({ ... })` triggers `event(self)` before merge assignment.
 
-- **`ref`** - Mutable references (like React refs) with `.current` property
-- **`use`** - Instanciates instructions, creates child State
-- **`get`** - Dependency injection for context.
-  - `get(Type)` - Fetch upstream State from context (required)
-  - `get(Type, false)` - Fetch upstream State (optional, may be undefined)
-  - `get(Type, true)` - Collect downstream States (returns frozen array)
-  - `get(Type, callback)` - Upstream with lifecycle callback (non-reactive)
-  - `get(Type, true, callback)` - Downstream with lifecycle callback
-- **`set`** - Custom setters with validation/transformation
+### 2) Observable/Event system (`packages/mvc/src/observable.ts`)
 
-These are used as property initializers in State classes and get special handling during export/import.
+Provides:
 
-### Framework Adapters
+- `addListener()` for subscriptions
+- `watch()` for dependency-tracked effects
+- `event()` for dispatching updates
 
-Each adapter (`packages/react/`, etc.) provides:
+Event semantics:
 
-1. **Adapter pattern** (`state.ts`) - Abstract interface for framework hooks
-2. **State extensions**:
-   - `State.use()` - Hook to create/subscribe to State instance
-   - `State.get()` - Hook to consume State from context
-   - `State.as()` - Convert State to component
-3. **Context components** (`context.ts`):
-   - `Provider` - Provides States to component tree
-   - `Consumer` - Consumes States with render props
-4. **JSX runtime** (React only) - Custom JSX transform for enhanced patterns
+- `true` → ready/initial
+- `false` → update flush completed
+- `null` → destroyed/terminal
+- `string | symbol | number` → keyed update
 
-The React adapter is the primary/reference implementation.
+Dispatch is batched through a shared queue and flushed with `setTimeout(0)`.
 
-## Common Commands
+### 3) Context (`packages/mvc/src/context.ts`)
 
-### Build & Test
+Hierarchical state lookup and dependency wiring.
+
+Typical flow:
+
+- create nested contexts with `push()`
+- resolve instances by class with `get()`
+- register/unregister instances with provider boundaries
+
+### 4) Instructions (`packages/mvc/src/instruction/`)
+
+Special initializers used in state fields:
+
+- `ref` — mutable reference object/value holder
+- `use` — create child/derived state instructions
+- `get` — context lookup and upstream/downstream dependency behavior
+- `set` — custom assignment pipeline/validation behavior
+
+## React Adapter Notes
+
+Primary files:
+
+- `packages/react/src/state.ts`
+- `packages/react/src/context.ts`
+- `packages/react/src/jsx-runtime.ts`
+
+### `ReactState.as(...)` current shape
+
+`State.as` supports both render-based and default-prop-based forms:
+
+- `State.as((props, self) => ReactNode)`
+- `State.as({ ...defaultStateProps })`
+
+Returned component types are extensible class components and can chain defaults, for example `Renderable.as({ ... })`.
+
+Typing highlights:
+
+- `Props<T>` filters component-safe state fields
+- `ComponentProps<T>` includes `is`, `fallback`, and `children`
+- prop/state overlap is validated by `PropsValid`/`PropsConflicting`
+- React-facing component contract is modeled by `Component<P>`
+
+Runtime notes:
+
+- generated class names are prefixed with `React`
+- state/context wiring uses `Layers` + `provide(...)`
+- `Component` is not exported from `packages/react/src/component` (module removed)
+
+## Build, Test, and Dev Commands
+
+From repo root:
 
 ```bash
-# Build all packages
-pnpm build
-
-# Run tests across all packages
-pnpm test
-
-# Build specific package
-cd packages/mvc && pnpm build
-cd packages/react && pnpm build
-
-# Test specific package
-cd packages/mvc && pnpm test
-cd packages/react && pnpm test
-
-# Type-check without running tests
-cd packages/mvc && pnpm tsc --noEmit
-```
-
-### Development Workflow
-
-```bash
-# Install dependencies
 pnpm install
-
-# Clean all node_modules (if needed)
+pnpm test
+pnpm test:watch
+pnpm build
 pnpm clean
-
-# Run tests with coverage
-cd packages/mvc && jest --collectCoverage
-```
-
-### Publishing
-
-```bash
-# Publish to npm (maintainers only)
 pnpm push
 ```
 
-This runs `lerna publish --conventional-commits --no-private` which:
+Per-package tests generally run:
 
-- Versions packages based on conventional commits
-- Creates git tags
-- Publishes to npm
-- Skips examples (marked as private)
+```bash
+tsc --noEmit && vitest run --coverage
+```
 
-## Key Patterns & Conventions
+## Test Tooling
 
-### State Lifecycle
+- Test runner: Vitest
+- Shared setup: `vitest.setup.ts`
+- Root config/projects: `vitest.config.ts`
+- Package configs extend/merge from root config
+- Helper re-exports:
+  - `packages/mvc/vitest.ts`
+  - `packages/react/vitest.ts`
+  - `packages/preact/vitest.ts`
 
-States follow this lifecycle:
+Coverage policy remains 100% thresholds (branches/functions/lines/statements).
 
-1. Constructor calls `prepare()` to set up method binding
-2. Constructor calls `init()` to process args and call user's `new()` method
-3. Optional `new()` method runs - can return cleanup function
-4. State becomes "ready" - emits `true` event, removes `onReady` placeholder
-5. On destruction, emits `null` event, runs cleanup functions
+## Working Conventions
 
-### Update Batching
-
-All updates are batched via `event()` in `control.ts`:
-
-- Property changes queue keys in `PENDING_KEYS`
-- Single setTimeout(0) processes all pending updates
-- Listeners receive both individual property events and a final `false` event
-
-### Method Binding
-
-State methods are auto-bound to their instance via `METHOD` WeakMap:
-
-- First access creates and caches a bound version
-- Destructured methods maintain correct `this` context
-- Essential for passing methods as event handlers
-
-### The `is` Property
-
-Every State has a non-enumerable `is` property that references itself:
-
-- Allows write access after destructuring
-- Can read properties "silently" (without subscribing)
-- Example: `const { value, is } = MyState.use(); is.value = 'new'`
-
-### React Integration
-
-The React adapter uses:
-
-- `Layers` context for Context propagation
-- `Pragma` object to abstract React hooks (useState, useEffect)
-- `watch()` from core to detect accessed properties and trigger re-renders
-- Module augmentation to add methods to State class
-
-## Testing Notes
-
-- Tests use Jest with SWC for TypeScript
-- Each source file has a corresponding `.test.ts` file
-- Coverage is tracked and should remain at 100%
-- React tests use `@testing-library/react`
-- Tests import from source directly (not built dist)
-
-## Important Implementation Details
-
-1. **Property Access Tracking**: The `watch()` function creates a proxy that records accessed properties and subscribes to only those properties.
-
-2. **Context Inheritance**: Contexts use prototypal inheritance (`Object.create(this)`) to create child contexts. Symbol keys prevent collisions.
-
-3. **Async Handling**: States can throw Promises during initialization - the system catches and handles them via `.then()`.
-
-4. **WeakMaps for Privacy**: All internal state uses WeakMaps to avoid polluting State instances and enable garbage collection.
-
-5. **Export System**: The `EXPORT` variable tracks special value types during state serialization to handle exotic values correctly.
-
-6. **React v19 Compatibility**: Recently updated to support React 19 (see git history around v0.71.0).
+- Keep framework-agnostic behavior in `packages/mvc`.
+- Keep React runtime behavior and typing changes aligned across:
+  - `packages/react/src/state.ts`
+  - `packages/react/src/jsx-runtime.ts`
+  - `packages/react/src/state.test.tsx`
+  - `packages/react/src/jsx-runtime.test.tsx`
+- Prefer updating tests together with behavioral/type changes.
+- If user-facing behavior changes, update changelog entries before release.
