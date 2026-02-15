@@ -13,7 +13,7 @@
   "keywords": [
     "expressive",
     "state",
-    "state"
+    "mvc"
   ],
   "type": "module",
   "main": "dist/index.js",
