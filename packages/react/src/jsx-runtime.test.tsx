@@ -259,7 +259,6 @@ describe('render method', () => {
       children = set<React.ReactNode>();
 
       render(props: { value: string }) {
-        // return <>{props.value}{this.children}</>;
         return (
           <>
             <span>{props.value}</span>
