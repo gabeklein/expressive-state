@@ -4,11 +4,15 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 
 jobs:
   source-branch:
     name: Main PR source must be staging or release-please
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
     steps:
@@ -24,7 +28,7 @@ jobs:
     name: Assert main is not ahead
     runs-on: ubuntu-latest
     needs: source-branch
-    if: github.head_ref == 'staging'
+    if: github.event_name == 'pull_request' && github.head_ref == 'staging'
     permissions:
       contents: read
     steps:
@@ -51,7 +55,7 @@ jobs:
     name: Test and Build
     runs-on: ubuntu-latest
     needs: [source-branch, ancestry]
-    if: always() && needs.source-branch.result == 'success' && (needs.ancestry.result == 'success' || needs.ancestry.result == 'skipped')
+    if: always() && github.event_name == 'pull_request' && needs.source-branch.result == 'success' && needs.ancestry.result != 'failure'
     permissions:
       contents: read
     steps:
@@ -80,3 +84,21 @@ jobs:
 
       - name: Build packages
         run: pnpm build
+
+  release-pr:
+    name: Release PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          target-branch: main
+          config-file: .github/release-please-config.json
+          manifest-file: .github/release-please-manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

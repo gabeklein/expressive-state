@@ -1,9 +1,6 @@
 name: Publish Packages
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -34,65 +31,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
-    name: Test and Build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || 'main' }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run tests
-        run: pnpm test
-
-      - name: Build packages
-        run: pnpm build
-
-  release-pr:
-    name: Open/Update Release PR
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-      pull-requests: write
-    outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
-    steps:
-      - name: Run release-please
-        id: release
-        uses: googleapis/release-please-action@v4
-        with:
-          target-branch: main
-          config-file: .github/release-please-config.json
-          manifest-file: .github/release-please-manifest.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   publish-stable:
     name: Publish Stable
     runs-on: ubuntu-latest
-    needs: validate
     if: >-
       (github.event_name == 'pull_request' &&
       github.event.pull_request.merged == true &&
@@ -133,7 +74,6 @@ jobs:
   publish-canary:
     name: Publish Canary
     runs-on: ubuntu-latest
-    needs: validate
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'canary'
     permissions:
       contents: read
