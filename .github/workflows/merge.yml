@@ -10,7 +10,7 @@ on:
 
 jobs:
   source-branch:
-    name: Main PR source must be staging or release-please
+    name: Main PR source
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     permissions:
