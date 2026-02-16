@@ -54,30 +54,14 @@ jobs:
   validate:
     name: Test and Build
     runs-on: ubuntu-latest
-    needs: [source-branch, ancestry]
-    if: always() && github.event_name == 'pull_request' && needs.source-branch.result == 'success' && needs.ancestry.result != 'failure'
+    needs: [source-branch]
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Run tests
         run: pnpm test

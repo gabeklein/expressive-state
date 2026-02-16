@@ -44,29 +44,16 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
         with:
-          fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || 'main' }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
 
       - name: Publish stable (from committed package versions)
         run: pnpm lerna publish from-package --no-private --yes
@@ -79,48 +66,30 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
         with:
-          fetch-depth: 0
           ref: ${{ github.event.inputs.ref || github.ref }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: pnpm build
 
+      - name: Check for changed packages
+        if: github.event.inputs.force_publish != 'true'
+        run: |
+          if ! pnpm lerna changed > /dev/null 2>&1; then
+            echo "::error::No changed packages to publish."
+            exit 1
+          fi
+
       - name: Publish canary
-        env:
-          FORCE_PUBLISH: ${{ github.event.inputs.force_publish || 'false' }}
         run: |
           set -euo pipefail
 
           args=(publish --canary --dist-tag canary --preid canary --no-private --yes --no-git-tag-version --no-push)
-          if [[ "$FORCE_PUBLISH" == "true" ]]; then
+          if [[ "${{ github.event.inputs.force_publish }}" == "true" ]]; then
             args+=(--force-publish)
             echo "Force publish enabled."
           fi
 
-          pnpm lerna "${args[@]}" 2>&1 | tee lerna-publish.log
-
-          if grep -q "No changed packages to publish" lerna-publish.log; then
-            echo "No packages were published. Failing this run by policy."
-            exit 1
-          fi
-
-          echo "Published package candidates from Lerna output:"
-          grep -E '^ - @[^ ]+ => ' lerna-publish.log || echo "No package list could be parsed from output."
+          pnpm lerna "${args[@]}"

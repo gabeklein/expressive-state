@@ -2,6 +2,7 @@
 	"name": "expressive-state",
 	"license": "MIT",
 	"private": true,
+	"packageManager": "pnpm@10.28.2",
 	"workspaces": [
 		"packages/*",
 		"examples/*"
