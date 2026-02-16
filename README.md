@@ -10,7 +10,7 @@
 </h4>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@expressive/mvc"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Fmvc.svg"></a>
+  <a href="https://www.npmjs.com/package/@expressive/state"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Fstate.svg"></a>
   <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen.svg">
   <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg" alt="Join Slack">
     <img src="https://img.shields.io/badge/Slack-Come%20say%20hi!-blueviolet" />
@@ -70,7 +70,7 @@ npm install @expressive/react
 import State from '@expressive/react';
 ```
 
-> For other frameworks, use `@expressive/preact`, `@expressive/solid`, or the core `@expressive/mvc` package.
+> For other frameworks, use `@expressive/preact`, `@expressive/solid`, or the core `@expressive/state` package.
 
 <br />
 
@@ -117,7 +117,7 @@ function CounterWidget() {
 }
 ```
 
-It's that simple! <a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/counter?file=/src/Counter.tsx" target="_blank">Try it in a sandbox →</a>
+It's that simple! <a href="https://codesandbox.io/s/github/gabeklein/expressive-state/tree/main/examples/counter?file=/src/Counter.tsx" target="_blank">Try it in a sandbox →</a>
 
 <br />
 
@@ -152,7 +152,7 @@ function MyComponent() {
 }
 ```
 
-<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/simple?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-state/tree/main/examples/simple?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 > The reserved property `is` loops back to the instance, helpful to update values after destructuring.
 
@@ -211,7 +211,7 @@ function Situation() {
 }
 ```
 
-<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/async?file=/src/Control.tsx" target="_blank">View in CodeSandbox</a></sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-state/tree/main/examples/async?file=/src/Control.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -276,7 +276,7 @@ function UserDisplay() {
 }
 ```
 
-<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/context?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-state/tree/main/examples/context?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -375,7 +375,7 @@ function ThemeToggle() {
 }
 ```
 
-<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-mvc/tree/main/examples/nested?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
+<sup><a href="https://codesandbox.io/s/github/gabeklein/expressive-state/tree/main/examples/nested?file=/src/Demo.tsx" target="_blank">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -1048,11 +1048,11 @@ npm install @expressive/solid
 **Framework-Agnostic Core**
 
 ```bash
-npm install @expressive/mvc
+npm install @expressive/state
 ```
 
 ```ts
-import { State, watch, Context } from '@expressive/mvc';
+import { State, watch, Context } from '@expressive/state';
 
 const state = State.new();
 watch(state, (current) => {
@@ -1066,8 +1066,8 @@ watch(state, (current) => {
 
 <p align="center">
   <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg">Join our Slack</a> •
-  <a href="https://github.com/gabeklein/expressive-mvc/issues">Report Issues</a> •
-  <a href="https://github.com/gabeklein/expressive-mvc">GitHub</a>
+  <a href="https://github.com/gabeklein/expressive-state/issues">Report Issues</a> •
+  <a href="https://github.com/gabeklein/expressive-state">GitHub</a>
 </p>
 
 <p align="center">

@@ -1,4 +1,4 @@
-import State, { Context } from '@expressive/mvc';
+import State, { Context } from '@expressive/state';
 import {
   createContext,
   createComponent,

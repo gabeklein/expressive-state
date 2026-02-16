@@ -6,7 +6,7 @@ This file provides guidance for working in this repository.
 
 Expressive MVC is a class-based state management library for reactive UI frameworks.
 
-- `@expressive/mvc` provides framework-agnostic state, observable, context, and instruction primitives.
+- `@expressive/state` provides framework-agnostic state, observable, context, and instruction primitives.
 - `@expressive/react` is the primary adapter and reference implementation.
 - `@expressive/preact` and `@expressive/solid` provide additional framework adapters.
 
@@ -14,7 +14,7 @@ The repo is a pnpm workspace managed with lerna.
 
 ## Repository Structure
 
-- `packages/mvc/` — core primitives (`State`, `Observable`, `Context`, instructions)
+- `packages/state/` — core primitives (`State`, `Observable`, `Context`, instructions)
 - `packages/react/` — React adapter (`State.use`, `State.get`, `State.as`, context components, JSX runtime)
 - `packages/preact/` — Preact adapter
 - `packages/solid/` — Solid adapter
@@ -22,7 +22,7 @@ The repo is a pnpm workspace managed with lerna.
 
 ## Core Architecture
 
-### 1) State (`packages/mvc/src/state.ts`)
+### 1) State (`packages/state/src/state.ts`)
 
 `State` is the base class users extend.
 
@@ -38,7 +38,7 @@ Behavioral note:
 
 - object assignment through `set({ ... })` triggers `event(self)` before merge assignment.
 
-### 2) Observable/Event system (`packages/mvc/src/observable.ts`)
+### 2) Observable/Event system (`packages/state/src/observable.ts`)
 
 Provides:
 
@@ -55,7 +55,7 @@ Event semantics:
 
 Dispatch is batched through a shared queue and flushed with `setTimeout(0)`.
 
-### 3) Context (`packages/mvc/src/context.ts`)
+### 3) Context (`packages/state/src/context.ts`)
 
 Hierarchical state lookup and dependency wiring.
 
@@ -65,7 +65,7 @@ Typical flow:
 - resolve instances by class with `get()`
 - register/unregister instances with provider boundaries
 
-### 4) Instructions (`packages/mvc/src/instruction/`)
+### 4) Instructions (`packages/state/src/instruction/`)
 
 Special initializers used in state fields:
 
@@ -130,7 +130,7 @@ tsc --noEmit && vitest run --coverage
 - Root config/projects: `vitest.config.ts`
 - Package configs extend/merge from root config
 - Helper re-exports:
-  - `packages/mvc/vitest.ts`
+  - `packages/state/vitest.ts`
   - `packages/react/vitest.ts`
   - `packages/preact/vitest.ts`
 
@@ -138,7 +138,7 @@ Coverage policy remains 100% thresholds (branches/functions/lines/statements).
 
 ## Working Conventions
 
-- Keep framework-agnostic behavior in `packages/mvc`.
+- Keep framework-agnostic behavior in `packages/state`.
 - Keep React runtime behavior and typing changes aligned across:
   - `packages/react/src/state.ts`
   - `packages/react/src/jsx-runtime.ts`

@@ -1,4 +1,4 @@
-import { State, Context, watch, event } from '@expressive/mvc';
+import { State, Context, watch, event } from '@expressive/state';
 import { ReactNode } from 'react';
 import { provide, Layers } from './context';
 

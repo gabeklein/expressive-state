@@ -28,6 +28,6 @@ export const rootConfig = defineConfig({
 
 export default defineConfig({
   test: {
-    projects: ['packages/mvc', 'packages/react', 'packages/preact']
+    projects: ['packages/state', 'packages/react', 'packages/preact']
   }
 });
