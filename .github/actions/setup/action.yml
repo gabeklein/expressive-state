@@ -1,15 +1,7 @@
 name: Setup
-description: Checkout, install pnpm + Node, and install dependencies
+description: Install pnpm + Node and install dependencies
 
 inputs:
-  fetch-depth:
-    description: Number of commits to fetch (0 for full history)
-    required: false
-    default: "0"
-  ref:
-    description: Git ref to checkout
-    required: false
-    default: ""
   registry-url:
     description: npm registry URL (only needed for publish jobs)
     required: false
@@ -18,12 +10,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: ${{ inputs.fetch-depth }}
-        ref: ${{ inputs.ref || github.ref }}
-
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
 

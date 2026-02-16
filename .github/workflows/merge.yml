@@ -59,9 +59,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+      - uses: ./.github/actions/setup
 
       - name: Run tests
         run: pnpm test

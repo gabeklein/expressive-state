@@ -44,9 +44,11 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || 'main' }}
+      - uses: ./.github/actions/setup
+        with:
           registry-url: https://registry.npmjs.org
 
       - name: Build packages
@@ -66,9 +68,11 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
+      - uses: ./.github/actions/setup
+        with:
           registry-url: https://registry.npmjs.org
 
       - name: Build packages
