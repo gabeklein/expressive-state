@@ -57,6 +57,9 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+      - name: Build packages
+        run: pnpm build
+
       - name: Publish stable (from committed package versions)
         run: pnpm lerna publish from-package --no-private --yes
 
@@ -85,6 +88,9 @@ jobs:
             echo "::error::No changed packages to publish."
             exit 1
           fi
+
+      - name: Build packages
+        run: pnpm build
 
       - name: Publish canary
         run: |
