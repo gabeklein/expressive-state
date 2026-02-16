@@ -53,7 +53,7 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/state": "^0.74.0"
+    "@expressive/state": "workspace:^"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <20.0.0"

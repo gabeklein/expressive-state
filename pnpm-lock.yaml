@@ -194,8 +194,8 @@ importers:
   packages/react:
     dependencies:
       '@expressive/state':
-        specifier: ^0.73.1
-        version: 0.73.1
+        specifier: workspace:^
+        version: link:../state
     devDependencies:
       '@testing-library/react':
         specifier: ^16.3.0
