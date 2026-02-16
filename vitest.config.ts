@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, mergeConfig } from 'vitest/config';
 import { resolve } from 'path';
 
 export const rootConfig = defineConfig({
@@ -26,8 +26,11 @@ export const rootConfig = defineConfig({
   }
 });
 
-export default defineConfig({
-  test: {
-    projects: ['packages/state', 'packages/react', 'packages/preact']
-  }
-});
+export default mergeConfig(
+  rootConfig,
+  defineConfig({
+    test: {
+      projects: ['packages/state', 'packages/react', 'packages/preact']
+    }
+  })
+);

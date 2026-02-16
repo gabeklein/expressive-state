@@ -7,7 +7,10 @@
     "url": "https://github.com/gabeklein"
   },
   "license": "MIT",
-  "repository": "https://github.com/gabeklein/expressive-state",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-state.git"
+  },
   "publishConfig": {
     "access": "public"
   },

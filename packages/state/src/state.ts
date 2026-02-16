@@ -73,6 +73,16 @@ declare namespace State {
   /** Export/Import compatible value for a given property in a State. */
   type Export<R> = R extends { get(): infer T } ? T : R;
 
+  /**
+   * Values from current state of given state.
+   * Differs from `Values` as values here will drill
+   * into "real" values held by exotics like ref.Object.
+   */
+  type Values<T> = { [P in Field<T>]: Export<T[P]> };
+
+  /** Object comperable to data found in T. */
+  type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
+
   /** Value for a property managed by a state. */
   type Value<T extends State, K extends State.Event<T>> = K extends keyof T
     ? Export<T[K]>
@@ -91,16 +101,6 @@ declare namespace State {
     key: K,
     thisArg: K
   ) => void;
-
-  /**
-   * Values from current state of given state.
-   * Differs from `Values` as values here will drill
-   * into "real" values held by exotics like ref.Object.
-   */
-  type Values<T> = { [P in Field<T>]: Export<T[P]> };
-
-  /** Object comperable to data found in T. */
-  type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   type Ref<T = any> = {

@@ -8,7 +8,10 @@
     "url": "https://github.com/gabeklein"
   },
   "license": "MIT",
-  "repository": "https://github.com/gabeklein/expressive-state",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-state.git"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -16,7 +19,7 @@
   "module": "src",
   "types": "src",
   "dependencies": {
-    "@expressive/state": "^0.71.0"
+    "@expressive/state": "^0.73.1"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.8",

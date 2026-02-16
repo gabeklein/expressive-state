@@ -8,7 +8,10 @@
     "url": "https://github.com/gabeklein"
   },
   "license": "MIT",
-  "repository": "https://github.com/gabeklein/expressive-state",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-state.git"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -20,7 +23,7 @@
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/state": "^0.71.0",
+    "@expressive/state": "^0.73.1",
     "@expressive/react": "^0.71.0"
   },
   "devDependencies": {
