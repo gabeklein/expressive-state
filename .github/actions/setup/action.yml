@@ -1,0 +1,25 @@
+name: Setup
+description: Install pnpm + Node and install dependencies
+
+inputs:
+  registry-url:
+    description: npm registry URL (only needed for publish jobs)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 24
+        registry-url: ${{ inputs.registry-url }}
+        cache: pnpm
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash

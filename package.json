@@ -2,16 +2,17 @@
 	"name": "expressive-state",
 	"license": "MIT",
 	"private": true,
+	"packageManager": "pnpm@10.28.2",
 	"workspaces": [
 		"packages/*",
 		"examples/*"
 	],
 	"scripts": {
-		"test": "vitest run",
-		"test:watch": "vitest",
+		"test": "vitest run --coverage",
 		"build": "lerna run build",
-		"clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
-		"push": "lerna publish --conventional-commits --no-private"
+		"canary": "bash .github/scripts/publish-canary.sh",
+		"pr": "bash .github/scripts/pr-to-staging.sh",
+		"nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
 	},
 	"devDependencies": {
 		"@types/node": "^25.2.0",
