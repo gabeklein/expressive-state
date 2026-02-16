@@ -1,0 +1,19 @@
+name: Main PR Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  source-branch:
+    name: Main PR source must be staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce staging as source branch
+        run: |
+          if [[ "${{ github.head_ref }}" != "staging" ]]; then
+            echo "Only PRs from 'staging' to 'main' are allowed."
+            echo "Current source branch: ${{ github.head_ref }}"
+            exit 1
+          fi

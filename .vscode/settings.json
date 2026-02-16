@@ -1,10 +1,10 @@
 {
   "files.exclude": {
-    "**/.git": false,
-    "**/.DS_Store": false,
-    "**/dist": false,
-    "**/node_modules": false,
-    "**/coverage": false
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/dist": true,
+    "**/node_modules": true,
+    "**/coverage": true
   },
   "editor.formatOnSave": true
 }

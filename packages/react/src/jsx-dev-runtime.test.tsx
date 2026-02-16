@@ -1,3 +1,5 @@
+import { expect, it } from '../vitest';
+
 import { State } from '.';
 import { Fragment, jsxDEV } from './jsx-dev-runtime';
 

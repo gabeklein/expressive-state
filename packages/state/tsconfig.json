@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "outDir": "./dist/esm",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "declaration": false,
+    "noUnusedLocals": true,
+    "strict": true,
+    "types": [
+      "vitest",
+      "node"
+    ],
+    "lib": [
+      "ES2020",
+      "dom"
+    ]
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

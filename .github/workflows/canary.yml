@@ -1,0 +1,14 @@
+name: Canary Release (deprecated)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  notice:
+    name: Use publish.yml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notice
+        run: |
+          echo "This workflow is deprecated."
+          echo "Use .github/workflows/publish.yml for both stable and canary releases."

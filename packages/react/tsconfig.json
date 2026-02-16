@@ -3,16 +3,27 @@
     "target": "es2020",
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "lib": ["ES2020", "DOM"],
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
     "moduleResolution": "node",
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
-    "types": ["jest", "react"],
+    "types": [
+      "vitest",
+      "react"
+    ],
     "paths": {
-      "@expressive/*": ["../*/src"]
+      "@expressive/*": [
+        "../*/src"
+      ]
     }
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

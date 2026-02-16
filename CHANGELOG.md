@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.73.1](https://github.com/gabeklein/expressive-mvc/compare/v0.73.0...v0.73.1) (2026-02-13)
+
+### Bug Fixes
+
+- improved test for sibling fetch ([54d29f3](https://github.com/gabeklein/expressive-mvc/commit/54d29f3b565c64039fa340b40228e30a811cc424))
+- prevent self-assignment in get function and add test for parent resolution ([cd43ba3](https://github.com/gabeklein/expressive-mvc/commit/cd43ba326356941364ed3e4170917b8f944149f9))
+
+# [0.73.0](https://github.com/gabeklein/expressive-mvc/compare/v0.72.0...v0.73.0) (2026-02-12)
+
+### Bug Fixes
+
+- export Component from './component' in index.ts ([9d7c3a1](https://github.com/gabeklein/expressive-mvc/commit/9d7c3a184227d806794777b701895f9ea3c83b65))
+- point preact import of State to @/react/state ([9212349](https://github.com/gabeklein/expressive-mvc/commit/9212349c7a7c5dabf358fe209e46affb2f949b8b))
+- rename all deprecated jest matchers ([7c40666](https://github.com/gabeklein/expressive-mvc/commit/7c406666a6f82296ab25c53a700d153781664500))
+- replace state types within namespace ([36be3d1](https://github.com/gabeklein/expressive-mvc/commit/36be3d11a5cbedfbe8d398466aaf921de12938f3))
+- replace tsup with tsdown in react package ([d1e0eb7](https://github.com/gabeklein/expressive-mvc/commit/d1e0eb7e2d02859c48bcc69c5bd286bf062295ea))
+- uncooperative builds ([fae4cb6](https://github.com/gabeklein/expressive-mvc/commit/fae4cb6ef1279f7befabdfc6d4806526f56c0c5d))
+- update didDestroy call to include order in child context ([d7a9cd8](https://github.com/gabeklein/expressive-mvc/commit/d7a9cd853e9eec630485fa0d4438123374d596ff))
+- update files.exclude settings to hide additional files and directories ([a68913b](https://github.com/gabeklein/expressive-mvc/commit/a68913b0bf43623e34cc437127a373ccc96291bc))
+- update Jest program path to use pnpm and remove unnecessary config args ([a0d0128](https://github.com/gabeklein/expressive-mvc/commit/a0d01282c8180edebe241ebdfba663da6ad8f50f))
+
+### Features
+
+- switch to tsdown ([de3c002](https://github.com/gabeklein/expressive-mvc/commit/de3c0020bacd4bd912409a0e59ba80c57119b07c))
+
 # [0.72.0](https://github.com/gabeklein/expressive-mvc/compare/v0.71.0...v0.72.0) (2026-01-25)
 
 ### Bug Fixes

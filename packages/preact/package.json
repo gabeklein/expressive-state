@@ -8,22 +8,29 @@
     "url": "https://github.com/gabeklein"
   },
   "license": "MIT",
-  "repository": "https://github.com/gabeklein/expressive-mvc",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-state.git"
+  },
   "publishConfig": {
     "access": "public"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --dts"
+    "build": "tsdown",
+    "test": "tsc --noEmit && vitest run --coverage",
+    "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.71.0",
+    "@expressive/state": "^0.73.1",
     "@expressive/react": "^0.71.0"
   },
   "devDependencies": {
+    "@testing-library/preact": "^3.2.3",
     "preact": "^10.0.0",
-    "tsup": "^8.0.2"
+    "tsdown": "^0.20.1",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "preact": "^10.0.0"
