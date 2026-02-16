@@ -9,6 +9,8 @@ jobs:
   source-branch:
     name: Main PR source must be staging
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Enforce staging as source branch
         run: |
@@ -17,3 +19,62 @@ jobs:
             echo "Current source branch: ${{ github.head_ref }}"
             exit 1
           fi
+
+  ancestry:
+    name: Assert main is not ahead
+    runs-on: ubuntu-latest
+    needs: source-branch
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify main is ancestor of staging
+        run: |
+          set -euo pipefail
+
+          git fetch origin main staging --no-tags --prune
+
+          if ! git merge-base --is-ancestor origin/main origin/staging; then
+            echo "main contains commits that are not present in staging."
+            echo "Sync main back into staging before merging this PR."
+            exit 1
+          fi
+
+          echo "Verified: origin/main is an ancestor of origin/staging."
+
+  validate:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    needs: ancestry
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build packages
+        run: pnpm build
