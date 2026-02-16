@@ -3,6 +3,46 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.0](https://github.com/gabeklein/expressive-state/compare/react-v0.73.1...react-v1.0.0) (2026-02-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename expressive mvc to expressive state globally
+* No longer exports Component class
+
+### Features
+
+* add extensible component support with as2 method in State class ([8cfc16e](https://github.com/gabeklein/expressive-state/commit/8cfc16ec715b1874c133ae7079fdfc8487171b58))
+* CI/CD and monorepo modernization ([f89c0af](https://github.com/gabeklein/expressive-state/commit/f89c0af893d0f5ae24f28f42ef5c1af1d37be9bf))
+* implemented State.as(withProps) ([c5eed1c](https://github.com/gabeklein/expressive-state/commit/c5eed1c15eb24e91bc9e818399e28b76395a5f20))
+* prefix generated component class name with React in State.as method ([78b8478](https://github.com/gabeklein/expressive-state/commit/78b8478ec1b8a2f4fd944016509796c00c07250c))
+* refactor ReactState class to improve state management and component rendering ([225a45f](https://github.com/gabeklein/expressive-state/commit/225a45f1bc9543f3b8c1017578120739321d2460))
+* rename expressive mvc to expressive state globally ([172bfb6](https://github.com/gabeklein/expressive-state/commit/172bfb699c4c7752d310a1c414bfb79c6720887c))
+
+
+### Bug Fixes
+
+* correct export of ValidProps in ReactState namespace ([fa622f0](https://github.com/gabeklein/expressive-state/commit/fa622f0aa9030a3d2376c3c8471a72feeb88ba4c))
+* correct package.json dependancies to use proper /state version ([ca148c0](https://github.com/gabeklein/expressive-state/commit/ca148c0155a69d0b90afd42b8780b8dab0b4f37e))
+* improved ComponentProps signatures ([424cc8c](https://github.com/gabeklein/expressive-state/commit/424cc8cc7601970f02f9b2951c8dba889d58fd64))
+* reimplement passthru props ([d2ea20f](https://github.com/gabeklein/expressive-state/commit/d2ea20ffbadb3f25c871cd47dd90b3f68cc05b7a))
+* resolve warning in react.development.js for nextProps mismatch ([c4c65be](https://github.com/gabeklein/expressive-state/commit/c4c65befd57de651b09ddcca32cbf83d4757fbf9))
+* update vitest for whole project ([3c412d2](https://github.com/gabeklein/expressive-state/commit/3c412d27a9a2631edba06d03f6aeba0006110a74))
+* vitest setup ([fdbf99b](https://github.com/gabeklein/expressive-state/commit/fdbf99ba15de2ec56dd395a25387307235e0e91c))
+
+
+### Code Refactoring
+
+* remove Component file and related tests ([c7e5bb6](https://github.com/gabeklein/expressive-state/commit/c7e5bb63b4653fd35d1e943ae055edfce0485dae))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @expressive/state bumped from ^0.73.1 to ^1.0.0
+
 ## [0.73.1](https://github.com/gabeklein/expressive-mvc/compare/v0.73.0...v0.73.1) (2026-02-13)
 
 ### Bug Fixes
