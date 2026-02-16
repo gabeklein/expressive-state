@@ -1,9 +1,11 @@
 name: Publish Packages
 
 on:
-  push:
+  pull_request:
     branches:
       - main
+    types:
+      - closed
   workflow_dispatch:
     inputs:
       ref:
@@ -29,90 +31,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
-    name: Test and Build
+  publish-stable:
+    name: Publish Stable
     runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      startsWith(github.event.pull_request.head.ref, 'release-please--')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'stable')
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          ref: ${{ github.event.inputs.ref || github.ref }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || 'main' }}
+      - uses: ./.github/actions/setup
         with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run tests
-        run: pnpm test
 
       - name: Build packages
         run: pnpm build
 
-  release-pr:
-    name: Open/Update Release PR
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'stable')
-    permissions:
-      contents: write
-      pull-requests: write
-    outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
-    steps:
-      - name: Run release-please
-        id: release
-        uses: googleapis/release-please-action@v4
-        with:
-          target-branch: main
-          config-file: .github/release-please-config.json
-          manifest-file: .github/release-please-manifest.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-stable:
-    name: Publish Stable
-    runs-on: ubuntu-latest
-    needs: [validate, release-pr]
-    if: needs.release-pr.outputs.releases_created == 'true'
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.inputs.ref || github.ref }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Run tests
+        run: pnpm test
 
       - name: Build packages
         run: pnpm build
@@ -123,54 +66,40 @@ jobs:
   publish-canary:
     name: Publish Canary
     runs-on: ubuntu-latest
-    needs: validate
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'canary'
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.inputs.ref || github.ref }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: ./.github/actions/setup
         with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Build packages
+        run: pnpm build
+
+      - name: Check for changed packages
+        if: github.event.inputs.force_publish != 'true'
+        run: |
+          if ! pnpm lerna changed > /dev/null 2>&1; then
+            echo "::error::No changed packages to publish."
+            exit 1
+          fi
 
       - name: Build packages
         run: pnpm build
 
       - name: Publish canary
-        env:
-          FORCE_PUBLISH: ${{ github.event.inputs.force_publish || 'false' }}
         run: |
           set -euo pipefail
 
           args=(publish --canary --dist-tag canary --preid canary --no-private --yes --no-git-tag-version --no-push)
-          if [[ "$FORCE_PUBLISH" == "true" ]]; then
+          if [[ "${{ github.event.inputs.force_publish }}" == "true" ]]; then
             args+=(--force-publish)
             echo "Force publish enabled."
           fi
 
-          pnpm lerna "${args[@]}" 2>&1 | tee lerna-publish.log
-
-          if grep -q "No changed packages to publish" lerna-publish.log; then
-            echo "No packages were published. Failing this run by policy."
-            exit 1
-          fi
-
-          echo "Published package candidates from Lerna output:"
-          grep -E '^ - @[^ ]+ => ' lerna-publish.log || echo "No package list could be parsed from output."
+          pnpm lerna "${args[@]}"

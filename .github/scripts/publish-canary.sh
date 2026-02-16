@@ -46,22 +46,11 @@ fi
 echo "Watching run $run_id..."
 env -u GITHUB_TOKEN gh run watch "$run_id" --exit-status
 
-log_file="$(mktemp)"
-trap 'rm -f "$log_file"' EXIT
-env -u GITHUB_TOKEN gh run view "$run_id" --log > "$log_file"
-
-if grep -q "lerna success No changed packages to publish" "$log_file"; then
-  echo ""
-  echo "No packages were published in this run."
-  exit 1
-fi
-
-published_lines="$(grep -E ' - @[^ ]+ => [^ ]+' "$log_file" | sed -E 's/^.*( - @[^ ]+ => [^ ]+).*$/\1/' | awk '!seen[$0]++' || true)"
-
 echo ""
-if [[ -n "$published_lines" ]]; then
-  echo "Published packages:"
-  echo "$published_lines"
-else
-  echo "No published package list found in logs."
-fi
+echo "Published canary versions:"
+for pkg in $(pnpm lerna list --json --no-private 2>/dev/null | jq -r '.[].name'); do
+  version="$(npm view "$pkg" dist-tags.canary 2>/dev/null || true)"
+  if [[ -n "$version" ]]; then
+    echo " - $pkg@$version"
+  fi
+done

@@ -43,6 +43,7 @@
 - [React Integration](#react-integration)
 - [Advanced Features](#advanced-features)
 - [Framework Support](#framework-support)
+- [CI/CD Pipeline](#cicd-pipeline)
 
 <br />
 
@@ -1059,6 +1060,24 @@ watch(state, (current) => {
   console.log('Value:', current.value);
 });
 ```
+
+<br />
+
+## CI/CD Pipeline
+
+This repository uses a staged, two-phase release pipeline:
+
+1. **Feature → `staging`**: Staging validation runs (`Build` + `Coverage`).
+2. **`staging` → `main` PR**: Main gate enforces branch policy, ancestry protection, and test/build validation.
+3. **Push to `main`**: release-please opens or updates a release PR.
+4. **Merge release PR**: Stable publish runs from `main` committed package versions.
+5. **Canary**: Manual workflow dispatch (`channel=canary`) publishes canary versions.
+
+Workflows:
+
+- Main gate and release PR automation: [.github/workflows/merge.yml](.github/workflows/merge.yml)
+- Staging validation: [.github/workflows/staging.yml](.github/workflows/staging.yml)
+- Stable/canary publishing: [.github/workflows/publish.yml](.github/workflows/publish.yml)
 
 ---
 

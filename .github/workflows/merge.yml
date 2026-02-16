@@ -4,16 +4,86 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 
 jobs:
   source-branch:
-    name: Main PR source must be staging
+    name: Main PR source must be staging or release-please
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
     steps:
-      - name: Enforce staging as source branch
+      - name: Enforce allowed source branch
         run: |
-          if [[ "${{ github.head_ref }}" != "staging" ]]; then
-            echo "Only PRs from 'staging' to 'main' are allowed."
+          if [[ "${{ github.head_ref }}" != "staging" && "${{ github.head_ref }}" != release-please--* ]]; then
+            echo "Only PRs from 'staging' or 'release-please--*' to 'main' are allowed."
             echo "Current source branch: ${{ github.head_ref }}"
             exit 1
           fi
+
+  ancestry:
+    name: Assert main is not ahead
+    runs-on: ubuntu-latest
+    needs: source-branch
+    if: github.event_name == 'pull_request' && github.head_ref == 'staging'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify main is ancestor of staging
+        run: |
+          set -euo pipefail
+
+          git fetch origin main staging --no-tags --prune
+
+          if ! git merge-base --is-ancestor origin/main origin/staging; then
+            echo "main contains commits that are not present in staging."
+            echo "Sync main back into staging before merging this PR."
+            exit 1
+          fi
+
+          echo "Verified: origin/main is an ancestor of origin/staging."
+
+  validate:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    needs: [source-branch]
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: ./.github/actions/setup
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build packages
+        run: pnpm build
+
+  release-pr:
+    name: Release PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          target-branch: main
+          config-file: .github/release-please-config.json
+          manifest-file: .github/release-please-manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
