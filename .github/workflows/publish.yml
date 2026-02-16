@@ -41,12 +41,13 @@ jobs:
       startsWith(github.event.pull_request.head.ref, 'release-please--')) ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'stable')
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || 'main' }}
+          fetch-depth: 0
       - uses: ./.github/actions/setup
         with:
           registry-url: https://registry.npmjs.org
@@ -62,6 +63,12 @@ jobs:
 
       - name: Publish stable (from committed package versions)
         run: pnpm lerna publish from-package --no-private --yes
+
+      - name: Sync staging with main
+        run: |
+          git checkout staging
+          git merge origin/main --no-edit
+          git push origin staging
 
   publish-canary:
     name: Publish Canary
