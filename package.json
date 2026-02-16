@@ -9,9 +9,9 @@
 	"scripts": {
 		"test": "vitest run --coverage",
 		"build": "lerna run build",
-		"clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
+		"canary": "bash .github/scripts/publish-canary.sh",
 		"pr": "bash .github/scripts/pr-to-staging.sh",
-		"canary": "bash .github/scripts/publish-canary.sh"
+		"nuke": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
 	},
 	"devDependencies": {
 		"@types/node": "^25.2.0",
