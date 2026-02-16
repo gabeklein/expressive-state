@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.74.1](https://github.com/gabeklein/expressive-state/compare/react-v0.74.0...react-v0.74.1) (2026-02-16)
+
+
+### Bug Fixes
+
+* use workspace protocol for @expressive/state dependency ([34382d9](https://github.com/gabeklein/expressive-state/commit/34382d92d3e80f29c95ec493c6a8de2755af088b))
+
 ## [0.74.0](https://github.com/gabeklein/expressive-state/compare/react-v0.73.1...react-v0.74.0) (2026-02-16)
 
 
