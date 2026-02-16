@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.74.0](https://github.com/gabeklein/expressive-state/compare/state-v0.73.1...state-v0.74.0) (2026-02-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename expressive mvc to expressive state globally
+
+### Features
+
+* CI/CD and monorepo modernization ([f89c0af](https://github.com/gabeklein/expressive-state/commit/f89c0af893d0f5ae24f28f42ef5c1af1d37be9bf))
+* rename expressive mvc to expressive state globally ([172bfb6](https://github.com/gabeklein/expressive-state/commit/172bfb699c4c7752d310a1c414bfb79c6720887c))
+* reorder state namespace types ([6277e8b](https://github.com/gabeklein/expressive-state/commit/6277e8be81b869b439227b7c960756c8943377bf))
+
+
+### Bug Fixes
+
+* correct package.json dependancies to use proper /state version ([ca148c0](https://github.com/gabeklein/expressive-state/commit/ca148c0155a69d0b90afd42b8780b8dab0b4f37e))
+* rename job from 'Test and Build' to 'Build' and remove test step ([e978efc](https://github.com/gabeklein/expressive-state/commit/e978efcddb3e2cdcef982c3e8dcb39f2a0c5040a))
+* update keywords in package.json to include 'mvc' ([176a1fa](https://github.com/gabeklein/expressive-state/commit/176a1fa2ce3e4dc307be4cb70fb0163ccdcaf21c))
+
 ## [0.73.1](https://github.com/gabeklein/expressive-mvc/compare/v0.73.0...v0.73.1) (2026-02-13)
 
 ### Bug Fixes
