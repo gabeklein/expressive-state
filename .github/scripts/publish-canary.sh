@@ -50,13 +50,13 @@ log_file="$(mktemp)"
 trap 'rm -f "$log_file"' EXIT
 env -u GITHUB_TOKEN gh run view "$run_id" --log > "$log_file"
 
-if grep -q "No changed packages to publish" "$log_file"; then
+if grep -q "lerna success No changed packages to publish" "$log_file"; then
   echo ""
   echo "No packages were published in this run."
   exit 1
 fi
 
-published_lines="$(grep -E '^ - @[^ ]+ => ' "$log_file" || true)"
+published_lines="$(grep -E ' - @[^ ]+ => [^ ]+' "$log_file" | sed -E 's/^.*( - @[^ ]+ => [^ ]+).*$/\1/' | awk '!seen[$0]++' || true)"
 
 echo ""
 if [[ -n "$published_lines" ]]; then
