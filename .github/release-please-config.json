@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": false,
+  "packages": {
+    "packages/state": {
+      "release-type": "node",
+      "package-name": "@expressive/state",
+      "component": "state"
+    },
+    "packages/react": {
+      "release-type": "node",
+      "package-name": "@expressive/react",
+      "component": "react"
+    }
+  },
+  "plugins": [
+    "node-workspace"
+  ]
+}

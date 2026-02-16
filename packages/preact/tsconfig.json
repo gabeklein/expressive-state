@@ -1,23 +1,28 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "es2020",
     "esModuleInterop": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "lib": [
       "ES2020",
       "DOM"
     ],
     "moduleResolution": "node",
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,
+    "types": [
+      "preact"
+    ],
     "paths": {
       "@expressive/*": [
         "../*/src"
       ],
-      "@expressive/react/adapter": [
-        "../react/src/adapter"
+      "@expressive/react/state": [
+        "../react/src/state"
       ]
     }
   },

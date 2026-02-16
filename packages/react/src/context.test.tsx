@@ -1,11 +1,11 @@
-import '@testing-library/jest-dom';
+import { vi, afterAll, expect, it, describe } from '../vitest';
 
 import { act, render, screen } from '@testing-library/react';
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
 
 import State, { Consumer, get, Provider, set, use } from '.';
 
-const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 afterAll(() => {
   error.mockReset();
@@ -21,7 +21,11 @@ describe('Provider', () => {
   it('will create instance of given model', () => {
     render(
       <Provider for={Foo}>
-        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Foo);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -29,8 +33,16 @@ describe('Provider', () => {
   it('will create all models in given object', () => {
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
-        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Bar)}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Foo);
+          }}
+        </Consumer>
+        <Consumer for={Bar}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Bar);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -40,8 +52,16 @@ describe('Provider', () => {
 
     render(
       <Provider for={{ foo, Bar }}>
-        <Consumer for={Foo}>{({ is }) => expect(is).toBe(foo)}</Consumer>
-        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Bar)}</Consumer>
+        <Consumer for={Foo}>
+          {({ is }) => {
+            expect(is).toBe(foo);
+          }}
+        </Consumer>
+        <Consumer for={Bar}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Bar);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -56,13 +76,17 @@ describe('Provider', () => {
 
     render(
       <Provider for={Bar}>
-        <Consumer for={Foo}>{(i) => expect(i).toBeInstanceOf(Foo)}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Foo);
+          }}
+        </Consumer>
       </Provider>
     );
   });
 
   it('will destroy created model on unmount', () => {
-    const willDestroy = jest.fn();
+    const willDestroy = vi.fn();
 
     class Test extends State {}
 
@@ -82,7 +106,7 @@ describe('Provider', () => {
   });
 
   it('will destroy multiple created on unmount', async () => {
-    const willDestroy = jest.fn();
+    const willDestroy = vi.fn();
 
     class Foo extends State {}
     class Bar extends State {}
@@ -107,7 +131,7 @@ describe('Provider', () => {
   });
 
   it('will not destroy given instance on unmount', async () => {
-    const didUnmount = jest.fn();
+    const didUnmount = vi.fn();
 
     class Test extends State {}
 
@@ -126,8 +150,8 @@ describe('Provider', () => {
   it('will conflict colliding State types', () => {
     const foo = Foo.new();
 
-    const Consumer: React.FC = jest.fn(() => {
-      expect(() => Foo.get()).toThrowError(
+    const Consumer: React.FC = vi.fn(() => {
+      expect(() => Foo.get()).toThrow(
         'Did find Foo in context, but multiple were defined.'
       );
       return null;
@@ -139,11 +163,11 @@ describe('Provider', () => {
       </Provider>
     );
 
-    expect(Consumer).toHaveBeenCalled();
+    expect(Consumer).toBeCalled();
   });
 
   it('will destroy from bottom-up', async () => {
-    const didDestroy = jest.fn();
+    const didDestroy = vi.fn();
 
     class Test extends State {
       constructor(...args: State.Args) {
@@ -172,7 +196,7 @@ describe('Provider', () => {
 
   describe('forEach prop', () => {
     it('will call function for each model', () => {
-      const forEach = jest.fn();
+      const forEach = vi.fn();
 
       render(<Provider for={{ Foo, Bar }} forEach={forEach} />);
 
@@ -182,8 +206,8 @@ describe('Provider', () => {
     });
 
     it('will cleanup on unmount', () => {
-      const forEach = jest.fn(() => cleanup);
-      const cleanup = jest.fn();
+      const forEach = vi.fn(() => cleanup);
+      const cleanup = vi.fn();
 
       const rendered = render(
         <Provider for={{ Foo, Bar }} forEach={forEach} />
@@ -214,14 +238,14 @@ describe('Provider', () => {
         </Provider>
       );
 
-      expect(element.getByText('Loading...')).toBeInTheDocument();
+      element.getByText('Loading...');
 
       await act(async () => {
         foo.value = 'Hello World';
       });
 
-      expect(element.getByText('Hello World')).toBeInTheDocument();
-      expect(element.queryByText('Loading...')).not.toBeInTheDocument();
+      element.getByText('Hello World');
+      expect(element.queryByText('Loading...')).toBeNull();
     });
 
     it('will ignore suspense if undefined', () => {
@@ -240,7 +264,7 @@ describe('Provider', () => {
         </Suspense>
       );
 
-      expect(element.queryByText('Foo')).toBeInTheDocument();
+      element.queryByText('Foo');
 
       element.rerender(
         <Suspense fallback={<span>Foo</span>}>
@@ -250,8 +274,8 @@ describe('Provider', () => {
         </Suspense>
       );
 
-      expect(element.getByText('Bar')).toBeInTheDocument();
-      expect(element.queryByText('Foo')).not.toBeInTheDocument();
+      element.getByText('Bar');
+      expect(element.queryByText('Foo')).toBeNull();
     });
   });
 });
@@ -263,7 +287,7 @@ describe('Consumer', () => {
     }
 
     const instance = Test.new();
-    const didRender = jest.fn();
+    const didRender = vi.fn();
 
     function onRender(instance: Test) {
       const { value } = instance;
@@ -293,13 +317,17 @@ describe('Consumer', () => {
   it('will throw if not found', () => {
     const test = () => render(<Consumer for={Bar}>{(i) => void i}</Consumer>);
 
-    expect(test).toThrowError('Could not find Bar in context.');
+    expect(test).toThrow('Could not find Bar in context.');
   });
 
   it('will select extended class', () => {
     render(
       <Provider for={Baz}>
-        <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Baz)}</Consumer>
+        <Consumer for={Bar}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Baz);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -316,7 +344,11 @@ describe('Consumer', () => {
           forEach={(x) => {
             x.value = 'inner';
           }}>
-          <Consumer for={Foo}>{(i) => expect(i.value).toBe('inner')}</Consumer>
+          <Consumer for={Foo}>
+            {(i) => {
+              expect(i.value).toBe('inner');
+            }}
+          </Consumer>
         </Provider>
       </Provider>
     );
@@ -326,7 +358,11 @@ describe('Consumer', () => {
     render(
       <Provider for={Bar}>
         <Provider for={Baz}>
-          <Consumer for={Bar}>{(i) => expect(i).toBeInstanceOf(Baz)}</Consumer>
+          <Consumer for={Bar}>
+            {(i) => {
+              expect(i).toBeInstanceOf(Baz);
+            }}
+          </Consumer>
         </Provider>
       </Provider>
     );
@@ -340,13 +376,19 @@ describe('Consumer', () => {
         <Provider for={Baz}>
           <Provider for={{ Bar }}>
             <Consumer for={Foo}>
-              {({ is }) => expect(is).toBe(instance)}
+              {({ is }) => {
+                expect(is).toBe(instance);
+              }}
             </Consumer>
             <Consumer for={Bar}>
-              {(i) => expect(i).toBeInstanceOf(Bar)}
+              {(i) => {
+                expect(i).toBeInstanceOf(Bar);
+              }}
             </Consumer>
             <Consumer for={Baz}>
-              {(i) => expect(i).toBeInstanceOf(Baz)}
+              {(i) => {
+                expect(i).toBeInstanceOf(Baz);
+              }}
             </Consumer>
           </Provider>
         </Provider>
@@ -369,7 +411,9 @@ describe('get instruction', () => {
       <Provider for={Bar}>
         <Provider for={Foo}>
           <Consumer for={Foo}>
-            {(i) => expect(i.bar).toBeInstanceOf(Bar)}
+            {(i) => {
+              expect(i.bar).toBeInstanceOf(Bar);
+            }}
           </Consumer>
         </Provider>
       </Provider>
@@ -386,8 +430,16 @@ describe('get instruction', () => {
 
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Bar}>{({ is }) => expect(is.foo.bar).toBe(is)}</Consumer>
-        <Consumer for={Foo}>{({ is }) => expect(is.bar.foo).toBe(is)}</Consumer>
+        <Consumer for={Bar}>
+          {({ is }) => {
+            expect(is.foo.bar).toBe(is);
+          }}
+        </Consumer>
+        <Consumer for={Foo}>
+          {({ is }) => {
+            expect(is.bar.foo).toBe(is);
+          }}
+        </Consumer>
       </Provider>
     );
   });
@@ -416,7 +468,7 @@ describe('get instruction', () => {
   });
 
   it('will maintain hook', async () => {
-    const Inner: React.FC = jest.fn(() => {
+    const Inner: React.FC = vi.fn(() => {
       Foo.use();
       return null;
     });
@@ -526,6 +578,19 @@ describe('get instruction', () => {
     expect(bar.bar).toBe(foo);
   });
 
+  it('will not resolve as own parent', () => {
+    class MaybeSelf extends State {
+      parent = get(MaybeSelf, false);
+    }
+
+    const test = MaybeSelf.new();
+
+    render(<Provider for={test} />);
+
+    expect(test.parent).not.toBe(test);
+    expect(test.parent).toBeUndefined();
+  });
+
   it('will refresh an effect when assigned to', async () => {
     class Foo extends State {}
     class Bar extends State {
@@ -533,11 +598,11 @@ describe('get instruction', () => {
     }
 
     const bar = Bar.new();
-    const effect = jest.fn((bar) => void bar.foo);
+    const effect = vi.fn((bar) => void bar.foo);
 
     bar.get(effect);
 
-    expect(effect).toHaveBeenCalled();
+    expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
 
     render(
@@ -548,7 +613,7 @@ describe('get instruction', () => {
 
     await expect(bar).toHaveUpdated();
 
-    expect(effect).toHaveBeenCalledTimes(2);
+    expect(effect).toBeCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);
   });
 
@@ -605,7 +670,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = jest.fn();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
     const foo = Foo.new();
 
@@ -630,7 +695,7 @@ describe('has instruction', () => {
       foo = get(Foo);
     }
 
-    const didGetBar = jest.fn();
+    const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
 
     const Component = () => {

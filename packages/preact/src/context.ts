@@ -1,10 +1,12 @@
-import State, { Context } from '@expressive/mvc';
+import { Context } from '@expressive/state';
 import { ComponentChildren, createContext, createElement } from 'preact';
 import { useContext, useEffect, useMemo } from 'preact/hooks';
 
+import { ReactState as State } from '@expressive/react/state';
+
 const Lookup = createContext(new Context());
 
-declare module '@expressive/mvc' {
+declare module '@expressive/state' {
   namespace Context {
     function use(create?: true): Context;
     function use(create: boolean): Context | null | undefined;
@@ -20,7 +22,7 @@ Context.use = (create?: boolean) => {
 declare namespace Consumer {
   type Props<T extends State> = {
     /** Type of controller to fetch from context. */
-    for: State.Extends<T>;
+    for: State.Extends<T> & typeof State;
 
     /**
      * Render function, will receive instance of desired controller.

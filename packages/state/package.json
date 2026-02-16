@@ -1,0 +1,40 @@
+{
+  "name": "@expressive/state",
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@termtm.com",
+    "url": "https://github.com/gabeklein"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-state.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "expressive",
+    "state",
+    "mvc"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && vitest run --coverage",
+    "prebuild": "rm -rf dist",
+    "preversion": "npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "tsdown": "^0.20.1",
+    "vitest": "^4.0.18"
+  },
+  "version": "0.73.1"
+}

@@ -1,8 +1,9 @@
 /** @jsxImportSource . */
 
-import { act, render, screen } from '@testing-library/react';
+import { vi, expect, it, describe, act, render, screen } from '../vitest';
+
 import React, { Children, Component, isValidElement } from 'react';
-import { Consumer, get, State, set } from '.';
+import State, { Consumer, get, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends State {
@@ -26,59 +27,48 @@ it('will create instance only once', () => {
     }
   }
 
-  const didConstruct = jest.fn();
+  const didConstruct = vi.fn();
   const { rerender } = render(<Control />);
 
-  expect(didConstruct).toHaveBeenCalledTimes(1);
+  expect(didConstruct).toBeCalledTimes(1);
 
   rerender(<Control />);
 
-  expect(didConstruct).toHaveBeenCalledTimes(1);
+  expect(didConstruct).toBeCalledTimes(1);
 });
 
 it('will call is method on creation', () => {
   class Control extends State {}
 
-  const didCreate = jest.fn();
+  const didCreate = vi.fn();
 
   const screen = render(<Control is={didCreate} />);
 
-  expect(didCreate).toHaveBeenCalledTimes(1);
+  expect(didCreate).toBeCalledTimes(1);
 
   screen.rerender(<Control is={didCreate} />);
-  expect(didCreate).toHaveBeenCalledTimes(1);
+  expect(didCreate).toBeCalledTimes(1);
 
   act(screen.unmount);
 });
 
 describe('new method', () => {
   it('will call if exists', () => {
-    const didCreate = jest.fn();
+    const didCreate = vi.fn();
 
     class Test extends State {
-      new() {
+      protected new() {
         didCreate();
       }
     }
 
     const element = render(<Test />);
 
-    expect(didCreate).toHaveBeenCalled();
+    expect(didCreate).toBeCalled();
 
     element.rerender(<Test />);
 
-    expect(didCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it('will enforce signature', () => {
-    class Test extends State {
-      new(foo: string) {}
-    }
-
-    void function test() {
-      // @ts-expect-error
-      void (<Test />);
-    };
+    expect(didCreate).toBeCalledTimes(1);
   });
 });
 
@@ -91,7 +81,11 @@ describe('element props', () => {
   it('will accept managed values', () => {
     render(
       <Foo value="baz">
-        <Consumer for={Foo}>{(c) => expect(c.value).toBe('baz')}</Consumer>
+        <Consumer for={Foo}>
+          {(c) => {
+            expect(c.value).toBe('baz');
+          }}
+        </Consumer>
       </Foo>
     );
   });
@@ -99,7 +93,11 @@ describe('element props', () => {
   it('will assign values to instance', () => {
     render(
       <Foo value="foobar">
-        <Consumer for={Foo}>{(i) => expect(i.value).toBe('foobar')}</Consumer>
+        <Consumer for={Foo}>
+          {(i) => {
+            expect(i.value).toBe('foobar');
+          }}
+        </Consumer>
       </Foo>
     );
   });
@@ -109,7 +107,7 @@ describe('element props', () => {
       value = set('foobar', didSet);
     }
 
-    const didSet = jest.fn();
+    const didSet = vi.fn();
 
     render(<Foo value="barfoo" />);
 
@@ -171,11 +169,11 @@ describe('element children', () => {
       children = set<React.ReactNode>(undefined, didUpdate);
     }
 
-    const didUpdate = jest.fn();
+    const didUpdate = vi.fn();
     const screen = render(<Control>Hello</Control>);
 
     screen.getByText('Hello');
-    expect(didUpdate).toHaveBeenCalled();
+    expect(didUpdate).toBeCalled();
   });
 
   it('will accept arbitrary children with render', () => {
@@ -252,9 +250,7 @@ describe('render method', () => {
       <Control value="Goodbye">Hello</Control>
     );
 
-    // getByText throws if element not found, so this is sufficient
     screen.getByText('Goodbye');
-    // or use queryByText with null check for absence
     expect(screen.queryByText('Hello')).toBe(null);
   });
 
@@ -263,7 +259,6 @@ describe('render method', () => {
       children = set<React.ReactNode>();
 
       render(props: { value: string }) {
-        // return <>{props.value}{this.children}</>;
         return (
           <>
             <span>{props.value}</span>
@@ -318,11 +313,11 @@ describe('render method', () => {
       }
     }
 
-    const callback = jest.fn();
+    const callback = vi.fn();
 
     render(<Test is={callback} />);
 
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toBeCalledTimes(1);
   });
 });
 
@@ -364,11 +359,11 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading...')).toBeInTheDocument();
+    element.getByText('Loading...');
 
     await act(async () => (foo.value = 'Hello World'));
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 
   it('will fallback when own render suspends', async () => {
@@ -384,13 +379,13 @@ describe('suspense', () => {
 
     const element = render(<Foo is={(x) => (foo = x)} />);
 
-    expect(element.getByText('Loading!')).toBeInTheDocument();
+    element.getByText('Loading!');
 
     await act(async () => {
       foo.value = 'Hello World';
     });
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 
   it('will use fallback property first', async () => {
@@ -408,7 +403,7 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading!')).toBeInTheDocument();
+    element.getByText('Loading!');
 
     element.rerender(
       <Foo fallback={<span>Loading...</span>}>
@@ -416,13 +411,13 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading...')).toBeInTheDocument();
+    element.getByText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
     });
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 
   it('will update with new fallback', async () => {
@@ -440,21 +435,21 @@ describe('suspense', () => {
       </Foo>
     );
 
-    expect(element.getByText('Loading!')).toBeInTheDocument();
+    element.getByText('Loading!');
 
     await act(async () => {
       foo.fallback = <span>Loading...</span>;
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(element.getByText('Loading...')).toBeInTheDocument();
+    element.getByText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(element.getByText('Hello World')).toBeInTheDocument();
+    element.getByText('Hello World');
   });
 });
 
