@@ -4,7 +4,8 @@ import {
   event,
   Observable,
   Notify,
-  PENDING_KEYS
+  PENDING_KEYS,
+  observe
 } from './observable';
 
 const define = Object.defineProperty;
@@ -78,6 +79,16 @@ declare namespace State {
     ? Export<T[K]>
     : unknown;
 
+  /**
+   * Values from current state of given state.
+   * Differs from `Values` as values here will drill
+   * into "real" values held by exotics like ref.Object.
+   */
+  type Values<T> = { [P in Field<T>]: Export<T[P]> };
+
+  /** Object comperable to data found in T. */
+  type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
+
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
   type OnEvent<T extends State> = (
@@ -91,16 +102,6 @@ declare namespace State {
     key: K,
     thisArg: K
   ) => void;
-
-  /**
-   * Values from current state of given state.
-   * Differs from `Values` as values here will drill
-   * into "real" values held by exotics like ref.Object.
-   */
-  type Values<T> = { [P in Field<T>]: Export<T[P]> };
-
-  /** Object comperable to data found in T. */
-  type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   type Ref<T = any> = {
@@ -140,34 +141,12 @@ interface State {
   is: this;
 }
 
-abstract class State implements Observable {
+abstract class State extends Observable {
   constructor(...args: State.Args) {
+    super();
     prepare(this);
     define(this, 'is', { value: this });
     init(this, ...args, (x: this) => x.new && x.new());
-  }
-
-  [Observable](callback: Observable.Callback, required?: boolean) {
-    const watch = new Set<unknown>();
-    const proxy = Object.create(this);
-
-    addListener(this, (key) => {
-      if (watch.has(key)) callback();
-    });
-
-    OBSERVER.set(proxy, (key, value) => {
-      if (value === undefined && required)
-        throw new Error(`${this}.${key} is required in this context.`);
-
-      watch.add(key);
-
-      if (value instanceof Object && Observable in value)
-        return value[Observable](callback, required) || value;
-
-      return value;
-    });
-
-    return proxy as this;
   }
 
   /**
@@ -579,7 +558,7 @@ function manage(
   const state = STATE.get(target)!;
 
   function get(this: State) {
-    return follow(this, key, state[key]);
+    return observe(this, key, state[key]);
   }
 
   function set(value: unknown, silent?: boolean) {
@@ -635,15 +614,6 @@ function values<T extends State>(target: T): State.Values<T> {
   if (isNotRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
-}
-
-type Proxy<T = any> = (key: string | number, value: T) => T;
-
-const OBSERVER = new WeakMap<State, Proxy>();
-
-function follow(from: State, key: string | number, value?: any) {
-  const observe = OBSERVER.get(from);
-  return observe ? observe(key, value) : value;
 }
 
 function access(subject: State, property: string, required?: boolean) {
@@ -720,4 +690,4 @@ function uid() {
     .toUpperCase();
 }
 
-export { event, METHOD, State, PARENT, STATE, uid, access, update, follow };
+export { event, METHOD, State, PARENT, STATE, uid, access, update };

@@ -26,11 +26,43 @@ declare namespace Observable {
   export type Callback = () => void | PromiseLite;
 }
 
-interface Observable {
-  [Observable](callback: Observable.Callback, required?: boolean): this | void;
+type Proxy<T = any> = (key: string | number, value: T) => T;
+
+const OBSERVE = new WeakMap<Observable, Proxy>();
+
+function observe(from: Observable, key: string | number, value?: any) {
+  const observer = OBSERVE.get(from);
+  return observer ? observer(key, value) : value;
 }
 
-const Observable = Symbol('observe');
+const Observer = Symbol('Observable');
+
+class Observable {
+  static readonly Symbol = Observer;
+
+  [Observer](callback: Observable.Callback, required?: boolean) {
+    const watch = new Set<unknown>();
+    const proxy = Object.create(this);
+
+    addListener(this, (key) => {
+      if (watch.has(key)) callback();
+    });
+
+    OBSERVE.set(proxy, (key, value) => {
+      if (value === undefined && required)
+        throw new Error(`${this}.${key} is required in this context.`);
+
+      watch.add(key);
+
+      if (value instanceof Object && Observer in value)
+        return value[Observer](callback, required) || value;
+
+      return value;
+    });
+
+    return proxy as this;
+  }
+}
 
 /** Placeholder event determines if state is initialized or not. */
 const onReady = () => null;
@@ -193,7 +225,7 @@ function watch<T extends Observable>(
     try {
       const exit = argument === false ? undefined : scope();
       const output = callback(
-        target[Observable](onUpdate, argument === true) as T
+        target[Observer](onUpdate, argument === true) as T
       );
       const flush = exit ? exit() : () => {};
 
@@ -244,4 +276,4 @@ export function scope() {
   };
 }
 
-export { addListener, watch, event, Notify, PENDING_KEYS, Observable };
+export { addListener, watch, event, Notify, PENDING_KEYS, Observable, observe };

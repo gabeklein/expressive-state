@@ -1,4 +1,5 @@
-import { access, follow, State, PARENT, STATE, uid, update } from '../state';
+import { observe } from '../observable';
+import { access, State, PARENT, STATE, uid, update } from '../state';
 
 /**
  * Property initializer, will run upon instance creation.
@@ -101,7 +102,7 @@ function init(this: State) {
     Object.defineProperty(self, key, {
       enumerable: desc.enumerable !== false,
       get(this: State) {
-        return follow(
+        return observe(
           this,
           key,
           typeof desc.get == 'function'
