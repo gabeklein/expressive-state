@@ -1,4 +1,4 @@
-name: Staging Validation
+name: Validate Staging
 
 on:
   pull_request:
