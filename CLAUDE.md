@@ -4,7 +4,7 @@ This file provides guidance for working in this repository.
 
 ## Overview
 
-Expressive MVC is a class-based state management library for reactive UI frameworks.
+Expressive State is a class-based state management library for reactive UI frameworks.
 
 - `@expressive/state` provides framework-agnostic state, observable, context, and instruction primitives.
 - `@expressive/react` is the primary adapter and reference implementation.
