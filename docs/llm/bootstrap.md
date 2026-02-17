@@ -15,17 +15,19 @@ This project uses [Expressive State](https://github.com/gabeklein/expressive-mvc
 
 **Quick Reference:**
 
-```ts
+```tsx
 import State, { ref, use, get, set } from '@expressive/react';
 
 class MyState extends State {
-  count = 0;                          // reactive property
-  data = set(async () => fetchData()) // async with Suspense
-  parent = get(ParentState);          // context lookup
-  child = use(ChildState);            // owned child state
-  element = ref<HTMLElement>();       // mutable ref
+  count = 0; // reactive property
+  data = set(async () => fetchData()); // async with Suspense
+  parent = get(ParentState); // context lookup
+  child = use(ChildState); // owned child state
+  element = ref<HTMLElement>(); // mutable ref
 
-  increment() { this.count++; }
+  increment() {
+    this.count++;
+  }
 }
 
 // Hook — local state
@@ -41,9 +43,7 @@ function Child() {
 }
 
 // Component factory
-const MyComponent = MyState.as((props, self) => (
-  <div>{self.count}</div>
-));
+const MyComponent = MyState.as((props, self) => <div>{self.count}</div>);
 ```
 
 **Full docs** (fetch when needed):
