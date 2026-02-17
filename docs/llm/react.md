@@ -10,7 +10,7 @@ npm install @expressive/react
 
 Creates a state instance scoped to the component lifecycle. Subscribes to updates automatically.
 
-```typescript
+```ts
 import State from '@expressive/react';
 
 class Counter extends State {
@@ -28,7 +28,7 @@ function App() {
 
 Define a `use()` method on your class to receive arguments from the hook:
 
-```typescript
+```ts
 class Greeter extends State {
   greeting = "";
 
@@ -49,7 +49,7 @@ The `use()` method is called every render.
 
 Fetches a state instance from context (provided upstream via `Provider` or `State.as()`).
 
-```typescript
+```ts
 class AppState extends State {
   user = "Alice";
 }
@@ -64,7 +64,7 @@ function Profile() {
 
 Pass a factory to derive values with automatic subscriptions:
 
-```typescript
+```ts
 function UserName() {
   const name = AppState.get(($) => $.user);
   return <span>{name}</span>;
@@ -75,7 +75,7 @@ Only re-renders when accessed properties change.
 
 ### Optional Lookup
 
-```typescript
+```ts
 const app = AppState.get(false); // undefined if not provided
 ```
 
@@ -83,9 +83,9 @@ const app = AppState.get(false); // undefined if not provided
 
 Return `null` from the factory to run a side effect without subscribing:
 
-```typescript
+```ts
 AppState.get(($) => {
-  console.log("User:", $.user);
+  console.log('User:', $.user);
   return null;
 });
 ```
@@ -94,9 +94,9 @@ AppState.get(($) => {
 
 The second argument is a refresh trigger for async flows:
 
-```typescript
+```ts
 const data = AppState.get(($, refresh) => {
-  const reload = () => refresh(fetch("/api/data"));
+  const reload = () => refresh(fetch('/api/data'));
   return { user: $.user, reload };
 });
 ```
@@ -107,7 +107,7 @@ Converts a State class into a React component.
 
 ### With Render Function
 
-```typescript
+```ts
 const CounterView = Counter.as((props, self) => (
   <div>
     <p>{self.count}</p>
@@ -121,7 +121,7 @@ const CounterView = Counter.as((props, self) => (
 
 ### With Custom Props
 
-```typescript
+```ts
 interface LabelProps {
   label: string;
 }
@@ -138,7 +138,7 @@ const LabeledCounter = Counter.as((props: LabelProps, self) => (
 
 ### With Default Props (Provider Pattern)
 
-```typescript
+```ts
 const CounterProvider = Counter.as({ count: 0 });
 
 // Wraps children, provides state to context
@@ -149,8 +149,8 @@ const CounterProvider = Counter.as({ count: 0 });
 
 ### Chaining Defaults
 
-```typescript
-const WithDefaults = LabeledCounter.as({ label: "Default" });
+```ts
+const WithDefaults = LabeledCounter.as({ label: 'Default' });
 ```
 
 ### Special Component Props
@@ -161,7 +161,7 @@ All `.as()` components accept:
 - `fallback` — React node shown during Suspense
 - `children` — standard React children
 
-```typescript
+```ts
 <CounterView
   is={(counter) => console.log("created", counter)}
   fallback={<Loading />}
@@ -170,7 +170,7 @@ All `.as()` components accept:
 
 ## Provider & Consumer
 
-```typescript
+```ts
 import { Provider, Consumer } from '@expressive/react';
 
 // Provide state to descendants
@@ -212,7 +212,7 @@ Use State classes directly as JSX elements by configuring the JSX import source:
 
 Then any State class with appropriate fields works as a component:
 
-```typescript
+```ts
 class Card extends State {
   title = "";
   children?: ReactNode;
@@ -228,7 +228,7 @@ The JSX runtime automatically wraps State classes, providing them to context and
 
 ## Exports
 
-```typescript
+```ts
 // Main
 export { State as default } from '@expressive/react';
 

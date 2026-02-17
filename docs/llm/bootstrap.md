@@ -15,7 +15,7 @@ This project uses [Expressive State](https://github.com/gabeklein/expressive-mvc
 
 **Quick Reference:**
 
-```typescript
+```ts
 import State, { ref, use, get, set } from '@expressive/react';
 
 class MyState extends State {

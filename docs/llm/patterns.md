@@ -4,7 +4,7 @@ Copy-paste recipes for common scenarios. All examples use `@expressive/react`.
 
 ## Counter
 
-```typescript
+```ts
 import State from '@expressive/react';
 
 class Counter extends State {
@@ -24,7 +24,7 @@ const CounterView = Counter.as((_, self) => (
 
 ## Form with Validation
 
-```typescript
+```ts
 import State, { set } from '@expressive/react';
 
 class LoginForm extends State {
@@ -58,7 +58,7 @@ const Login = LoginForm.as((_, self) => (
 
 ## Async Data Fetching
 
-```typescript
+```ts
 import State, { set } from '@expressive/react';
 
 class UserProfile extends State {
@@ -81,7 +81,7 @@ const Profile = UserProfile.as((_, self) => (
 
 ## Nested / Child State
 
-```typescript
+```ts
 import State, { use } from '@expressive/react';
 
 class TodoItem extends State {
@@ -115,7 +115,7 @@ const Todos = TodoList.as((_, self) => (
 
 ## Context Sharing
 
-```typescript
+```ts
 import State, { get, Provider } from '@expressive/react';
 
 class Theme extends State {
@@ -147,7 +147,7 @@ function App() {
 
 ## Computed Values
 
-```typescript
+```ts
 import State, { set } from '@expressive/react';
 
 class Cart extends State {
@@ -157,9 +157,7 @@ class Cart extends State {
     $.items.reduce((sum, i) => sum + i.price * i.qty, 0)
   );
 
-  count = set(this, ($) =>
-    $.items.reduce((sum, i) => sum + i.qty, 0)
-  );
+  count = set(this, ($) => $.items.reduce((sum, i) => sum + i.qty, 0));
 
   add(name: string, price: number) {
     this.items = [...this.items, { name, price, qty: 1 }];
@@ -169,15 +167,15 @@ class Cart extends State {
 
 ## Debounced Search
 
-```typescript
+```ts
 import State, { set } from '@expressive/react';
 
 class Search extends State {
-  query = "";
+  query = '';
   results: string[] = [];
 
   // Debounce with set callback cleanup
-  debouncedQuery = set("", (value) => {
+  debouncedQuery = set('', (value) => {
     const timer = setTimeout(() => {
       this.performSearch(value);
     }, 300);
@@ -193,7 +191,7 @@ class Search extends State {
 
 ## Downstream Collection (Parent Tracks Children)
 
-```typescript
+```ts
 import State, { get, Provider } from '@expressive/react';
 
 class TabGroup extends State {
@@ -221,7 +219,7 @@ const TabBar = TabGroup.as((_, self) => (
 
 ## Effects & Cleanup
 
-```typescript
+```ts
 import State from '@expressive/react';
 
 class Timer extends State {
@@ -236,7 +234,7 @@ class Timer extends State {
 
 ## Using State.get() with Computed Hook
 
-```typescript
+```ts
 function OrderSummary() {
   const summary = Cart.get(($) => ({
     total: $.total,

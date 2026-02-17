@@ -2,7 +2,7 @@
 
 Instructions are special initializers for State class fields. They wire up behavior declaratively — refs, child state, context lookups, computed values, and validation.
 
-```typescript
+```ts
 import State, { ref, use, get, set } from '@expressive/state';
 ```
 
@@ -14,25 +14,25 @@ Holds a mutable value (like React's `useRef`). Updates to the ref do NOT trigger
 
 ### Basic Ref
 
-```typescript
+```ts
 class MyState extends State {
   element = ref<HTMLDivElement>();
 }
 
 const state = MyState.new();
-state.element.current;            // HTMLDivElement | null
-state.element.current = div;      // set via .current
-state.element(div);               // or call as function
+state.element.current; // HTMLDivElement | null
+state.element.current = div; // set via .current
+state.element(div); // or call as function
 ```
 
 ### Ref with Callback
 
 Called whenever the value changes:
 
-```typescript
+```ts
 class MyState extends State {
   node = ref<HTMLElement>((el) => {
-    console.log("element attached:", el);
+    console.log('element attached:', el);
   });
 }
 ```
@@ -41,17 +41,17 @@ class MyState extends State {
 
 Creates a proxy that gives ref objects for every property on a state:
 
-```typescript
+```ts
 class Form extends State {
-  name = "";
-  email = "";
+  name = '';
+  email = '';
 
   refs = ref(this);
 }
 
 const form = Form.new();
-form.refs.name;   // ref.Object<string>
-form.refs.email;  // ref.Object<string>
+form.refs.name; // ref.Object<string>
+form.refs.email; // ref.Object<string>
 ```
 
 ---
@@ -62,7 +62,7 @@ Creates a child state instance owned by the parent. The child is automatically d
 
 ### Basic Child
 
-```typescript
+```ts
 class Parent extends State {
   child = use(ChildState);
 }
@@ -72,7 +72,7 @@ The child is created eagerly and shares the parent's context.
 
 ### Optional Child
 
-```typescript
+```ts
 class Parent extends State {
   child = use(ChildState, false); // T | undefined
 }
@@ -80,10 +80,10 @@ class Parent extends State {
 
 ### With Ready Callback
 
-```typescript
+```ts
 class Parent extends State {
   child = use(ChildState, (instance) => {
-    console.log("child ready:", instance);
+    console.log('child ready:', instance);
   });
 }
 ```
@@ -92,7 +92,7 @@ class Parent extends State {
 
 `use()` also accepts an `Instruction` function for advanced use:
 
-```typescript
+```ts
 class MyState extends State {
   custom = use((state, key) => {
     // state = parent instance, key = property name
@@ -109,7 +109,7 @@ Fetches another state instance from the ambient context hierarchy.
 
 ### Upstream Lookup
 
-```typescript
+```ts
 class Child extends State {
   parent = get(ParentState);
 }
@@ -119,7 +119,7 @@ When `Child` is created inside `ParentState`'s context (via `use()`, `Provider`,
 
 If no instance is found, the state suspends (waits). Pass `false` to make it optional:
 
-```typescript
+```ts
 class Child extends State {
   maybeParent = get(ParentState, false); // T | undefined
 }
@@ -127,12 +127,12 @@ class Child extends State {
 
 ### With Callback
 
-```typescript
+```ts
 class Child extends State {
   parent = get(ParentState, (parent, self) => {
-    console.log("parent found:", parent);
+    console.log('parent found:', parent);
     // return cleanup function
-    return () => console.log("detached");
+    return () => console.log('detached');
   });
 }
 ```
@@ -141,7 +141,7 @@ class Child extends State {
 
 Collect all instances of a type registered below in the context tree:
 
-```typescript
+```ts
 class Parent extends State {
   children = get(ChildState, true); // readonly ChildState[]
 }
@@ -151,11 +151,11 @@ The array updates automatically as children are created/destroyed.
 
 ### Downstream with Callback
 
-```typescript
+```ts
 class Parent extends State {
   children = get(ChildState, true, (child, self) => {
-    console.log("child registered:", child);
-    return () => console.log("child removed");
+    console.log('child registered:', child);
+    return () => console.log('child removed');
   });
 }
 ```
@@ -170,7 +170,7 @@ The most versatile instruction. Handles computed properties, async data, and ass
 
 Suspends until a value is assigned:
 
-```typescript
+```ts
 class MyState extends State {
   data = set<string>(); // suspends until set
 }
@@ -178,7 +178,7 @@ class MyState extends State {
 
 ### Factory (Lazy Initialization)
 
-```typescript
+```ts
 class MyState extends State {
   config = set(() => loadConfig());
 }
@@ -186,10 +186,10 @@ class MyState extends State {
 
 ### Async Factory
 
-```typescript
+```ts
 class MyState extends State {
   data = set(async () => {
-    const res = await fetch("/api/data");
+    const res = await fetch('/api/data');
     return res.json();
   });
 }
@@ -199,9 +199,9 @@ The state suspends until the promise resolves. In React, this integrates with Su
 
 ### Default Value with Validation
 
-```typescript
+```ts
 class MyState extends State {
-  name = set("default", (next, prev) => {
+  name = set('default', (next, prev) => {
     if (next.length < 3) return false; // reject update
     console.log(`changed: ${prev} -> ${next}`);
   });
@@ -210,9 +210,9 @@ class MyState extends State {
 
 Return `false` to reject. Return a function for cleanup:
 
-```typescript
+```ts
 class MyState extends State {
-  query = set("", (value) => {
+  query = set('', (value) => {
     const timer = setTimeout(() => search(value), 300);
     return () => clearTimeout(timer); // cleanup on next update
   });
@@ -221,14 +221,12 @@ class MyState extends State {
 
 ### Computed (Reactive to Another State)
 
-```typescript
+```ts
 class MyState extends State {
   items = [1, 2, 3];
   multiplier = 2;
 
-  total = set(this, ($) =>
-    $.items.reduce((a, b) => a + b, 0) * $.multiplier
-  );
+  total = set(this, ($) => $.items.reduce((a, b) => a + b, 0) * $.multiplier);
 }
 ```
 
@@ -236,7 +234,7 @@ class MyState extends State {
 
 ### Computed (Reactive to Self)
 
-```typescript
+```ts
 class MyState extends State {
   value = 10;
   doubled = set(true, (self) => self.value * 2);
@@ -249,9 +247,9 @@ Pass `true` as the first argument to react to `this`.
 
 ## Summary
 
-| Instruction | Purpose | Triggers Updates? |
-|------------|---------|-------------------|
-| `ref()` | Mutable reference holder | No |
-| `use()` | Create owned child state | Yes (child events) |
-| `get()` | Context lookup (up or down) | Yes (when found/lost) |
-| `set()` | Computed, factory, validation | Yes |
+| Instruction | Purpose                       | Triggers Updates?     |
+| ----------- | ----------------------------- | --------------------- |
+| `ref()`     | Mutable reference holder      | No                    |
+| `use()`     | Create owned child state      | Yes (child events)    |
+| `get()`     | Context lookup (up or down)   | Yes (when found/lost) |
+| `set()`     | Computed, factory, validation | Yes                   |
