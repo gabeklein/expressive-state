@@ -42,4 +42,4 @@ function Child() {
 const MyComponent = MyState.as((props, self) => <div>{self.count}</div>);
 ```
 
-**Full docs** (fetch when needed): core.md, react.md, instructions.md, patterns.md
+**Full docs** (fetch when needed): core.md, react.md, instructions.md, patterns.md, lifecycle.md, typescript.md, testing.md, adapters.md

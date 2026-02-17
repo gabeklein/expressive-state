@@ -159,9 +159,15 @@ const stop = Counter.on((key, source) => { /* any instance */ });
 
 ## The `is` Property
 
-Circular self-reference, useful after destructuring:
+Circular self-reference, useful after destructuring and for silent reads:
 
 ```ts
 const { count, is: counter } = Counter.new();
-counter.increment();
+counter.increment(); // write access after destructuring
+
+// Silent read — access via `is` bypasses proxy tracking
+state.get((current) => {
+  console.log(current.value);    // subscribes to 'value'
+  console.log(current.is.other); // does NOT subscribe — silent read
+});
 ```

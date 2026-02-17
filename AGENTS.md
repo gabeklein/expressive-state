@@ -26,13 +26,19 @@ examples        - Framework usage examples
 
 ## Reference Docs
 
-Detailed API docs in `.agents/`. Each file is self-contained — fetch only what you need: |
+Detailed API docs in `.agents/`. Each file is self-contained — fetch only what you need.
+
+> **Read these first.** The `.agents/` docs cover API surface, types, lifecycle, testing patterns, and internals comprehensively. Consult the relevant file before reading source — most questions are answered here without needing to crawl `packages/*/src/`.
 
 - `core.md` State class, reactivity, get/set, lifecycle, events
 - `react.md` React adapter: State.use(), .get(), .as(), Provider, JSX
 - `instructions.md` Instruction system: ref, use, get, set
 - `patterns.md` Common recipes and examples
 - `bootstrap.md` Drop-in snippet for consumer CLAUDE.md/AGENTS.md
+- `lifecycle.md` Full lifecycle phases, teardown ordering, error handling, effect internals
+- `typescript.md` Type system: generics, conditional types, instruction overloads
+- `testing.md` Vitest setup, custom matchers, React testing patterns
+- `adapters.md` Framework adapters: React, Preact, Solid — API differences & performance
 
 ## Commands
 
