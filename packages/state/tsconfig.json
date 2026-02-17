@@ -4,7 +4,7 @@
     "outDir": "./dist/esm",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "declaration": false,
     "noUnusedLocals": true,
     "strict": true,
