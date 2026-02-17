@@ -10,7 +10,7 @@ on:
 
 jobs:
   source-branch:
-    name: Main PR source
+    name: PR source
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     permissions:
@@ -25,7 +25,7 @@ jobs:
           fi
 
   ancestry:
-    name: Assert main is not ahead
+    name: Main not ahead
     runs-on: ubuntu-latest
     needs: source-branch
     if: github.event_name == 'pull_request' && github.head_ref == 'staging'
@@ -52,7 +52,7 @@ jobs:
           echo "Verified: origin/main is an ancestor of origin/staging."
 
   validate:
-    name: Test and Build
+    name: Build
     runs-on: ubuntu-latest
     needs: [source-branch]
     if: github.event_name == 'pull_request'
