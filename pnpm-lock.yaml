@@ -39,8 +39,8 @@ importers:
   examples/async:
     dependencies:
       '@expressive/react':
-        specifier: latest
-        version: 0.73.1(react@19.2.4)
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -58,8 +58,8 @@ importers:
   examples/context:
     dependencies:
       '@expressive/react':
-        specifier: ^0.71.0
-        version: 0.71.0(react@19.2.4)
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -77,8 +77,8 @@ importers:
   examples/counter:
     dependencies:
       '@expressive/react':
-        specifier: ^0.71.0
-        version: 0.71.0(react@19.2.4)
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -96,8 +96,8 @@ importers:
   examples/fetch:
     dependencies:
       '@expressive/react':
-        specifier: ^0.71.0
-        version: 0.71.0(react@19.2.4)
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -115,8 +115,27 @@ importers:
   examples/forms:
     dependencies:
       '@expressive/react':
-        specifier: ^0.71.0
-        version: 0.71.0(react@19.2.4)
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
+      react:
+        specifier: ^19
+        version: 19.2.4
+      react-dom:
+        specifier: ^19
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.14)
+
+  examples/layout:
+    dependencies:
+      '@expressive/react':
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -134,8 +153,8 @@ importers:
   examples/nested:
     dependencies:
       '@expressive/react':
-        specifier: ^0.71.0
-        version: 0.71.0(react@19.2.4)
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -153,8 +172,8 @@ importers:
   examples/simple:
     dependencies:
       '@expressive/react':
-        specifier: ^0.71.0
-        version: 0.71.0(react@19.2.4)
+        specifier: '*'
+        version: 0.74.1(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -172,8 +191,8 @@ importers:
   packages/preact:
     dependencies:
       '@expressive/react':
-        specifier: ^0.71.0
-        version: 0.71.0(react@19.2.4)
+        specifier: 0.74.1
+        version: 0.74.1(react@19.2.4)
       '@expressive/state':
         specifier: ^0.73.1
         version: 0.73.1
@@ -522,22 +541,8 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@expressive/mvc@0.71.0':
-    resolution: {integrity: sha512-8P5K/CHJOLDsJYuFM4pue+WM9G6P3ngzPI4sJGle36dC/e1HK0KiDmxk6m/tVWfUpsBlGg2xialTBE9ut0Bexw==}
-
-  '@expressive/mvc@0.73.1':
-    resolution: {integrity: sha512-GjILPXwkyyU12BxUo8KTLJrs0Nh9CTRj0QuTfN5IGBodeq4mmqKLvWVpNCeMZvIob9sC3dRfJIShCK6fsixNZw==}
-
-  '@expressive/react@0.71.0':
-    resolution: {integrity: sha512-wIrvwc0PSkZpSX5dzac4h45P0RhsuFjPZHPmwD7/kmFJVl43TsyJzpcvqo/HkACMDO6IUOJggAdjqZ30jJyZIA==}
-    peerDependencies:
-      react: '>=16.8.0 <20.0.0'
-    peerDependenciesMeta:
-      react:
-        optional: true
-
-  '@expressive/react@0.73.1':
-    resolution: {integrity: sha512-LbOIjISwSXYqta4eh/JFRoYFNM47ugJRvsbj0qUef78aghz03E6bAG8T2MLVcHpJbKNO6x6hDU4OVJKcG/aEKw==}
+  '@expressive/react@0.74.1':
+    resolution: {integrity: sha512-q7Ma9rAjUAEmTZ5cKz2SNmrQuUKPMcvhFtygjvnGOE3gX4yUbdJcws4CWK+zomtE0AMv4V9q+6akOzNHcRW0iA==}
     peerDependencies:
       react: '>=16.8.0 <20.0.0'
     peerDependenciesMeta:
@@ -546,6 +551,9 @@ packages:
 
   '@expressive/state@0.73.1':
     resolution: {integrity: sha512-xc0yRUVEQr0Q9lT7nggUbSBSOSpW2EkOfFoawxCPbHn0fy3+r3NZJhMRNmtLo7BpOWpEWXJTQyTGLZ1UZxIYkw==}
+
+  '@expressive/state@0.74.0':
+    resolution: {integrity: sha512-IjSfg8dbnX1NlHm+ZrimLnzBis4o87wPH0+IpZYFFbYGzLNArIFRLDeKDSu8j2NAl94Z/YEaivUgopjTRl7e7w==}
 
   '@hutson/parse-repository-url@3.0.2':
     resolution: {integrity: sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==}
@@ -4064,23 +4072,15 @@ snapshots:
 
   '@exodus/bytes@1.14.1': {}
 
-  '@expressive/mvc@0.71.0': {}
-
-  '@expressive/mvc@0.73.1': {}
-
-  '@expressive/react@0.71.0(react@19.2.4)':
+  '@expressive/react@0.74.1(react@19.2.4)':
     dependencies:
-      '@expressive/mvc': 0.71.0
-    optionalDependencies:
-      react: 19.2.4
-
-  '@expressive/react@0.73.1(react@19.2.4)':
-    dependencies:
-      '@expressive/mvc': 0.73.1
+      '@expressive/state': 0.74.0
     optionalDependencies:
       react: 19.2.4
 
   '@expressive/state@0.73.1': {}
+
+  '@expressive/state@0.74.0': {}
 
   '@hutson/parse-repository-url@3.0.2': {}
 

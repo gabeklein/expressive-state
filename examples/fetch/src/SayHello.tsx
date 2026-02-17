@@ -15,7 +15,7 @@ class Query extends State {
   // To activate the flow, just call an async method as normal.
   // Assignments to `this` will refresh a component at the appropriate times.
 
-  run = async () => {
+  async run() {
     this.waiting = true;
 
     try {
@@ -32,7 +32,7 @@ class Query extends State {
     } finally {
       this.waiting = false;
     }
-  };
+  }
 }
 
 const SayHello = () => {
