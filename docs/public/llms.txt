@@ -1,0 +1,13 @@
+# Expressive State
+> Class-based reactive state management for React, Preact, and Solid.
+
+## Docs
+- [Core API](/llm/core.md): State class, reactivity, get/set, lifecycle, events
+- [React Adapter](/llm/react.md): State.use(), .get(), .as(), Provider, JSX
+- [Instructions](/llm/instructions.md): ref, use, get, set
+- [Patterns](/llm/patterns.md): Common recipes and examples
+- [Lifecycle & Internals](/llm/lifecycle.md): Lifecycle phases, teardown, error handling
+- [TypeScript](/llm/typescript.md): Type system, generics, instruction overloads
+- [Testing](/llm/testing.md): Vitest setup, matchers, React testing patterns
+- [Adapters](/llm/adapters.md): React, Preact, Solid comparison and performance
+- [Bootstrap](/llm/bootstrap.md): Drop-in snippet for consumer projects

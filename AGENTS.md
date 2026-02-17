@@ -21,14 +21,14 @@ packages/react  - React adapter (.use, .get, .as, Provider, JSX runtime)
 packages/preact - Preact adapter
 packages/solid  - Solid adapter
 examples        - Framework usage examples
-.agents         - Topic-specific reference docs (see below)
+docs/public/llm - Topic-specific reference docs (see below)
 ```
 
 ## Reference Docs
 
-Detailed API docs in `.agents/`. Each file is self-contained — fetch only what you need.
+Detailed API docs in `docs/public/llm/`. Each file is self-contained — fetch only what you need.
 
-> **Read these first.** The `.agents/` docs cover API surface, types, lifecycle, testing patterns, and internals comprehensively. Consult the relevant file before reading source — most questions are answered here without needing to crawl `packages/*/src/`.
+> **Read these first.** The `docs/public/llm/` docs cover API surface, types, lifecycle, testing patterns, and internals comprehensively. Consult the relevant file before reading source — most questions are answered here without needing to crawl `packages/*/src/`.
 
 - `core.md` State class, reactivity, get/set, lifecycle, events
 - `react.md` React adapter: State.use(), .get(), .as(), Provider, JSX
@@ -64,7 +64,7 @@ Per-package: `tsc --noEmit && vitest run --coverage`
 - Framework-agnostic logic belongs in `packages/state`.
 - React changes must stay aligned across `packages/react/src/{state,jsx-runtime}.{ts,test.tsx}`.
 - Update tests alongside behavioral/type changes — tests must fail without the change.
-- New major features need `.agents/` docs and `examples/`.
+- New major features need `docs/public/llm/` docs and `examples/`.
 - Update changelog before release for user-facing changes.
 
 ## Guardrails
