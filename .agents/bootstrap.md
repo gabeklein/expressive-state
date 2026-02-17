@@ -1,6 +1,6 @@
 # Expressive State — Bootstrap for Consumer Projects
 
-Copy this section into your project's `CLAUDE.md` or `AGENTS.md`.
+Copy this into your project's `CLAUDE.md` or `AGENTS.md`.
 
 ---
 
@@ -9,7 +9,6 @@ Copy this section into your project's `CLAUDE.md` or `AGENTS.md`.
 This project uses [Expressive State](https://github.com/gabeklein/expressive-mvc), a class-based reactive state management library.
 
 **Packages:**
-
 - `@expressive/react` — React adapter. Import `State` (default), plus `ref`, `use`, `get`, `set` instructions.
 - `@expressive/state` — Framework-agnostic core (rarely imported directly in React projects).
 
@@ -19,15 +18,12 @@ This project uses [Expressive State](https://github.com/gabeklein/expressive-mvc
 import State, { ref, use, get, set } from '@expressive/react';
 
 class MyState extends State {
-  count = 0; // reactive property
-  data = set(async () => fetchData()); // async with Suspense
-  parent = get(ParentState); // context lookup
-  child = use(ChildState); // owned child state
-  element = ref<HTMLElement>(); // mutable ref
-
-  increment() {
-    this.count++;
-  }
+  count = 0;                              // reactive property
+  data = set(async () => fetchData());    // async with Suspense
+  parent = get(ParentState);              // context lookup
+  child = use(ChildState);               // owned child state
+  element = ref<HTMLElement>();            // mutable ref
+  increment() { this.count++; }
 }
 
 // Hook — local state
@@ -46,9 +42,4 @@ function Child() {
 const MyComponent = MyState.as((props, self) => <div>{self.count}</div>);
 ```
 
-**Full docs** (fetch when needed):
-
-- Core API: ./core.md
-- React API: ./react.md
-- Instructions: ./instructions.md
-- Patterns: ./patterns.md
+**Full docs** (fetch when needed): core.md, react.md, instructions.md, patterns.md

@@ -1,11 +1,11 @@
 # Expressive State — Patterns
 
-Copy-paste recipes for common scenarios. All examples use `@expressive/react`.
+Copy-paste recipes. All examples use `@expressive/react`.
 
 ## Counter
 
 ```ts
-import State from '@expressive/react';
+import State, { ref, use, get, set, Provider, Consumer } from '@expressive/react';
 
 class Counter extends State {
   count = 0;
@@ -25,24 +25,13 @@ const CounterView = Counter.as((_, self) => (
 ## Form with Validation
 
 ```ts
-import State, { set } from '@expressive/react';
-
 class LoginForm extends State {
-  email = set("", (value) => {
-    if (!value.includes("@")) return false;
-  });
-
-  password = set("", (value) => {
-    if (value.length < 8) return false;
-  });
-
-  get valid() {
-    return !!this.email && !!this.password;
-  }
+  email = set("", (v) => { if (!v.includes("@")) return false; });
+  password = set("", (v) => { if (v.length < 8) return false; });
+  get valid() { return !!this.email && !!this.password; }
 
   submit() {
-    if (this.valid)
-      postLogin(this.email, this.password);
+    if (this.valid) postLogin(this.email, this.password);
   }
 }
 
@@ -59,8 +48,6 @@ const Login = LoginForm.as((_, self) => (
 ## Async Data Fetching
 
 ```ts
-import State, { set } from '@expressive/react';
-
 class UserProfile extends State {
   data = set(async () => {
     const res = await fetch("/api/user");
@@ -75,15 +62,12 @@ const Profile = UserProfile.as((_, self) => (
   </div>
 ));
 
-// Suspense fallback via prop
 <Profile fallback={<p>Loading...</p>} />
 ```
 
 ## Nested / Child State
 
 ```ts
-import State, { use } from '@expressive/react';
-
 class TodoItem extends State {
   text = "";
   done = false;
@@ -116,13 +100,9 @@ const Todos = TodoList.as((_, self) => (
 ## Context Sharing
 
 ```ts
-import State, { get, Provider } from '@expressive/react';
-
 class Theme extends State {
   color = "blue";
-  toggle() {
-    this.color = this.color === "blue" ? "red" : "blue";
-  }
+  toggle() { this.color = this.color === "blue" ? "red" : "blue"; }
 }
 
 class ThemedWidget extends State {
@@ -148,15 +128,9 @@ function App() {
 ## Computed Values
 
 ```ts
-import State, { set } from '@expressive/react';
-
 class Cart extends State {
   items: { name: string; price: number; qty: number }[] = [];
-
-  total = set(this, ($) =>
-    $.items.reduce((sum, i) => sum + i.price * i.qty, 0)
-  );
-
+  total = set(this, ($) => $.items.reduce((sum, i) => sum + i.price * i.qty, 0));
   count = set(this, ($) => $.items.reduce((sum, i) => sum + i.qty, 0));
 
   add(name: string, price: number) {
@@ -168,17 +142,12 @@ class Cart extends State {
 ## Debounced Search
 
 ```ts
-import State, { set } from '@expressive/react';
-
 class Search extends State {
   query = '';
   results: string[] = [];
 
-  // Debounce with set callback cleanup
   debouncedQuery = set('', (value) => {
-    const timer = setTimeout(() => {
-      this.performSearch(value);
-    }, 300);
+    const timer = setTimeout(() => this.performSearch(value), 300);
     return () => clearTimeout(timer);
   });
 
@@ -189,11 +158,9 @@ class Search extends State {
 }
 ```
 
-## Downstream Collection (Parent Tracks Children)
+## Downstream Collection
 
 ```ts
-import State, { get, Provider } from '@expressive/react';
-
 class TabGroup extends State {
   tabs = get(Tab, true); // collects all Tab instances below
   active = 0;
@@ -220,11 +187,8 @@ const TabBar = TabGroup.as((_, self) => (
 ## Effects & Cleanup
 
 ```ts
-import State from '@expressive/react';
-
 class Timer extends State {
   elapsed = 0;
-
   protected new() {
     const id = setInterval(() => this.elapsed++, 1000);
     return () => clearInterval(id);
@@ -243,7 +207,6 @@ function OrderSummary() {
   }));
 
   if (summary.empty) return <p>Cart is empty</p>;
-
   return (
     <div>
       <p>{summary.count} items</p>
