@@ -22,6 +22,8 @@ type Event = number | string | null | boolean | symbol;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
+type Observer<T = any> = (key: string | number, value: T) => T;
+
 declare namespace Observable {
   export type Callback = () => void | PromiseLite;
 }
@@ -48,6 +50,40 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
+
+const OBSERVER = new WeakMap<object, Observer>();
+
+function observe<T extends Observable>(
+  object: T,
+  callback: Observable.Callback,
+  required?: boolean
+): T {
+  const watching = new Set<unknown>();
+  const proxy = Object.create(object);
+
+  addListener(object, (key) => {
+    if (watching.has(key)) callback();
+  });
+
+  OBSERVER.set(proxy, (key, value) => {
+    if (value === undefined && required)
+      throw new Error(`${object}.${key} is required in this context.`);
+
+    watching.add(key);
+
+    if (value instanceof Object && Observable in value)
+      return value[Observable](callback, required) || value;
+
+    return value;
+  });
+
+  return proxy as T;
+}
+
+function observing(from: Observable, key: string | number, value?: any) {
+  const observe = OBSERVER.get(from);
+  return observe ? observe(key, value) : value;
+}
 
 function addListener<T extends Observable>(
   subject: T,
@@ -244,4 +280,13 @@ export function scope() {
   };
 }
 
-export { addListener, watch, event, Notify, PENDING_KEYS, Observable };
+export {
+  addListener,
+  event,
+  Notify,
+  Observable,
+  observe,
+  observing,
+  PENDING_KEYS,
+  watch
+};
