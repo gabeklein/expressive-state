@@ -27,11 +27,10 @@ function keys(from: State.Extends, upstream?: boolean) {
 }
 
 declare namespace Context {
-  type Multiple<T extends State> = {
-    [key: string | number]: State.Type<T> | T;
-  };
-
-  type Accept<T extends State = State> = T | State.Type<T> | Multiple<T>;
+  type Accept<T extends State = State> =
+    | T
+    | State.Type<T>
+    | Record<string | number, T | State.Type<T>>;
 
   type Expect<T extends State = State> = (state: T) => (() => void) | void;
 }
@@ -71,10 +70,10 @@ class Context {
   public id = uid();
 
   protected inputs = {} as Record<string | number, State | State.Extends>;
-  protected cleanup = new Set<() => void>();
+  protected cleanup = [] as (() => void)[];
 
   constructor(inputs?: Context.Accept) {
-    if (inputs) this.use(inputs);
+    if (inputs) this.has(inputs);
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
@@ -159,7 +158,7 @@ class Context {
         });
     });
 
-    this.cleanup.add(() => {
+    this.cleanup.push(() => {
       cleanup.forEach((cb) => cb());
       if (I !== input) event(I, null);
     });
@@ -181,7 +180,7 @@ class Context {
    * @param inputs State, State class, or map of States / State classes to register.
    * @param forEach Optional callback to run for each State registered.
    */
-  public use<T extends State>(
+  public has<T extends State>(
     inputs: Context.Accept<T>,
     forEach?: Context.Expect<T>
   ) {
@@ -207,7 +206,7 @@ class Context {
       // however probably should do that on a per-state basis.
       else if (exists !== V) {
         this.pop();
-        this.use(inputs);
+        this.has(inputs);
         this.id = uid();
         return;
       }
@@ -236,12 +235,12 @@ class Context {
   public push(inputs?: Context.Accept) {
     const next = Object.create(this) as this;
 
-    this.cleanup = new Set([() => next.pop(), ...this.cleanup]);
+    this.cleanup = [() => next.pop(), ...this.cleanup];
 
     next.inputs = {};
-    next.cleanup = new Set();
+    next.cleanup = [];
 
-    if (inputs) next.use(inputs);
+    if (inputs) next.has(inputs);
 
     return next;
   }
@@ -255,8 +254,8 @@ class Context {
     for (const key of Object.getOwnPropertySymbols(this)) delete this[key];
 
     this.cleanup.forEach((cb) => cb());
-    this.cleanup.clear();
     this.inputs = {};
+    this.cleanup = [];
   }
 }
 
