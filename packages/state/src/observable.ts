@@ -107,6 +107,10 @@ function addListener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
+function pending(subject: Observable) {
+  return PENDING_KEYS.get(subject);
+}
+
 function emit(state: Observable, key: Event): void {
   const listeners = LISTENERS.get(state)!;
   const notReady = listeners.has(onReady);
@@ -287,6 +291,6 @@ export {
   Observable,
   observe,
   observing,
-  PENDING_KEYS,
+  pending,
   watch
 };

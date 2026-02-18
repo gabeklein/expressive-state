@@ -4,9 +4,9 @@ import {
   event,
   Observable,
   Notify,
-  PENDING_KEYS,
   observing,
-  observe
+  observe,
+  pending
 } from './observable';
 
 const define = Object.defineProperty;
@@ -344,16 +344,16 @@ abstract class State implements Observable {
       update(self, arg1 as string | number, arg2);
     }
 
-    const pending = PENDING_KEYS.get(this);
+    const current = pending(this);
 
-    if (pending)
+    if (current)
       return <PromiseLike<State.Event<this>[]>>{
         then: (resolve) =>
           new Promise<any>((res) => {
             const remove = addListener(this, (key) => {
               if (key !== true) {
                 remove();
-                return () => res(Array.from(pending));
+                return () => res(Array.from(current));
               }
             });
           }).then(resolve)
@@ -579,15 +579,15 @@ function manage(
 
 function effect<T extends State>(target: T, fn: State.Effect<T>) {
   const effect = METHOD.get(fn) || fn;
-  let pending = new Set<State.Event<T>>();
+  let current = new Set<State.Event<T>>();
 
   return watch(target, (proxy) => {
-    const cb = effect.call(proxy, proxy, pending);
+    const cb = effect.call(proxy, proxy, current);
 
     if (cb === null) return cb;
 
     return (update) => {
-      pending = PENDING_KEYS.get(target)!;
+      current = pending(target)!;
       if (typeof cb == 'function') cb(update);
     };
   });
@@ -619,6 +619,7 @@ function values<T extends State>(target: T): State.Values<T> {
 
   return Object.freeze(values);
 }
+
 function access(subject: State, property: string, required?: boolean) {
   const state = STATE.get(subject)!;
 
