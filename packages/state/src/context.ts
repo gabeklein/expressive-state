@@ -192,7 +192,7 @@ class Context {
     for (const [K, V] of Object.entries(inputs)) {
       if (!(State.is(V) || V instanceof State))
         throw new Error(
-          `Context may only include instance or class \`extends State\` but got ${
+          `Context can only include an instance or class of State but got ${
             K == '0' || K == String(V) ? V : `${V} (as '${K}')`
           }.`
         );

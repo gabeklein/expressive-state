@@ -294,7 +294,7 @@ it('will throw on bad include property', () => {
 
   // @ts-ignore
   expect(() => context.has({ Thing: undefined })).toThrow(
-    "Context may only include instance or class `extends State` but got undefined (as 'Thing')."
+    "Context can only include an instance or class of State but got undefined (as 'Thing')."
   );
 });
 
@@ -303,7 +303,7 @@ it('will throw on bad include property (no alias)', () => {
 
   // @ts-ignore
   expect(() => context.has({ [0]: undefined })).toThrow(
-    'Context may only include instance or class `extends State` but got undefined.'
+    'Context can only include an instance or class of State but got undefined.'
   );
 });
 
