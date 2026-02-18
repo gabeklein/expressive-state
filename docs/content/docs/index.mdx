@@ -1,32 +1,57 @@
 ---
-title: Hello World
-description: |
-  Your first `document`
-  You'll love it!
+title: Expressive State
+description: Class-based reactive state management for modern UI frameworks
 ---
 
-Hey there! Fumadocs is the docs framework that also works on React Router!
+Define classes to power your UI. Properties become reactive automatically — when they change, your components update too.
 
-## Heading
+```tsx
+import State from '@expressive/react';
 
-Hello World
+class Counter extends State {
+  count = 0;
 
-<Cards>
-  <Card title="Learn more about React Router" href="https://reactrouter.com" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+  increment() {
+    this.count++;
+  }
 
-```ts
-console.log('I love React!');
+  decrement() {
+    this.count--;
+  }
+}
+
+function CounterWidget() {
+  const { count, increment, decrement } = Counter.use();
+
+  return (
+    <div>
+      <button onClick={decrement}>-</button>
+      <span>{count}</span>
+      <button onClick={increment}>+</button>
+    </div>
+  );
+}
 ```
 
-### Heading
+That's it. No reducers, no selectors, no boilerplate. Just a class and a hook.
 
-#### Heading
+<br/>
 
-| Head                            | Description                         |
-| ------------------------------- | ----------------------------------- |
-| `hello`                         | Hello World                         |
-| very **important**              | Hey                                 |
-| _Surprisingly_                  | Fumadocs                            |
-| very long text that looks weird | hello world hello world hello world |
+## What you get
+
+- **One import** — `State` is all you need. No extra packages for async, context, computed values, or validation.
+- **Type safety for free** — classes give you autocompletion, refactoring, and type inference out of the box.
+- **Fine-grained reactivity** — components only re-render when the properties they actually read change.
+- **Portable logic** — state lives in classes, not components. Easy to test, reuse, and reason about.
+- **AI-friendly** — explicit classes with clear properties and methods are easy for both humans and AI to navigate.
+
+<br/>
+
+## Quick links
+
+<Cards>
+  <Card title="Getting Started" href="/docs/getting-started" />
+  <Card title="Features" href="/docs/features/updates-and-methods" />
+  <Card title="React Integration" href="/docs/react/hooks" />
+  <Card title="API Reference" href="/docs/api/state" />
+</Cards>

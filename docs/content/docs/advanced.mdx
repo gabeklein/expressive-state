@@ -1,0 +1,206 @@
+---
+title: Advanced
+description: Type safety, testing, and framework support
+---
+
+## Type Safety
+
+One of the strongest arguments for class-based state is TypeScript integration. Classes give you things that hooks and stores don't — for free.
+
+### Autocompletion everywhere
+
+Destructure from `use()` or `get()` and every property and method is fully typed:
+
+```tsx
+class UserProfile extends State {
+  name = '';
+  email = '';
+  age = 0;
+  updateName(name: string) { this.name = name; }
+}
+
+function Editor() {
+  const { name, email, updateName } = UserProfile.use();
+  //     ^ string  ^ string  ^ (name: string) => void
+}
+```
+
+No separate type definitions. No generic parameters. The class *is* the type.
+
+### Refactoring
+
+Rename a property on the class and TypeScript catches every usage — across components, tests, and other state classes. This doesn't work as reliably with string-keyed stores.
+
+### Generic state classes
+
+```tsx
+abstract class Query<T> extends State {
+  abstract url: string;
+  data: T | null = null;
+  loading = false;
+
+  async fetch() {
+    this.loading = true;
+    const res = await fetch(this.url);
+    this.data = await res.json();
+    this.loading = false;
+  }
+}
+
+class UserQuery extends Query<User> {
+  url = '/api/user';
+}
+
+const { data } = UserQuery.use();
+//      ^ User | null
+```
+
+### Instruction types
+
+Types are inferred from arguments:
+
+```tsx
+class Form extends State {
+  name = set('');                           // string
+  total = set(this, $ => $.items.length);   // number
+  container = ref<HTMLDivElement>();         // HTMLDivElement | null
+  auth = get(AuthService);                  // AuthService
+  theme = get(ThemeService, false);         // ThemeService | undefined
+}
+```
+
+### Type-safe context
+
+The class is the context key. No `createContext<T>()` needed:
+
+```tsx
+<Provider for={UserService}>
+const user = UserService.get(); // fully typed
+```
+
+<br/>
+
+---
+
+<br/>
+
+## Testing
+
+Because state logic lives in classes — not components — you can test it without React, without a DOM, without render utilities.
+
+### Basic testing
+
+```ts
+test('increments count', () => {
+  const counter = Counter.new();
+  expect(counter.count).toBe(0);
+  counter.increment();
+  expect(counter.count).toBe(1);
+});
+```
+
+Create with `.new()`, call methods, assert properties.
+
+### Async
+
+```ts
+test('loads user data', async () => {
+  const profile = UserProfile.new();
+  await profile.load('user-123');
+  expect(profile.user).toBeDefined();
+  expect(profile.loading).toBe(false);
+});
+```
+
+### Subscriptions
+
+```ts
+test('notifies on change', () => {
+  const counter = Counter.new();
+  const values: number[] = [];
+
+  counter.get('count', () => {
+    values.push(counter.count);
+  });
+
+  counter.increment();
+  counter.increment();
+  expect(values).toEqual([1, 2]);
+});
+```
+
+### Computed values
+
+```ts
+test('total recomputes', () => {
+  const cart = Cart.new();
+  expect(cart.total).toBe(0);
+
+  cart.items = [{ price: 10, qty: 2 }];
+  expect(cart.total).toBe(20);
+});
+```
+
+### Export and restore
+
+```ts
+test('round-trips state', () => {
+  const form = Form.new({ name: 'John', email: 'john@test.com' });
+  const snapshot = form.get();
+
+  const restored = Form.new();
+  restored.set(snapshot);
+  expect(restored.name).toBe('John');
+});
+```
+
+With hooks, testing state means rendering components with `@testing-library/react`, dealing with `act()` wrappers, and mocking the DOM. With Expressive, state tests are plain unit tests.
+
+<br/>
+
+---
+
+<br/>
+
+## Other Frameworks
+
+Expressive State is framework-agnostic at its core. The React adapter is the most mature, but adapters exist for Preact and Solid.
+
+| Package | Framework |
+|---------|-----------|
+| `@expressive/react` | React |
+| `@expressive/preact` | Preact |
+| `@expressive/solid` | Solid |
+| `@expressive/state` | Core (no framework) |
+
+### Core — `@expressive/state`
+
+Use State without any framework:
+
+```ts
+import { State, watch } from '@expressive/state';
+
+const counter = Counter.new();
+
+watch(counter, (current) => {
+  console.log('Count:', current.count);
+});
+
+counter.increment(); // logs "Count: 1"
+```
+
+### Writing framework-agnostic state
+
+Keep state classes in a separate file with no framework imports:
+
+```ts
+// state/counter.ts
+import { State } from '@expressive/state';
+
+export class Counter extends State {
+  count = 0;
+  increment() { this.count++; }
+}
+```
+
+Then import from the appropriate adapter in your components. Your state logic is portable — only the component code changes.

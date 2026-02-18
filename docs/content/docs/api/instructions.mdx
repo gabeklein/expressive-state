@@ -1,0 +1,245 @@
+---
+title: Instructions
+description: Property initializers — ref, use, get, set — all overloads
+---
+
+Instructions are special initializers for class fields. They wire up reactive behavior declaratively.
+
+```ts
+import { ref, use, get, set } from '@expressive/react';
+```
+
+---
+
+## ref()
+
+Mutable reference holder. Does **not** trigger state updates.
+
+### `ref<T>()`
+
+Create an empty ref:
+
+```ts
+element = ref<HTMLDivElement>();
+// element.current: HTMLDivElement | null
+```
+
+### `ref<T>(callback)`
+
+Ref with change callback:
+
+```ts
+node = ref<HTMLElement>((el) => {
+  console.log('attached:', el);
+  return () => console.log('detached');
+});
+```
+
+### `ref(stateInstance)`
+
+Ref proxy — creates ref objects for all properties:
+
+```ts
+fields = ref(this);
+// fields.name: ref.Object<string>
+// fields.email: ref.Object<string>
+```
+
+---
+
+## use()
+
+Create a child state owned by the parent.
+
+### `use(StateClass)`
+
+Eager creation, shares parent context:
+
+```ts
+child = use(ChildState);
+```
+
+### `use(StateClass, false)`
+
+Optional child (may be `undefined`):
+
+```ts
+maybe = use(ChildState, false);
+```
+
+### `use(StateClass, callback)`
+
+With ready callback:
+
+```ts
+auth = use(AuthService, (instance) => {
+  instance.initialize();
+});
+```
+
+### `use(factory)`
+
+Custom instruction — receives parent state and property key:
+
+```ts
+custom = use((state, key) => {
+  return computedValue;
+});
+```
+
+---
+
+## get()
+
+Fetch state from context hierarchy.
+
+### `get(StateClass)`
+
+Required lookup — suspends if not found:
+
+```ts
+parent = get(ParentState);
+```
+
+### `get(StateClass, false)`
+
+Optional lookup — `undefined` if not found:
+
+```ts
+maybe = get(ParentState, false);
+```
+
+### `get(StateClass, callback)`
+
+With lifecycle callback:
+
+```ts
+parent = get(ParentState, (parent, self) => {
+  console.log('found:', parent);
+  return () => console.log('detached');
+});
+```
+
+### `get(StateClass, true)`
+
+Downstream collection — collects all instances below in context tree:
+
+```ts
+children = get(ChildState, true);
+// readonly ChildState[]
+```
+
+Array updates automatically as children are created/destroyed.
+
+### `get(StateClass, true, callback)`
+
+Downstream with lifecycle callback:
+
+```ts
+items = get(ListItem, true, (item, self) => {
+  console.log('registered:', item);
+  return false; // return false to prevent registration
+  return () => console.log('removed'); // or return cleanup
+});
+```
+
+---
+
+## set()
+
+The most versatile instruction. Handles computed values, factories, validation, and async.
+
+### `set<T>()`
+
+Required placeholder — suspends until assigned:
+
+```ts
+userId = set<string>();
+```
+
+### `set(defaultValue)`
+
+Simple default:
+
+```ts
+name = set('untitled');
+```
+
+### `set(defaultValue, callback)`
+
+Default with validation/change callback:
+
+```ts
+email = set('', (newValue, oldValue) => {
+  if (!newValue.includes('@')) return false; // reject
+});
+```
+
+The callback can return:
+- `false` to reject the update
+- A cleanup function (called before next update)
+- `void` to accept
+
+### `set(factory)`
+
+Lazy factory — computed once on first access:
+
+```ts
+config = set(() => loadConfig());
+```
+
+### `set(async factory)`
+
+Async factory — integrates with Suspense:
+
+```ts
+data = set(async () => {
+  const res = await fetch('/api/data');
+  return res.json();
+});
+```
+
+### `set(async factory, false)`
+
+Async optional — returns `undefined` instead of suspending:
+
+```ts
+avatar = set(async () => fetchAvatar(), false);
+```
+
+### `set(source, computeFn)`
+
+Reactive computed — re-computes when dependencies change:
+
+```ts
+// React to another state instance
+total = set(this, ($) => $.items.reduce((a, b) => a + b.price, 0));
+
+// React to self (pass true)
+doubled = set(true, (self) => self.value * 2);
+```
+
+The `$` parameter is a tracking proxy. Accessed properties become dependencies.
+
+### `set(source, methodRef)`
+
+Computed using a method reference:
+
+```ts
+tax = set(true, this.calculateTax);
+
+calculateTax() {
+  return this.total * 0.08;
+}
+```
+
+### Accessing previous value
+
+Use a regular `function` (not arrow) to access previous value via `this`:
+
+```ts
+sum = set(this, function ($) {
+  const previous = this.sum;
+  return previous + $.input;
+});
+```

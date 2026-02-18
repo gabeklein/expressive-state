@@ -1,0 +1,108 @@
+---
+title: Utilities
+description: Provider, Consumer, Context, Observable, and watch
+---
+
+## React Components
+
+### Provider
+
+Makes state available to all descendant components.
+
+```tsx
+import { Provider } from '@expressive/react';
+```
+
+**Props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `for` | `StateClass \| StateInstance \| Record<string, StateClass>` | State(s) to provide |
+| `forEach` | `(instance) => void \| (() => void)` | Callback per instance, return cleanup |
+| `fallback` | `ReactNode` | Suspense fallback |
+| `name` | `string` | Debug label for the boundary |
+
+```tsx
+// Single class
+<Provider for={AppState}>
+
+// Multiple classes
+<Provider for={{ AppState, Theme, Auth }}>
+
+// Pre-configured instance
+<Provider for={Theme.new({ mode: 'dark' })}>
+
+// With callback and fallback
+<Provider
+  for={DataService}
+  forEach={(svc) => svc.init()}
+  fallback={<Loading />}>
+```
+
+### Consumer
+
+Render-prop access to context state.
+
+```tsx
+import { Consumer } from '@expressive/react';
+
+<Consumer for={UserService}>
+  {(user) => <p>{user.name}</p>}
+</Consumer>
+```
+
+---
+
+## Core Exports
+
+These are available from both `@expressive/react` and `@expressive/state`:
+
+### Context
+
+The context system used by Provider/Consumer and the `get` instruction:
+
+```ts
+import { Context } from '@expressive/state';
+```
+
+### Observable
+
+Base observable type that State extends:
+
+```ts
+import { Observable } from '@expressive/state';
+```
+
+### watch
+
+Subscribe to state changes outside of React:
+
+```ts
+import { watch } from '@expressive/state';
+
+const state = Counter.new();
+
+watch(state, (current) => {
+  console.log('Count:', current.count);
+});
+```
+
+---
+
+## Re-exports
+
+`@expressive/react` re-exports everything from `@expressive/state`:
+
+```ts
+// All available from one import
+import State, {
+  Context,
+  Observable,
+  get,
+  use,
+  ref,
+  set,
+  Provider,
+  Consumer,
+} from '@expressive/react';
+```
