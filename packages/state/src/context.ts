@@ -73,7 +73,7 @@ class Context {
   protected cleanup = [] as (() => void)[];
 
   constructor(inputs?: Context.Accept) {
-    if (inputs) this.has(inputs);
+    if (inputs) this.set(inputs);
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
@@ -165,7 +165,9 @@ class Context {
 
     const waiting = LOOKUP.get(I);
 
-    if (waiting instanceof Array) waiting.forEach((cb) => cb(this));
+    if (waiting instanceof Array) {
+      waiting.forEach((cb) => cb(this));
+    }
 
     LOOKUP.set(I, this);
 
@@ -180,7 +182,7 @@ class Context {
    * @param inputs State, State class, or map of States / State classes to register.
    * @param forEach Optional callback to run for each State registered.
    */
-  public has<T extends State>(
+  public set<T extends State>(
     inputs: Context.Accept<T>,
     forEach?: Context.Expect<T>
   ) {
@@ -206,7 +208,7 @@ class Context {
       // however probably should do that on a per-state basis.
       else if (exists !== V) {
         this.pop();
-        this.has(inputs);
+        this.set(inputs);
         this.id = uid();
         return;
       }
@@ -240,7 +242,7 @@ class Context {
     next.inputs = {};
     next.cleanup = [];
 
-    if (inputs) next.has(inputs);
+    if (inputs) next.set(inputs);
 
     return next;
   }

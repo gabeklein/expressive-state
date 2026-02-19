@@ -9,7 +9,7 @@ it('will add instance to context', () => {
   const example = Example.new();
   const context = new Context();
 
-  context.has(example);
+  context.set(example);
 
   expect(context.get(Example)).toBe(example);
 });
@@ -166,19 +166,19 @@ describe('include', () => {
 
     const context = new Context();
 
-    context.has({ foo, bar }, cb);
+    context.set({ foo, bar }, cb);
 
     expect(cb).toBeCalledWith(foo);
     expect(cb).toBeCalledWith(bar);
     expect(cb).toBeCalledTimes(2);
 
-    context.has({ foo, bar }, cb);
+    context.set({ foo, bar }, cb);
 
     expect(cb).toBeCalledTimes(2);
 
     const foo2 = Foo.new();
 
-    context.has({ foo, bar, foo2 }, cb);
+    context.set({ foo, bar, foo2 }, cb);
 
     expect(cb).toBeCalledWith(foo2);
     expect(cb).toBeCalledTimes(3);
@@ -188,8 +188,8 @@ describe('include', () => {
     const cb = vi.fn();
     const context = new Context();
 
-    context.has(Foo, cb);
-    context.has(Foo, cb);
+    context.set(Foo, cb);
+    context.set(Foo, cb);
 
     expect(context.get(Foo)).toBeInstanceOf(Foo);
 
@@ -214,7 +214,7 @@ describe('include', () => {
     const idPriorToUpdate = context.id;
     const baz = context.get(Baz);
 
-    context.has({ foo, bar: Bar.new(), Baz });
+    context.set({ foo, bar: Bar.new(), Baz });
 
     // key should change despite technically same layer.
     expect(context.id).not.toBe(idPriorToUpdate);
@@ -279,21 +279,21 @@ it('will pop child context', () => {
 it('will throw on bad include', () => {
   const context = new Context();
 
-  expect(() => context.has(undefined as any)).toThrow();
+  expect(() => context.set(undefined as any)).toThrow();
 });
 
 it('will throw on base State include', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.has({ State })).toThrow('Cannot create base State.');
+  expect(() => context.set({ State })).toThrow('Cannot create base State.');
 });
 
 it('will throw on bad include property', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.has({ Thing: undefined })).toThrow(
+  expect(() => context.set({ Thing: undefined })).toThrow(
     "Context can only include an instance or class of State but got undefined (as 'Thing')."
   );
 });
@@ -302,7 +302,7 @@ it('will throw on bad include property (no alias)', () => {
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.has({ [0]: undefined })).toThrow(
+  expect(() => context.set({ [0]: undefined })).toThrow(
     'Context can only include an instance or class of State but got undefined.'
   );
 });
