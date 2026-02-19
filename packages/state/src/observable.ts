@@ -301,7 +301,7 @@ function watch<T extends Observable>(
 
 let EffectContext: Set<() => void> | undefined;
 
-export function scope() {
+function scope() {
   const last = EffectContext;
   const context = (EffectContext = new Set());
 
@@ -311,4 +311,13 @@ export function scope() {
   };
 }
 
-export { listener, event, Observable, observe, observing, pending, watch };
+export {
+  listener,
+  event,
+  Observable,
+  observe,
+  observing,
+  pending,
+  watch,
+  scope
+};
