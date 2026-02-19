@@ -1,4 +1,4 @@
-import { addListener, scope, watch } from '../observable';
+import { listener, scope, watch } from '../observable';
 import { access, event, METHOD, State, update } from '../state';
 import { Instruction, use } from './use';
 
@@ -197,7 +197,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       }
 
       if (argument) {
-        addListener(subject, init, true);
+        listener(subject, init, true);
       } else {
         property.get = init;
       }

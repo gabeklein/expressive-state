@@ -68,7 +68,7 @@ function observe<T extends Observable>(
   const watching = new Set<unknown>();
   const proxy = Object.create(object);
 
-  addListener(object, (key) => {
+  listener(object, (key) => {
     if (watching.has(key)) callback();
   });
 
@@ -92,7 +92,7 @@ function observing(from: Observable, key: string | number, value?: any) {
   return observe ? observe(key, value) : value;
 }
 
-function addListener<T extends Observable>(
+function listener<T extends Observable>(
   subject: T,
   callback: Notify<T>,
   select?: Signal | Set<Signal>
@@ -120,7 +120,7 @@ function pending<K extends Event>(state: Observable) {
     then: (onFulfilled) =>
       new Promise<K[]>((res) => {
         if (current) {
-          const remove = addListener(state, (key) => {
+          const remove = listener(state, (key) => {
             if (key !== true) {
               remove();
               return () => {
@@ -289,7 +289,7 @@ function watch<T extends Observable>(
 
   if (EffectContext && argument !== false) EffectContext.add(cleanup);
 
-  addListener(target, (key) => {
+  listener(target, (key) => {
     if (key === true) invoke();
     else if (!reset) return reset;
 
@@ -311,4 +311,4 @@ export function scope() {
   };
 }
 
-export { addListener, event, Observable, observe, observing, pending, watch };
+export { listener, event, Observable, observe, observing, pending, watch };

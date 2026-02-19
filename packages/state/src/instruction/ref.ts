@@ -1,4 +1,4 @@
-import { addListener, scope } from '../observable';
+import { listener, scope } from '../observable';
 import { State, update } from '../state';
 import { use } from './use';
 
@@ -100,11 +100,11 @@ function ref<T>(
       (key: string, from: Record<string, T>) =>
       (callback?: (value: T) => void) =>
         callback
-          ? addListener(subject, () => callback(from[key]), key)
+          ? listener(subject, () => callback(from[key]), key)
           : from[key];
 
     if (arg === subject)
-      addListener(
+      listener(
         subject,
         () => {
           for (const key in subject)

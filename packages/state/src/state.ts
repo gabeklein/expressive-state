@@ -1,5 +1,5 @@
 import {
-  addListener,
+  listener,
   watch,
   event,
   Observable,
@@ -229,7 +229,7 @@ abstract class State implements Observable {
 
     if (arg1 === undefined) return values(self);
     if (typeof arg1 == 'function') return effect(self, arg1);
-    if (typeof arg2 == 'function') return addListener(self, arg2, arg1);
+    if (typeof arg2 == 'function') return listener(self, arg2, arg1);
     if (arg1 === null) return Object.isFrozen(STATE.get(self));
     return access(self, arg1, arg2);
   }
@@ -330,7 +330,7 @@ abstract class State implements Observable {
     const self = this.is;
 
     if (typeof arg1 == 'function')
-      return addListener(self, (key) => {
+      return listener(self, (key) => {
         if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
           return arg1.call(self, key, self);
       });
@@ -445,7 +445,7 @@ function prepare(state: State) {
 
   while (T.name) {
     for (const cb of NOTIFY.get(T) || []) {
-      addListener(state, cb);
+      listener(state, cb);
     }
 
     if (T === State) break;
@@ -501,7 +501,7 @@ function init(state: State, ...args: State.Args) {
     else return true;
   });
 
-  addListener(state, () => {
+  listener(state, () => {
     if (!PARENT.has(state)) PARENT.set(state, null);
 
     for (const key in state) {
@@ -522,11 +522,11 @@ function init(state: State, ...args: State.Args) {
           console.error(err);
         });
       else if (Array.isArray(use)) args.push(...use);
-      else if (typeof use == 'function') addListener(state, use, null);
+      else if (typeof use == 'function') listener(state, use, null);
       else if (typeof use == 'object') assign(state, use, true);
     }
 
-    addListener(
+    listener(
       state,
       () => {
         for (const [_, value] of state)
@@ -617,7 +617,7 @@ function access(state: State, property: string, required?: boolean) {
 
   const error = new Error(`${state}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
-    addListener(state, (key) => {
+    listener(state, (key) => {
       if (key === property) {
         resolve(store[key]);
         return null;

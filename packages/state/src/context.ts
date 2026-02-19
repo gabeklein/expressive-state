@@ -1,4 +1,4 @@
-import { addListener } from './observable';
+import { listener } from './observable';
 import { event, State, PARENT, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
@@ -138,7 +138,7 @@ class Context {
       const expects = this[K] as Context.Expect | undefined;
 
       if (expects)
-        addListener(I, (event) => {
+        listener(I, (event) => {
           if (event === true) {
             const cb = expects(I);
             if (cb) cleanup.add(cb);
