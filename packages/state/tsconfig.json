@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    "outDir": "./dist/esm",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "moduleResolution": "bundler",
