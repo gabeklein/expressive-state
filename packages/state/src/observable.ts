@@ -114,13 +114,13 @@ function addListener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
-function pending<K extends Event>(subject: Observable) {
-  const current = PENDING_KEYS.get(subject) as Set<K> | undefined;
+function pending<K extends Event>(state: Observable) {
+  const current = PENDING_KEYS.get(state) as Set<K> | undefined;
   const resolver: PromiseLike<K[]> = {
     then: (onFulfilled) =>
       new Promise<K[]>((res) => {
         if (current) {
-          const remove = addListener(subject, (key) => {
+          const remove = addListener(state, (key) => {
             if (key !== true) {
               remove();
               return () => {
@@ -168,26 +168,26 @@ function emit(state: Observable, key: Signal): void {
   PENDING.delete(state);
 }
 
-function event(subject: Observable, key?: Event | null, silent?: boolean) {
-  if (key === null) return emit(subject, key);
+function event(state: Observable, key?: Event | null, silent?: boolean) {
+  if (key === null) return emit(state, key);
 
-  if (!key) return emit(subject, true);
+  if (!key) return emit(state, true);
 
-  let pending = PENDING_KEYS.get(subject);
+  let pending = PENDING_KEYS.get(state);
 
   if (!pending) {
-    PENDING_KEYS.set(subject, (pending = new Set()));
+    PENDING_KEYS.set(state, (pending = new Set()));
 
     if (!silent)
       enqueue(() => {
-        emit(subject, false);
-        PENDING_KEYS.delete(subject);
+        emit(state, false);
+        PENDING_KEYS.delete(state);
       });
   }
 
   pending.add(key);
 
-  if (!silent) emit(subject, key);
+  if (!silent) emit(state, key);
 }
 
 function enqueue(eventHandler: () => void) {

@@ -114,9 +114,9 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       let isAsync: boolean;
       let proxy: any;
 
-      function connect(self: State) {
+      function connect(source: State) {
         reset = watch(
-          self,
+          source,
           (current) => {
             proxy = current;
 

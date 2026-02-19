@@ -412,21 +412,21 @@ define(State, 'toString', {
   }
 });
 
-function assign(subject: State, data: State.Assign<State>, silent?: boolean) {
-  const methods = METHODS.get(subject.constructor)!;
+function assign(state: State, data: State.Assign<State>, silent?: boolean) {
+  const methods = METHODS.get(state.constructor)!;
 
   for (const key in data) {
     const bind = methods.get(key);
 
-    if (bind) bind.call(subject, data[key]);
-    else if (key in subject && key !== 'is') {
-      const desc = Object.getOwnPropertyDescriptor(subject, key)!;
+    if (bind) bind.call(state, data[key]);
+    else if (key in state && key !== 'is') {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
       const set = desc && (desc.set as (value: any, silent?: boolean) => void);
 
       if (set) {
-        set.call(subject, data[key], silent);
+        set.call(state, data[key], silent);
       } else {
-        (subject as any)[key] = data[key];
+        (state as any)[key] = data[key];
       }
     }
   }
@@ -491,49 +491,49 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(self: State, ...args: State.Args) {
-  const state = {} as Record<string | number | symbol, unknown>;
+function init(state: State, ...args: State.Args) {
+  const store = {} as Record<string | number | symbol, unknown>;
 
-  STATE.set(self, state);
+  STATE.set(state, store);
 
   args = args.flat().filter((arg) => {
-    if (typeof arg == 'string') ID.set(self, arg);
+    if (typeof arg == 'string') ID.set(state, arg);
     else return true;
   });
 
-  addListener(self, () => {
-    if (!PARENT.has(self)) PARENT.set(self, null);
+  addListener(state, () => {
+    if (!PARENT.has(state)) PARENT.set(state, null);
 
-    for (const key in self) {
-      const desc = Object.getOwnPropertyDescriptor(self, key)!;
+    for (const key in state) {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
 
-      if ('value' in desc) manage(self, key, desc.value, true);
+      if ('value' in desc) manage(state, key, desc.value, true);
     }
 
     for (const arg of args) {
       const use =
         typeof arg == 'function'
-          ? arg.call(self, self)
+          ? arg.call(state, state)
           : (arg as State.Assign<State>);
 
       if (use instanceof Promise)
         use.catch((err) => {
-          console.error(`Async error in constructor for ${self}:`);
+          console.error(`Async error in constructor for ${state}:`);
           console.error(err);
         });
       else if (Array.isArray(use)) args.push(...use);
-      else if (typeof use == 'function') addListener(self, use, null);
-      else if (typeof use == 'object') assign(self, use, true);
+      else if (typeof use == 'function') addListener(state, use, null);
+      else if (typeof use == 'object') assign(state, use, true);
     }
 
     addListener(
-      self,
+      state,
       () => {
-        for (const [_, value] of self)
-          if (value instanceof State && PARENT.get(value) === self)
+        for (const [_, value] of state)
+          if (value instanceof State && PARENT.get(value) === state)
             value.set(null);
 
-        Object.freeze(state);
+        Object.freeze(store);
       },
       null
     );
@@ -543,49 +543,49 @@ function init(self: State, ...args: State.Args) {
 }
 
 function manage(
-  target: State,
+  state: State,
   key: string | number,
   value: any,
   silent?: boolean
 ) {
-  const state = STATE.get(target)!;
+  const store = STATE.get(state)!;
 
   function get(this: State) {
-    return observing(this, key, state[key]);
+    return observing(this, key, store[key]);
   }
 
   function set(value: unknown, silent?: boolean) {
-    update(target, key, value, silent);
+    update(state, key, value, silent);
     if (value instanceof State && !PARENT.has(value)) {
-      PARENT.set(value, target);
+      PARENT.set(value, state);
       event(value);
     }
   }
 
-  define(target, key, { set, get });
+  define(state, key, { set, get });
   set(value, silent);
 }
 
-function effect<T extends State>(target: T, fn: State.Effect<T>) {
+function effect<T extends State>(state: T, fn: State.Effect<T>) {
   const effect: State.Effect<T> = METHOD.get(fn) || fn;
 
-  return watch(target, (proxy, changed) => {
+  return watch(state, (proxy, changed) => {
     const cb = effect.call(proxy, proxy, changed || []);
 
     if (typeof cb == 'function' || cb === null) return cb;
   });
 }
 
-function values<T extends State>(target: T): State.Values<T> {
+function values<T extends State>(state: T): State.Values<T> {
   const values = {} as any;
   let isNotRecursive;
 
   if (!EXPORT) {
     isNotRecursive = true;
-    EXPORT = new Map([[target, values]]);
+    EXPORT = new Map([[state, values]]);
   }
 
-  for (let [key, value] of target) {
+  for (let [key, value] of state) {
     if (EXPORT.has(value)) value = EXPORT.get(value);
     else if (
       value &&
@@ -603,28 +603,28 @@ function values<T extends State>(target: T): State.Values<T> {
   return Object.freeze(values);
 }
 
-function access(subject: State, property: string, required?: boolean) {
-  const state = STATE.get(subject)!;
+function access(state: State, property: string, required?: boolean) {
+  const store = STATE.get(state)!;
 
-  if (property in state || required === false) {
-    const value = state[property];
+  if (property in store || required === false) {
+    const value = store[property];
 
     if (value !== undefined || !required) return value;
   }
 
-  if (METHODS.get(subject.constructor)!.has(property))
-    return METHOD.get((subject as any)[property]);
+  if (METHODS.get(state.constructor)!.has(property))
+    return METHOD.get((state as any)[property]);
 
-  const error = new Error(`${subject}.${property} is not yet available.`);
+  const error = new Error(`${state}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
-    addListener(subject, (key) => {
+    addListener(state, (key) => {
       if (key === property) {
-        resolve(state[key]);
+        resolve(store[key]);
         return null;
       }
 
       if (key === null) {
-        reject(new Error(`${subject} is destroyed.`));
+        reject(new Error(`${state} is destroyed.`));
       }
     });
   });
@@ -638,33 +638,33 @@ function access(subject: State, property: string, required?: boolean) {
 }
 
 function update<T>(
-  subject: State,
+  state: State,
   key: string | number | symbol,
   value: T,
   arg?: boolean | State.Setter<T>
 ) {
-  const state = STATE.get(subject)!;
+  const store = STATE.get(state)!;
 
-  if (Object.isFrozen(state))
+  if (Object.isFrozen(store))
     throw new Error(
-      `Tried to update ${subject}.${String(key)} but state is destroyed.`
+      `Tried to update ${state}.${String(key)} but state is destroyed.`
     );
 
-  const previous = state[key] as T;
+  const previous = store[key] as T;
 
   if (typeof arg == 'function') {
-    const out = arg.call(subject, value, previous);
+    const out = arg.call(state, value, previous);
 
     if (out === false) return false;
 
     if (typeof out == 'function') value = out();
   }
 
-  if (value === previous && key in state) return;
+  if (value === previous && key in store) return;
 
-  state[key] = value;
+  store[key] = value;
 
-  if (arg !== true) event(subject, key);
+  if (arg !== true) event(state, key);
 
   return true;
 }
