@@ -1,4 +1,4 @@
-import State, { Context } from '@expressive/state';
+import { State, Context } from '@expressive/state';
 import {
   createContext,
   createElement,

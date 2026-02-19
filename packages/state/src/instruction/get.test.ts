@@ -3,7 +3,6 @@ import { vi, describe, it, expect, mockPromise } from '../../vitest';
 import { State } from '../state';
 import { get } from './get';
 import { set } from './set';
-import { use } from './use';
 
 // is this desirable?
 it.todo('will add pending compute to frame immediately');
@@ -164,7 +163,7 @@ describe('fetch mode', () => {
   it('will inherit parent context', () => {
     class Foo extends State {}
     class Bar extends State {
-      baz = use(Baz);
+      baz = new Baz();
     }
 
     class Baz extends State {

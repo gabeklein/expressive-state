@@ -3,7 +3,7 @@ import { vi, afterAll, expect, it, describe } from '../vitest';
 import { act, render, screen } from '@testing-library/react';
 import { Suspense } from 'react';
 
-import State, { Consumer, get, Provider, set, use } from '.';
+import { State, Consumer, get, Provider, set } from '.';
 
 const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -71,7 +71,7 @@ describe('Provider', () => {
       value?: string = undefined;
     }
     class Bar extends State {
-      foo = use(Foo);
+      foo = new Foo();
     }
 
     render(

@@ -3,7 +3,7 @@
 Instructions are special initializers for State class fields. They wire up behavior declaratively — refs, child state, context lookups, computed values, and validation.
 
 ```ts
-import State, { ref, use, get, set } from '@expressive/state';
+import State, { ref, get, set } from '@expressive/state';
 ```
 
 ---
@@ -51,26 +51,26 @@ form.refs.email; // ref.Object<string>
 
 ---
 
-## use — Child State
+## use — Custom Instruction
 
-Creates a child state owned by parent. Auto-destroyed when parent is.
-
-```ts
-class Parent extends State {
-  child = use(ChildState);          // eager, shares parent context
-  maybe = use(ChildState, false);   // optional (T | undefined)
-  ready = use(ChildState, (inst) => { /* ready callback */ });
-}
-```
-
-### Custom Instruction
+Low-level primitive for defining custom property behavior during initialization.
 
 ```ts
 class MyState extends State {
-  custom = use((state, key) => {
-    // state = parent, key = property name
-    return computedValue;
+  custom = use((key, subject, state) => {
+    // key = property name, subject = instance, state = store
+    return { value: computedValue };
   });
+}
+```
+
+### Child State (No Instruction Needed)
+
+Nest states by direct assignment. Children are auto-parented and destroyed with parent.
+
+```ts
+class Parent extends State {
+  child = new ChildState();
 }
 ```
 
@@ -180,6 +180,6 @@ Pass `true` as first argument to react to `this`.
 | Instruction | Purpose | Triggers Updates? |
 |-------------|---------|-------------------|
 | `ref()` | Mutable reference holder | No |
-| `use()` | Create owned child state | Yes (child events) |
+| `use()` | Custom property instruction | Yes |
 | `get()` | Context lookup (up or down) | Yes (when found/lost) |
 | `set()` | Computed, factory, validation | Yes |

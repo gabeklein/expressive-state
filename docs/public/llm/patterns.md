@@ -5,7 +5,7 @@ Copy-paste recipes. All examples use `@expressive/react`.
 ## Counter
 
 ```ts
-import State, { ref, use, get, set, Provider, Consumer } from '@expressive/react';
+import State, { ref, get, set, Provider, Consumer } from '@expressive/react';
 
 class Counter extends State {
   count = 0;
@@ -78,7 +78,7 @@ class TodoList extends State {
   items: TodoItem[] = [];
 
   add(text: string) {
-    const item = use.call(this, TodoItem);
+    const item = new TodoItem();
     item.text = text;
     this.items = [...this.items, item];
   }
