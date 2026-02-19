@@ -119,6 +119,61 @@ class Context {
   }
 
   /**
+   * Register one or more States to this context.
+   *
+   * Context will add or remove States as needed to keep with provided input.
+   *
+   * @param inputs State, State class, or map of States / State classes to register.
+   * @param forEach Optional callback to run for each State registered.
+   */
+  public set<T extends State>(
+    inputs: Context.Accept<T>,
+    forEach?: Context.Expect<T>
+  ) {
+    const init = new Map<State, boolean>();
+
+    if (typeof inputs == 'function' || inputs instanceof State)
+      inputs = { [0]: inputs };
+
+    for (const [K, V] of Object.entries(inputs)) {
+      if (!(State.is(V) || V instanceof State))
+        throw new Error(
+          `Context can only include an instance or class of State but got ${
+            K == '0' || K == String(V) ? V : `${V} (as '${K}')`
+          }.`
+        );
+
+      const exists = this.inputs[K];
+
+      if (!exists) {
+        init.set(this.add(V), true);
+      }
+      // Context must force-reset because inputs are no longer safe,
+      // however probably should do that on a per-state basis.
+      else if (exists !== V) {
+        this.pop();
+        this.set(inputs);
+        this.id = uid();
+        return;
+      }
+    }
+
+    for (const [state, explicit] of init) {
+      state.set();
+
+      if (explicit && forEach) forEach(state as T);
+
+      for (const [_key, value] of state)
+        if (PARENT.get(value as State) === state) {
+          this.add(value as State, true);
+          init.set(value as State, false);
+        }
+    }
+
+    this.inputs = inputs;
+  }
+
+  /**
    * Adds a State to this context.
    */
   protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
@@ -172,61 +227,6 @@ class Context {
     LOOKUP.set(I, this);
 
     return I;
-  }
-
-  /**
-   * Register one or more States to this context.
-   *
-   * Context will add or remove States as needed to keep with provided input.
-   *
-   * @param inputs State, State class, or map of States / State classes to register.
-   * @param forEach Optional callback to run for each State registered.
-   */
-  public set<T extends State>(
-    inputs: Context.Accept<T>,
-    forEach?: Context.Expect<T>
-  ) {
-    const init = new Map<State, boolean>();
-
-    if (typeof inputs == 'function' || inputs instanceof State)
-      inputs = { [0]: inputs };
-
-    for (const [K, V] of Object.entries(inputs)) {
-      if (!(State.is(V) || V instanceof State))
-        throw new Error(
-          `Context can only include an instance or class of State but got ${
-            K == '0' || K == String(V) ? V : `${V} (as '${K}')`
-          }.`
-        );
-
-      const exists = this.inputs[K];
-
-      if (!exists) {
-        init.set(this.add(V), true);
-      }
-      // Context must force-reset because inputs are no longer safe,
-      // however probably should do that on a per-state basis.
-      else if (exists !== V) {
-        this.pop();
-        this.set(inputs);
-        this.id = uid();
-        return;
-      }
-    }
-
-    for (const [state, explicit] of init) {
-      state.set();
-
-      if (explicit && forEach) forEach(state as T);
-
-      for (const [_key, value] of state)
-        if (PARENT.get(value as State) === state) {
-          this.add(value as State, true);
-          init.set(value as State, false);
-        }
-    }
-
-    this.inputs = inputs;
   }
 
   /**
