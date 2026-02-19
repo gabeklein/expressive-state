@@ -29,15 +29,17 @@ type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
 type Observer<T = any> = (key: string | number, value: T) => T;
 
+type Callback = () => void | PromiseLite;
+
 declare namespace Observable {
-  export type Callback = () => void | PromiseLite;
+  export { Callback, Effect, Event, Notify, Observer, Signal };
 }
 
 interface Observable {
   [Observable](callback: Observable.Callback, required?: boolean): this | void;
 }
 
-const Observable = Symbol('observe');
+const Observable = Symbol('Observable');
 
 /** Placeholder event determines if state is initialized or not. */
 const onReady = () => null;
@@ -309,13 +311,4 @@ export function scope() {
   };
 }
 
-export {
-  addListener,
-  event,
-  Notify,
-  Observable,
-  observe,
-  observing,
-  pending,
-  watch
-};
+export { addListener, event, Observable, observe, observing, pending, watch };

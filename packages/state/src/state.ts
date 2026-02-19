@@ -3,7 +3,6 @@ import {
   watch,
   event,
   Observable,
-  Notify,
   observing,
   observe,
   pending
@@ -18,7 +17,7 @@ const ID = new WeakMap<State, string>();
 const STATE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given State. */
-const NOTIFY = new WeakMap<State.Extends, Set<Notify>>();
+const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
