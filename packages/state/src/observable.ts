@@ -10,15 +10,20 @@
  */
 type Notify<T extends Observable = any> = (
   this: T,
-  key: Event,
+  key: Signal,
   source: T
 ) => (() => void) | null | void;
 
-type Effect<T extends Observable> = (
-  proxy: T
-) => ((update: boolean | null) => void) | Promise<void> | null | void;
+type EffectCleanup = (update: boolean | null) => void;
 
-type Event = number | string | null | boolean | symbol;
+type Effect<T extends Observable> = (
+  proxy: T,
+  changed: readonly Event[]
+) => EffectCleanup | Promise<void> | null | void;
+
+type Event = number | string | symbol;
+
+type Signal = Event | true | false | null;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
@@ -39,11 +44,11 @@ const onReady = () => null;
 
 const LISTENERS = new WeakMap<
   Observable,
-  Map<Notify, Set<Event> | undefined>
+  Map<Notify, Set<Signal> | undefined>
 >();
 
 /** Events pending for a given object. */
-const PENDING = new WeakMap<Observable, Set<Event>>();
+const PENDING = new WeakMap<Observable, Set<Signal>>();
 
 /** Update register. */
 const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
@@ -88,7 +93,7 @@ function observing(from: Observable, key: string | number, value?: any) {
 function addListener<T extends Observable>(
   subject: T,
   callback: Notify<T>,
-  select?: Event | Set<Event>
+  select?: Signal | Set<Signal>
 ) {
   let listeners = LISTENERS.get(subject)!;
 
@@ -105,10 +110,6 @@ function addListener<T extends Observable>(
   listeners.set(callback, select);
 
   return () => listeners.delete(callback);
-}
-
-function updates(subject: Observable) {
-  return PENDING_KEYS.get(subject);
 }
 
 function pending<K extends Event>(subject: Observable) {
@@ -133,7 +134,7 @@ function pending<K extends Event>(subject: Observable) {
   return Object.assign(Array.from(current || []), resolver);
 }
 
-function emit(state: Observable, key: Event): void {
+function emit(state: Observable, key: Signal): void {
   const listeners = LISTENERS.get(state)!;
   const notReady = listeners.has(onReady);
 
@@ -165,11 +166,7 @@ function emit(state: Observable, key: Event): void {
   PENDING.delete(state);
 }
 
-function event(
-  subject: Observable,
-  key?: string | number | symbol | null,
-  silent?: boolean
-) {
+function event(subject: Observable, key?: Event | null, silent?: boolean) {
   if (key === null) return emit(subject, key);
 
   if (!key) return emit(subject, true);
@@ -232,6 +229,7 @@ function watch<T extends Observable>(
   callback: Effect<T>,
   argument?: boolean
 ) {
+  let cause: readonly Event[];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -239,7 +237,9 @@ function watch<T extends Observable>(
     let ignore: boolean = true;
 
     function onUpdate(): void | PromiseLite<void> {
-      if (ignore || reset === null) return;
+      cause = [...(PENDING_KEYS.get(target) || [])];
+
+      if (reset === null || ignore) return;
 
       ignore = true;
 
@@ -255,7 +255,8 @@ function watch<T extends Observable>(
     try {
       const exit = argument === false ? undefined : scope();
       const output = callback(
-        target[Observable](onUpdate, argument === true) as T
+        target[Observable](onUpdate, argument === true) as T,
+        cause
       );
       const flush = exit ? exit() : () => {};
 
@@ -266,6 +267,8 @@ function watch<T extends Observable>(
 
         flush();
       };
+
+      cause = [];
     } catch (err) {
       if (err instanceof Promise) {
         reset = undefined;
@@ -313,7 +316,6 @@ export {
   Observable,
   observe,
   observing,
-  updates,
   pending,
   watch
 };

@@ -609,7 +609,7 @@ describe('get method', () => {
     it('will watch values', async () => {
       const test = Test.new();
       const anyTest = expect.any(Test);
-      const effect = vi.fn((state: Test, set) => {
+      const effect = vi.fn((state: Test) => {
         void state.value1;
         void state.value2;
         void state.value3;
@@ -618,14 +618,14 @@ describe('get method', () => {
 
       test.get(effect);
 
-      expect(effect).toBeCalledWith(anyTest, new Set());
+      expect(effect).toBeCalledWith(anyTest, []);
 
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
       await expect(test).toHaveUpdated('value1');
 
-      expect(effect).toBeCalledWith(anyTest, new Set(['value1']));
+      expect(effect).toBeCalledWith(anyTest, ['value1']);
 
       test.value2 = 3;
       test.value3 = 4;
@@ -633,10 +633,7 @@ describe('get method', () => {
       // wait for update event to flush queue
       await expect(test).toHaveUpdated('value2', 'value3', 'value4');
 
-      expect(effect).toBeCalledWith(
-        anyTest,
-        new Set(['value2', 'value3', 'value4'])
-      );
+      expect(effect).toBeCalledWith(anyTest, ['value2', 'value3', 'value4']);
 
       // expect two syncronous groups of updates.
       expect(effect).toBeCalledTimes(3);

@@ -6,7 +6,6 @@ import {
   Notify,
   observing,
   observe,
-  updates,
   pending
 } from './observable';
 
@@ -71,7 +70,10 @@ declare namespace State {
   type Field<T> = Exclude<keyof T, keyof State>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
-  type Event<T> = Field<T> | number | symbol | (string & {});
+  type Event<T = State> = Field<T> | number | symbol | (string & {});
+
+  /** Any event signal dispatched to listeners, including lifecycle meta events. */
+  type Signal<T = State> = Event<T> | true | false | null;
 
   /** Export/Import compatible value for a given property in a State. */
   type Export<R> = R extends { get(): infer T } ? T : R;
@@ -95,7 +97,7 @@ declare namespace State {
 
   type OnEvent<T extends State> = (
     this: T,
-    key: unknown,
+    key: Signal<T>,
     source: T
   ) => void | (() => void) | null;
 
@@ -124,7 +126,7 @@ declare namespace State {
   type Effect<T> = (
     this: T,
     current: T,
-    update: Set<State.Event<T>>
+    update: readonly State.Event<T>[] | undefined
   ) => EffectCallback | Promise<void> | null | void;
 
   /**
@@ -566,18 +568,12 @@ function manage(
 }
 
 function effect<T extends State>(target: T, fn: State.Effect<T>) {
-  const effect = METHOD.get(fn) || fn;
-  let current = new Set<State.Event<T>>();
+  const effect: State.Effect<T> = METHOD.get(fn) || fn;
 
-  return watch(target, (proxy) => {
-    const cb = effect.call(proxy, proxy, current);
+  return watch(target, (proxy, changed) => {
+    const cb = effect.call(proxy, proxy, changed || []);
 
-    if (cb === null) return cb;
-
-    return (update) => {
-      current = updates(target)!;
-      if (typeof cb == 'function') cb(update);
-    };
+    if (typeof cb == 'function' || cb === null) return cb;
   });
 }
 

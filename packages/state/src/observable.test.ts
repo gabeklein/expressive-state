@@ -89,6 +89,37 @@ describe('effect', () => {
     expect(didGetValue).toBeCalledTimes(2);
   });
 
+  it('will pass changed keys to callback', async () => {
+    class Test extends State {
+      foo = 1;
+      bar = 2;
+    }
+
+    const test = Test.new();
+    const calls = [] as Array<readonly State.Signal[] | undefined>;
+
+    watch(test, ($, changed) => {
+      calls.push(changed);
+      void $.foo;
+      void $.bar;
+    });
+
+    expect(calls[0]).toBeUndefined();
+
+    test.foo = 3;
+    await expect(test).toHaveUpdated('foo');
+    expect(calls[1]).toEqual(['foo']);
+
+    test.foo = 4;
+    test.bar = 5;
+    await expect(test).toHaveUpdated('foo', 'bar');
+    expect(calls[2]).toEqual(['foo', 'bar']);
+
+    test.bar = 6;
+    await expect(test).toHaveUpdated('bar');
+    expect(calls[3]).toEqual(['bar']);
+  });
+
   it('will cleanup nested effects', async () => {
     class Test extends State {
       foo = 1;
