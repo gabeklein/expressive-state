@@ -6,6 +6,7 @@ import {
   Notify,
   observing,
   observe,
+  updates,
   pending
 } from './observable';
 
@@ -23,11 +24,11 @@ const NOTIFY = new WeakMap<State.Extends, Set<Notify>>();
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
 
-/** List of methods defined by a given type. */
-const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
-
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
+
+/** List of methods defined by a given type. */
+const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
@@ -132,6 +133,9 @@ declare namespace State {
    * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if state is destroyed.
    */
   type EffectCallback = (update: boolean | null) => void;
+
+  type Pending<T extends State> = readonly Event<T>[] &
+    PromiseLike<readonly Event<T>[]>;
 }
 
 interface State {
@@ -234,7 +238,7 @@ abstract class State implements Observable {
    *
    * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
-  set(): PromiseLike<State.Event<this>[]> | undefined;
+  set(): State.Pending<this>;
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
@@ -244,10 +248,7 @@ abstract class State implements Observable {
    * @param silent - If an update does occur, listeners will not be refreshed automatically.
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
-  set(
-    assign?: State.Assign<this>,
-    silent?: boolean
-  ): PromiseLike<State.Event<this>[]> | undefined;
+  set(assign?: State.Assign<this>, silent?: boolean): State.Pending<this>;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -263,7 +264,7 @@ abstract class State implements Observable {
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: State.Event<this>): PromiseLike<State.Event<this>[]>;
+  set(key: State.Event<this>): State.Pending<this>;
 
   /**
    * Set a value for a property. This will update the value and notify listeners.
@@ -284,7 +285,7 @@ abstract class State implements Observable {
     key: State.Event<this>,
     value: unknown,
     init?: boolean
-  ): PromiseLike<State.Event<this>[]>;
+  ): State.Pending<this>;
 
   /**
    * Call a function when update occurs.
@@ -344,20 +345,7 @@ abstract class State implements Observable {
       update(self, arg1 as string | number, arg2);
     }
 
-    const current = pending(this);
-
-    if (current)
-      return <PromiseLike<State.Event<this>[]>>{
-        then: (resolve) =>
-          new Promise<any>((res) => {
-            const remove = addListener(this, (key) => {
-              if (key !== true) {
-                remove();
-                return () => res(Array.from(current));
-              }
-            });
-          }).then(resolve)
-      };
+    return pending(self) as State.Pending<this>;
   }
 
   /**
@@ -587,7 +575,7 @@ function effect<T extends State>(target: T, fn: State.Effect<T>) {
     if (cb === null) return cb;
 
     return (update) => {
-      current = pending(target)!;
+      current = updates(target)!;
       if (typeof cb == 'function') cb(update);
     };
   });

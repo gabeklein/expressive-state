@@ -62,7 +62,7 @@ async function toHaveUpdated(received: State, ...keys: string[]) {
 
   const didUpdate = await received.set();
 
-  if (!didUpdate)
+  if (!didUpdate.length)
     return {
       pass: false,
       message: () => `Expected ${received} to have pending updates.`

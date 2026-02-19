@@ -107,8 +107,30 @@ function addListener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
-function pending(subject: Observable) {
+function updates(subject: Observable) {
   return PENDING_KEYS.get(subject);
+}
+
+function pending<K extends Event>(subject: Observable) {
+  const current = PENDING_KEYS.get(subject) as Set<K> | undefined;
+  const resolver: PromiseLike<K[]> = {
+    then: (onFulfilled) =>
+      new Promise<K[]>((res) => {
+        if (current) {
+          const remove = addListener(subject, (key) => {
+            if (key !== true) {
+              remove();
+              return () => {
+                const result = [...current];
+                return res(result);
+              };
+            }
+          });
+        } else res([]);
+      }).then(onFulfilled)
+  };
+
+  return Object.assign(Array.from(current || []), resolver);
 }
 
 function emit(state: Observable, key: Event): void {
@@ -291,6 +313,7 @@ export {
   Observable,
   observe,
   observing,
+  updates,
   pending,
   watch
 };

@@ -62,7 +62,7 @@ it('will ignore assignment with same value', async () => {
 
   const update = await state.set();
 
-  expect(update).toBeUndefined();
+  expect(update.length).toEqual(0);
 });
 
 it('will update from within a method', async () => {
@@ -1385,7 +1385,7 @@ describe('set method', () => {
       expect(update).toEqual([event]);
     });
 
-    it('will be undefined if no update', async () => {
+    it('will resolve empty array if no update', async () => {
       class Test extends State {
         foo = 'foo';
       }
@@ -1393,7 +1393,7 @@ describe('set method', () => {
       const test = Test.new();
       const update = test.set();
 
-      expect(update).toBeUndefined();
+      await expect(update).resolves.toEqual([]);
     });
 
     it('will force initial update', async () => {
