@@ -15,6 +15,12 @@ describe('State.use', () => {
       expect(hook.result.current).toBeInstanceOf(Test);
     });
 
+    it.todo('will pass instance name as argument', () => {
+      const hook = renderHook(() => Test.use('ID'));
+
+      expect(hook.result.current.toString()).toBe('ID');
+    });
+
     it('will subscribe to instance of controller', async () => {
       const willRender = vi.fn();
       const { result } = renderHook(() => {
