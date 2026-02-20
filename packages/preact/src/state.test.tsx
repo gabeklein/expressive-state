@@ -64,8 +64,7 @@ describe('State.use', () => {
       const didDestroy = vi.fn();
 
       class Test extends State {
-        constructor() {
-          super();
+        protected new() {
           this.get(null, didDestroy);
         }
       }
@@ -188,10 +187,8 @@ describe('State.use', () => {
       class Test extends State {
         ambient = get(Ambient);
 
-        constructor() {
-          super(() => {
-            expect(this.ambient).toBeInstanceOf(Ambient);
-          });
+        protected new() {
+          expect(this.ambient).toBeInstanceOf(Ambient);
         }
       }
 
@@ -325,8 +322,8 @@ describe('State.get', () => {
       class Foo extends State {
         bar = get(Bar);
 
-        constructor() {
-          super('ID');
+        constructor(...args: State.Args) {
+          super(args, 'ID');
         }
       }
 

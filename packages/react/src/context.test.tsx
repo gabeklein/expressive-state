@@ -496,10 +496,8 @@ describe('get instruction', () => {
     class Child extends State {
       parent = get(Parent);
 
-      constructor() {
-        super(() => {
-          expect(this.parent).toBeInstanceOf(Parent);
-        });
+      protected new() {
+        expect(this.parent).toBeInstanceOf(Parent);
       }
     }
 

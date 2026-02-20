@@ -852,8 +852,8 @@ describe('get method', () => {
 
     it('will call only when ready', async () => {
       class Test2 extends Test {
-        constructor() {
-          super();
+        constructor(...args: State.Args) {
+          super(args);
           this.get((state) => {
             void state.value1;
             void state.value3;
@@ -1161,8 +1161,8 @@ describe('get method', () => {
         class Test extends State {
           value1 = 1;
 
-          constructor() {
-            super();
+          constructor(...args: State.Args) {
+            super(args);
             this.get((state) => mock(state.value1));
           }
         }
@@ -1184,8 +1184,8 @@ describe('get method', () => {
             return $.value1 + 1;
           });
 
-          constructor() {
-            super();
+          constructor(...args: State.Args) {
+            super(args);
             this.get((state) => mock(state.value2));
           }
         }

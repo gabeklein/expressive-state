@@ -69,9 +69,8 @@ describe('State.use', () => {
       const didDestroy = vi.fn();
 
       class Test extends State {
-        constructor() {
-          super();
-          this.get(null, didDestroy);
+        protected new() {
+          return didDestroy;
         }
       }
 
@@ -390,10 +389,8 @@ describe('State.use', () => {
       class Test extends State {
         ambient = get(Ambient);
 
-        constructor() {
-          super(() => {
-            expect(this.ambient).toBeInstanceOf(Ambient);
-          });
+        protected new() {
+          expect(this.ambient).toBeInstanceOf(Ambient);
         }
       }
 
@@ -524,10 +521,11 @@ describe('State.get', () => {
 
   it('will throw if expected value undefined', () => {
     class Test extends State {
-      constructor() {
-        super('ID');
-      }
       value?: number = undefined;
+
+      constructor(...args: State.Args) {
+        super(args, 'ID');
+      }
     }
 
     renderWith(Test, () => {
@@ -930,8 +928,8 @@ describe('State.get', () => {
       class Foo extends State {
         bar = get(Bar);
 
-        constructor() {
-          super('ID');
+        constructor(...args: State.Args) {
+          super(args, 'ID');
         }
       }
 
@@ -1150,8 +1148,7 @@ describe('State.as', () => {
   it('will update component as values change', async () => {
     class Test extends State {
       foo = 'bar';
-      constructor() {
-        super();
+      protected new() {
         test = this;
       }
     }

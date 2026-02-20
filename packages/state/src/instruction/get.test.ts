@@ -94,8 +94,8 @@ describe('fetch mode', () => {
     class Parent extends State {}
     class Child extends State {
       expects = get(Parent);
-      constructor() {
-        super('ID');
+      constructor(...args: State.Args) {
+        super(args, 'ID');
       }
     }
 

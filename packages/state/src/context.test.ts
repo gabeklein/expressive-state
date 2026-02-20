@@ -117,8 +117,8 @@ it('will destroy modules created by layer', () => {
   class Test extends State {
     destroyed = vi.fn();
 
-    constructor() {
-      super();
+    constructor(...args: State.Args) {
+      super(args);
       this.get(null, this.destroyed);
     }
   }
@@ -201,9 +201,8 @@ describe('include', () => {
     const bazDidDie = vi.fn();
 
     class Baz extends State {
-      constructor() {
-        super();
-        this.get(() => bazDidDie);
+      protected new() {
+        return bazDidDie;
       }
     }
 
