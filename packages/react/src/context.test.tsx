@@ -745,12 +745,19 @@ describe('suspense', () => {
 });
 
 describe('HMR', () => {
-  it('will replace model', () => {
-    let Control = class Control extends State {
+  it('will remount context if item removed or replaced', () => {
+    class Test extends State {
       value = 'foo';
+    }
+
+    let Control = class Control1 extends Test {
+      value = 'bar';
     };
 
-    const Child = () => <>{Control.get().value}</>;
+    const Child = () => {
+      const { value } = Test.get();
+      return <div>{value}</div>;
+    };
 
     const element = render(
       <Provider for={Control}>
@@ -758,12 +765,10 @@ describe('HMR', () => {
       </Provider>
     );
 
-    // expect(element.toJSON()).toBe("foo");
+    screen.getByText('bar');
 
-    screen.getByText('foo');
-
-    Control = class Control extends State {
-      value = 'bar';
+    Control = class Control2 extends Test {
+      value = 'baz';
     };
 
     element.rerender(
@@ -772,8 +777,10 @@ describe('HMR', () => {
       </Provider>
     );
 
-    screen.getByText('bar');
+    screen.getByText('baz');
 
     element.unmount();
   });
+
+  it.todo("will updated consumer if context's instance is replaced");
 });

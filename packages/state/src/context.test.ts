@@ -196,38 +196,71 @@ describe('include', () => {
     expect(cb).toBeCalledTimes(1);
   });
 
-  // This will be made more elegant later.
-  it('will hard-reset if inputs differ', () => {
-    const bazDidDie = vi.fn();
+  it('will remove and delete state of type absent', () => {
+    class Bar extends State {
+      didDie = vi.fn();
 
-    class Baz extends State {
       protected new() {
-        return bazDidDie;
+        return this.didDie;
       }
     }
 
-    const foo = Foo.new();
+    const context = new Context({ Bar });
+    const bar = context.get(Bar, true);
+
+    context.set({});
+
+    expect(bar.didDie).toBeCalled();
+    expect(context.get(Bar)).toBeUndefined();
+  });
+
+  it('will replace owned instance when key changes', () => {
+    class Baz extends State {
+      didDie = vi.fn();
+
+      protected new() {
+        return this.didDie;
+      }
+    }
+
+    class Baz2 extends State {}
+
+    const context = new Context({ Baz });
+    const baz = context.get(Baz, true);
+
+    context.set({ Baz: Baz2 });
+
+    expect(baz.didDie).toBeCalled();
+    expect(context.get(Baz)).toBeUndefined();
+    expect(context.get(Baz2)).toBeInstanceOf(Baz2);
+  });
+
+  it('will remove non-owned instance without destroying it', () => {
     const bar = Bar.new();
-    const context = new Context({ foo, bar, Baz });
+    const context = new Context({ bar });
 
-    const idPriorToUpdate = context.id;
-    const baz = context.get(Baz);
+    expect(context.get(Bar)).toBe(bar);
 
-    context.set({ foo, bar: Bar.new(), Baz });
+    context.set({});
 
-    // key should change despite technically same layer.
-    expect(context.id).not.toBe(idPriorToUpdate);
+    expect(context.get(Bar)).toBeUndefined();
+    // bar should still be alive (not owned by context)
+    expect(bar.is).not.toBeNull();
+  });
 
-    // expect all instances did get replaced.
-    expect(context.get(Bar)).not.toBe(bar);
+  it('will clean up subtype keys on delete', () => {
+    class Base extends State {}
+    class Child extends Base {}
 
-    // expect Baz will have been force-replaced.
-    expect(bazDidDie).toBeCalled();
+    const context = new Context({ Child });
 
-    const newBaz = context.get(Baz);
+    expect(context.get(Child)).toBeInstanceOf(Child);
+    expect(context.get(Base)).toBeInstanceOf(Child);
 
-    expect(newBaz).toBeInstanceOf(Baz);
-    expect(newBaz).not.toBe(baz);
+    context.set({});
+
+    expect(context.get(Child)).toBeUndefined();
+    expect(context.get(Base)).toBeUndefined();
   });
 
   it('will register children implicitly', () => {
@@ -276,9 +309,12 @@ it('will pop child context', () => {
 });
 
 it('will throw on bad include', () => {
+  const Thing = { toString: () => 'Foobar' };
   const context = new Context();
 
-  expect(() => context.set(undefined as any)).toThrow();
+  // TODO: check for specific error
+  // @ts-ignore
+  expect(() => context.set(Thing)).toThrow();
 });
 
 it('will throw on base State include', () => {
@@ -289,20 +325,22 @@ it('will throw on base State include', () => {
 });
 
 it('will throw on bad include property', () => {
+  const Thing = { toString: () => 'Foobar' };
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.set({ Thing: undefined })).toThrow(
-    "Context can only include an instance or class of State but got undefined (as 'Thing')."
+  expect(() => context.set({ Thing })).toThrow(
+    "Context can only include an instance or class of State but got Foobar (as 'Thing')."
   );
 });
 
 it('will throw on bad include property (no alias)', () => {
+  const Thing = { toString: () => 'Thing' };
   const context = new Context();
 
   // @ts-ignore
-  expect(() => context.set({ [0]: undefined })).toThrow(
-    'Context can only include an instance or class of State but got undefined.'
+  expect(() => context.set({ [0]: Thing })).toThrow(
+    'Context can only include an instance or class of State but got Thing.'
   );
 });
 

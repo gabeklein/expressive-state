@@ -2,6 +2,7 @@ import { listener } from './observable';
 import { event, State, PARENT, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
+const OWNED = new WeakSet<State>();
 const KEYS = new Map<symbol | State.Extends, symbol>();
 
 function key(T: State.Extends | symbol, upstream?: boolean): symbol {
@@ -135,27 +136,26 @@ class Context {
     if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
 
-    for (const [K, V] of Object.entries(inputs)) {
-      if (!(State.is(V) || V instanceof State))
+    const keys = Object.keys({ ...this.inputs, ...inputs });
+
+    for (const K of keys) {
+      const I = inputs[K];
+      const E = this.inputs[K];
+
+      if (E === I) continue;
+      else if (E) {
+        this.id = uid(); //TODO: remove this when able to remount context state independent of React tree.
+        this.delete(E, true);
+      }
+
+      if (I instanceof State || State.is(I)) {
+        init.set(this.add(I), true);
+      } else if (I)
         throw new Error(
           `Context can only include an instance or class of State but got ${
-            K == '0' || K == String(V) ? V : `${V} (as '${K}')`
+            K == '0' || K == String(I) ? I : `${I} (as '${K}')`
           }.`
         );
-
-      const exists = this.inputs[K];
-
-      if (!exists) {
-        init.set(this.add(V), true);
-      }
-      // Context must force-reset because inputs are no longer safe,
-      // however probably should do that on a per-state basis.
-      else if (exists !== V) {
-        this.pop();
-        this.set(inputs);
-        this.id = uid();
-        return;
-      }
     }
 
     for (const [state, explicit] of init) {
@@ -184,6 +184,7 @@ class Context {
     if (typeof input == 'function') {
       T = input;
       I = new input() as T;
+      OWNED.add(I);
     } else {
       T = input.constructor as State.Extends<T>;
       I = input;
@@ -227,6 +228,24 @@ class Context {
     LOOKUP.set(I, this);
 
     return I;
+  }
+
+  public delete(state: State | State.Extends, keep?: boolean) {
+    let K = new Set<symbol>();
+
+    if (state instanceof State) {
+      K = keys(state.constructor as State.Extends);
+    } else {
+      const [k] = (K = keys(state));
+      state = this[k] as State;
+      if (OWNED.has(state)) state.set(null);
+    }
+
+    LOOKUP.delete(state);
+
+    for (const k of K) if (this[k] === state) delete this[k];
+
+    if (!keep && Object.keys(this).length <= 2) this.pop();
   }
 
   /**
