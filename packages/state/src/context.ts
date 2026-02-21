@@ -5,28 +5,6 @@ const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
 const OWNED = new WeakSet<State>();
 const KEYS = new Map<symbol | State.Extends, symbol>();
 
-function key(T: State.Extends | symbol, upstream?: boolean): symbol {
-  let K = KEYS.get(T);
-
-  if (!K) {
-    K = Symbol(typeof T == 'symbol' ? 'get ' + T.description : String(T));
-    KEYS.set(T, K);
-  }
-
-  return upstream ? key(K) : K;
-}
-
-function keys(from: State.Extends, upstream?: boolean) {
-  const keys = new Set<symbol>();
-
-  do {
-    keys.add(key(from, upstream));
-    from = Object.getPrototypeOf(from);
-  } while (from !== State);
-
-  return keys;
-}
-
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
@@ -293,5 +271,27 @@ Object.defineProperty(Context.prototype, 'toString', {
     return `Context-${this.id}`;
   }
 });
+
+function key(T: State.Extends | symbol, upstream?: boolean): symbol {
+  let K = KEYS.get(T);
+
+  if (!K) {
+    K = Symbol(typeof T == 'symbol' ? 'get ' + T.description : String(T));
+    KEYS.set(T, K);
+  }
+
+  return upstream ? key(K) : K;
+}
+
+function keys(from: State.Extends, upstream?: boolean) {
+  const keys = new Set<symbol>();
+
+  do {
+    keys.add(key(from, upstream));
+    from = Object.getPrototypeOf(from);
+  } while (from !== State);
+
+  return keys;
+}
 
 export { Context };
