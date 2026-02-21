@@ -71,7 +71,7 @@ class Context {
   public id = uid();
 
   protected inputs = {} as Record<string | number, State | State.Extends>;
-  protected cleanup = [] as (() => void)[];
+  protected cleanup = new Map<State | Context, (() => void)[]>();
 
   constructor(inputs?: Context.Accept) {
     if (inputs) this.set(inputs);
@@ -177,14 +177,14 @@ class Context {
    * Adds a State to this context.
    */
   protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
-    const cleanup = new Set<() => void>();
+    const cleanup = [] as (() => void)[];
     let T: State.Extends<T>;
     let I: T;
 
     if (typeof input == 'function') {
       T = input;
       I = new input() as T;
-      OWNED.add(I);
+      cleanup.push(() => event(I, null));
     } else {
       T = input.constructor as State.Extends<T>;
       I = input;
@@ -197,7 +197,7 @@ class Context {
         listener(I, (event) => {
           if (event === true) {
             const cb = expects(I);
-            if (cb) cleanup.add(cb);
+            if (cb) cleanup.unshift(cb);
           }
 
           return null;
@@ -214,10 +214,7 @@ class Context {
         });
     });
 
-    this.cleanup.push(() => {
-      cleanup.forEach((cb) => cb());
-      if (I !== input) event(I, null);
-    });
+    this.cleanup.set(I, cleanup);
 
     const waiting = LOOKUP.get(I);
 
@@ -241,6 +238,13 @@ class Context {
       if (OWNED.has(state)) state.set(null);
     }
 
+    const callbacks = this.cleanup.get(state);
+
+    if (callbacks) {
+      new Set(callbacks).forEach((cb) => cb());
+      this.cleanup.delete(state);
+    }
+
     LOOKUP.delete(state);
 
     for (const k of K) if (this[k] === state) delete this[k];
@@ -256,10 +260,10 @@ class Context {
   public push(inputs?: Context.Accept) {
     const next = Object.create(this) as this;
 
-    this.cleanup = [() => next.pop(), ...this.cleanup];
+    this.cleanup.set(next, []);
 
     next.inputs = {};
-    next.cleanup = [];
+    next.cleanup = new Map();
 
     if (inputs) next.set(inputs);
 
@@ -274,9 +278,15 @@ class Context {
   public pop() {
     for (const key of Object.getOwnPropertySymbols(this)) delete this[key];
 
-    this.cleanup.forEach((cb) => cb());
+    Array.from(this.cleanup)
+      .reverse()
+      .forEach(([entry, callbacks]) => {
+        if (entry instanceof Context) entry.pop();
+        else callbacks?.forEach((cb) => cb());
+      });
+
     this.inputs = {};
-    this.cleanup = [];
+    this.cleanup = new Map();
   }
 }
 
