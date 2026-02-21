@@ -136,13 +136,11 @@ class Context {
     if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
 
-    const keys = Object.keys({ ...this.inputs, ...inputs });
-
-    for (const K of keys) {
+    Object.keys({ ...this.inputs, ...inputs }).forEach((K) => {
       const I = inputs[K];
       const E = this.inputs[K];
 
-      if (E === I) continue;
+      if (E === I) return;
       else if (E) {
         this.id = uid(); //TODO: remove this when able to remount context state independent of React tree.
         this.delete(E, true);
@@ -156,9 +154,9 @@ class Context {
             K == '0' || K == String(I) ? I : `${I} (as '${K}')`
           }.`
         );
-    }
+    });
 
-    for (const [state, explicit] of init) {
+    init.forEach((explicit, state) => {
       state.set();
 
       if (explicit && forEach) forEach(state as T);
@@ -168,7 +166,7 @@ class Context {
           this.add(value as State, true);
           init.set(value as State, false);
         }
-    }
+    });
 
     this.inputs = inputs;
   }
@@ -249,7 +247,7 @@ class Context {
 
     for (const k of K) if (this[k] === state) delete this[k];
 
-    if (!keep && Object.keys(this).length <= 2) this.pop();
+    if (!keep && !Object.getOwnPropertySymbols(this).length) this.pop();
   }
 
   /**
