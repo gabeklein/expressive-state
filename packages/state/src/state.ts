@@ -225,13 +225,13 @@ abstract class State implements Observable {
     arg1?: State.Effect<this> | string | null,
     arg2?: boolean | State.OnUpdate<this, any>
   ) {
-    const self = this.is;
+    const { is } = this;
 
-    if (arg1 === undefined) return values(self);
-    if (typeof arg1 == 'function') return effect(self, arg1);
-    if (typeof arg2 == 'function') return listener(self, arg2, arg1);
-    if (arg1 === null) return Object.isFrozen(STATE.get(self));
-    return access(self, arg1, arg2);
+    if (arg1 === undefined) return values(is);
+    if (typeof arg1 == 'function') return effect(is, arg1);
+    if (typeof arg2 == 'function') return listener(is, arg2, arg1);
+    if (arg1 === null) return Object.isFrozen(STATE.get(is));
+    return access(is, arg1, arg2);
   }
 
   /**
@@ -327,26 +327,26 @@ abstract class State implements Observable {
     arg2?: unknown,
     arg3?: boolean
   ) {
-    const self = this.is;
+    const { is } = this;
 
     if (typeof arg1 == 'function')
-      return listener(self, (key) => {
+      return listener(is, (key) => {
         if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
-          return arg1.call(self, key, self);
+          return arg1.call(is, key, is);
       });
 
     if (arg1 && typeof arg1 == 'object') {
-      event(self);
-      assign(self, arg1, arg2 === true);
+      event(is);
+      assign(is, arg1, arg2 === true);
     } else if (!arg2) {
-      event(self, arg1);
+      event(is, arg1);
     } else if (arg3) {
-      manage(self, arg1 as string | number, arg2);
+      manage(is, arg1 as string | number, arg2);
     } else {
-      update(self, arg1 as string | number, arg2);
+      update(is, arg1 as string | number, arg2);
     }
 
-    return pending(self) as State.Pending<this>;
+    return pending(is) as State.Pending<this>;
   }
 
   /**
