@@ -228,7 +228,7 @@ abstract class State implements Observable {
     const { is } = this;
 
     if (arg1 === undefined) return values(is);
-    if (typeof arg1 == 'function') return effect(is, arg1);
+    if (typeof arg1 == 'function') return watch(is, METHOD.get(arg1) || arg1);
     if (typeof arg2 == 'function') return listener(is, arg2, arg1);
     if (arg1 === null) return Object.isFrozen(STATE.get(is));
     return access(is, arg1, arg2);
@@ -564,16 +564,6 @@ function manage(
 
   define(state, key, { set, get });
   set(value, silent);
-}
-
-function effect<T extends State>(state: T, fn: State.Effect<T>) {
-  const effect: State.Effect<T> = METHOD.get(fn) || fn;
-
-  return watch(state, (proxy, changed) => {
-    const cb = effect.call(proxy, proxy, changed || []);
-
-    if (typeof cb == 'function' || cb === null) return cb;
-  });
 }
 
 function values<T extends State>(state: T): State.Values<T> {

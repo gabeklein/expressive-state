@@ -104,7 +104,7 @@ describe('effect', () => {
       void $.bar;
     });
 
-    expect(calls[0]).toBeUndefined();
+    expect(calls[0]).toEqual([]);
 
     test.foo = 3;
     await expect(test).toHaveUpdated('foo');
