@@ -1,4 +1,4 @@
-import { addListener, scope } from '../observable';
+import { listener, scope } from '../observable';
 import { State, update } from '../state';
 import { use } from './use';
 
@@ -49,22 +49,22 @@ declare namespace ref {
  *
  * *Properties are simultaneously a ref-function and ref-object, use as needed.*
  *
- * @param target - Source state from which to reference values.
+ * @param state - Source state from which to reference values.
  */
-function ref<T extends State>(target: T): ref.Proxy<T>;
+function ref<T extends State>(state: T): ref.Proxy<T>;
 
 /**
  * Creates an object with values based on managed values.
  * Each property will invoke mapper function on first access supply
  * the its return value going forward.
  *
- * @param target - Source state from which to reference values.
+ * @param state - Source state from which to reference values.
  * @param mapper - Function producing the placeholder value for any given property.
  */
-function ref<O extends State, R>(
-  target: O,
-  mapper: (key: State.Field<O>) => R
-): ref.CustomProxy<O, R>;
+function ref<T extends State, R>(
+  state: T,
+  mapper: (key: State.Field<T>) => R
+): ref.CustomProxy<T, R>;
 
 /**
  * Creates a ref-compatible property.
@@ -100,11 +100,11 @@ function ref<T>(
       (key: string, from: Record<string, T>) =>
       (callback?: (value: T) => void) =>
         callback
-          ? addListener(subject, () => callback(from[key]), key)
+          ? listener(subject, () => callback(from[key]), key)
           : from[key];
 
     if (arg === subject)
-      addListener(
+      listener(
         subject,
         () => {
           for (const key in subject)

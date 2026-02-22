@@ -1,4 +1,4 @@
-import { addListener } from './observable';
+import { listener } from './observable';
 import { event, State, PARENT, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
@@ -27,11 +27,10 @@ function keys(from: State.Extends, upstream?: boolean) {
 }
 
 declare namespace Context {
-  type Multiple<T extends State> = {
-    [key: string | number]: State.Type<T> | T;
-  };
-
-  type Accept<T extends State = State> = T | State.Type<T> | Multiple<T>;
+  type Accept<T extends State = State> =
+    | T
+    | State.Type<T>
+    | Record<string | number, T | State.Type<T>>;
 
   type Expect<T extends State = State> = (state: T) => (() => void) | void;
 }
@@ -71,10 +70,10 @@ class Context {
   public id = uid();
 
   protected inputs = {} as Record<string | number, State | State.Extends>;
-  protected cleanup = new Set<() => void>();
+  protected cleanup = [] as (() => void)[];
 
   constructor(inputs?: Context.Accept) {
-    if (inputs) this.use(inputs);
+    if (inputs) this.set(inputs);
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
@@ -120,60 +119,6 @@ class Context {
   }
 
   /**
-   * Adds a State to this context.
-   */
-  protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
-    const cleanup = new Set<() => void>();
-    let T: State.Extends<T>;
-    let I: T;
-
-    if (typeof input == 'function') {
-      T = input;
-      I = new input() as T;
-    } else {
-      T = input.constructor as State.Extends<T>;
-      I = input;
-    }
-
-    keys(T, true).forEach((K) => {
-      const expects = this[K] as Context.Expect | undefined;
-
-      if (expects)
-        addListener(I, (event) => {
-          if (event === true) {
-            const cb = expects(I);
-            if (cb) cleanup.add(cb);
-          }
-
-          return null;
-        });
-    });
-
-    keys(T).forEach((K) => {
-      const value = this.hasOwnProperty(K) ? null : I;
-
-      if (value || (this[K] !== I && !implicit))
-        Object.defineProperty(this, K, {
-          configurable: true,
-          value
-        });
-    });
-
-    this.cleanup.add(() => {
-      cleanup.forEach((cb) => cb());
-      if (I !== input) event(I, null);
-    });
-
-    const waiting = LOOKUP.get(I);
-
-    if (waiting instanceof Array) waiting.forEach((cb) => cb(this));
-
-    LOOKUP.set(I, this);
-
-    return I;
-  }
-
-  /**
    * Register one or more States to this context.
    *
    * Context will add or remove States as needed to keep with provided input.
@@ -181,7 +126,7 @@ class Context {
    * @param inputs State, State class, or map of States / State classes to register.
    * @param forEach Optional callback to run for each State registered.
    */
-  public use<T extends State>(
+  public set<T extends State>(
     inputs: Context.Accept<T>,
     forEach?: Context.Expect<T>
   ) {
@@ -193,7 +138,7 @@ class Context {
     for (const [K, V] of Object.entries(inputs)) {
       if (!(State.is(V) || V instanceof State))
         throw new Error(
-          `Context may only include instance or class \`extends State\` but got ${
+          `Context can only include an instance or class of State but got ${
             K == '0' || K == String(V) ? V : `${V} (as '${K}')`
           }.`
         );
@@ -207,7 +152,7 @@ class Context {
       // however probably should do that on a per-state basis.
       else if (exists !== V) {
         this.pop();
-        this.use(inputs);
+        this.set(inputs);
         this.id = uid();
         return;
       }
@@ -229,6 +174,62 @@ class Context {
   }
 
   /**
+   * Adds a State to this context.
+   */
+  protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
+    const cleanup = new Set<() => void>();
+    let T: State.Extends<T>;
+    let I: T;
+
+    if (typeof input == 'function') {
+      T = input;
+      I = new input() as T;
+    } else {
+      T = input.constructor as State.Extends<T>;
+      I = input;
+    }
+
+    keys(T, true).forEach((K) => {
+      const expects = this[K] as Context.Expect | undefined;
+
+      if (expects)
+        listener(I, (event) => {
+          if (event === true) {
+            const cb = expects(I);
+            if (cb) cleanup.add(cb);
+          }
+
+          return null;
+        });
+    });
+
+    keys(T).forEach((K) => {
+      const value = this.hasOwnProperty(K) ? null : I;
+
+      if (value || (this[K] !== I && !implicit))
+        Object.defineProperty(this, K, {
+          configurable: true,
+          value
+        });
+    });
+
+    this.cleanup.push(() => {
+      cleanup.forEach((cb) => cb());
+      if (I !== input) event(I, null);
+    });
+
+    const waiting = LOOKUP.get(I);
+
+    if (waiting instanceof Array) {
+      waiting.forEach((cb) => cb(this));
+    }
+
+    LOOKUP.set(I, this);
+
+    return I;
+  }
+
+  /**
    * Create a child context, optionally registering one or more States to it.
    *
    * @param inputs State, State class, or map of States / State classes to register.
@@ -236,12 +237,12 @@ class Context {
   public push(inputs?: Context.Accept) {
     const next = Object.create(this) as this;
 
-    this.cleanup = new Set([() => next.pop(), ...this.cleanup]);
+    this.cleanup = [() => next.pop(), ...this.cleanup];
 
     next.inputs = {};
-    next.cleanup = new Set();
+    next.cleanup = [];
 
-    if (inputs) next.use(inputs);
+    if (inputs) next.set(inputs);
 
     return next;
   }
@@ -255,8 +256,8 @@ class Context {
     for (const key of Object.getOwnPropertySymbols(this)) delete this[key];
 
     this.cleanup.forEach((cb) => cb());
-    this.cleanup.clear();
     this.inputs = {};
+    this.cleanup = [];
   }
 }
 

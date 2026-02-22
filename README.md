@@ -818,19 +818,14 @@ class ParentList extends State {
 
 <br/>
 
-### `use` - Child State Instances
+### Child State Instances
 
-Create child State instances:
+Nest states by direct assignment — no instruction needed. Children are auto-parented and destroyed with parent.
 
 ```ts
-import { use } from '@expressive/react';
-
 class App extends State {
-  theme = use(Theme);
-
-  auth = use(Auth, (auth) => {
-    auth.initialize();
-  });
+  theme = new Theme();
+  auth = new Auth();
 }
 ```
 

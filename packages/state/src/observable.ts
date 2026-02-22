@@ -10,38 +10,47 @@
  */
 type Notify<T extends Observable = any> = (
   this: T,
-  key: Event,
+  key: Signal,
   source: T
 ) => (() => void) | null | void;
 
-type Effect<T extends Observable> = (
-  proxy: T
-) => ((update: boolean | null) => void) | Promise<void> | null | void;
+type EffectCleanup = (update: boolean | null) => void;
 
-type Event = number | string | null | boolean | symbol;
+type Effect<T extends Observable> = (
+  proxy: T,
+  changed: readonly Event[]
+) => EffectCleanup | Promise<void> | null | void;
+
+type Event = number | string | symbol;
+
+type Signal = Event | true | false | null;
 
 type PromiseLite<T = void> = { then: (callback: () => T) => T };
 
+type Observer<T = any> = (key: string | number, value: T) => T;
+
+type Callback = () => void | PromiseLite;
+
 declare namespace Observable {
-  export type Callback = () => void | PromiseLite;
+  export { Callback, Effect, Event, Notify, Observer, Signal };
 }
 
 interface Observable {
   [Observable](callback: Observable.Callback, required?: boolean): this | void;
 }
 
-const Observable = Symbol('observe');
+const Observable = Symbol('Observable');
 
 /** Placeholder event determines if state is initialized or not. */
 const onReady = () => null;
 
 const LISTENERS = new WeakMap<
   Observable,
-  Map<Notify, Set<Event> | undefined>
+  Map<Notify, Set<Signal> | undefined>
 >();
 
 /** Events pending for a given object. */
-const PENDING = new WeakMap<Observable, Set<Event>>();
+const PENDING = new WeakMap<Observable, Set<Signal>>();
 
 /** Update register. */
 const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
@@ -49,10 +58,44 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 /** Central event dispatch. Bunches all updates to occur at same time. */
 const DISPATCH = new Set<() => void>();
 
-function addListener<T extends Observable>(
+const OBSERVER = new WeakMap<object, Observer>();
+
+function observe<T extends Observable>(
+  object: T,
+  callback: Observable.Callback,
+  required?: boolean
+): T {
+  const watching = new Set<unknown>();
+  const proxy = Object.create(object);
+
+  listener(object, (key) => {
+    if (watching.has(key)) callback();
+  });
+
+  OBSERVER.set(proxy, (key, value) => {
+    if (value === undefined && required)
+      throw new Error(`${object}.${key} is required in this context.`);
+
+    watching.add(key);
+
+    if (value instanceof Object && Observable in value)
+      return value[Observable](callback, required) || value;
+
+    return value;
+  });
+
+  return proxy as T;
+}
+
+function observing(from: Observable, key: string | number, value?: any) {
+  const observe = OBSERVER.get(from);
+  return observe ? observe(key, value) : value;
+}
+
+function listener<T extends Observable>(
   subject: T,
   callback: Notify<T>,
-  select?: Event | Set<Event>
+  select?: Signal | Set<Signal>
 ) {
   let listeners = LISTENERS.get(subject)!;
 
@@ -71,7 +114,29 @@ function addListener<T extends Observable>(
   return () => listeners.delete(callback);
 }
 
-function emit(state: Observable, key: Event): void {
+function pending<K extends Event>(state: Observable) {
+  const current = PENDING_KEYS.get(state) as Set<K> | undefined;
+  const resolver: PromiseLike<K[]> = {
+    then: (onFulfilled) =>
+      new Promise<K[]>((res) => {
+        if (current) {
+          const remove = listener(state, (key) => {
+            if (key !== true) {
+              remove();
+              return () => {
+                const result = [...current];
+                return res(result);
+              };
+            }
+          });
+        } else res([]);
+      }).then(onFulfilled)
+  };
+
+  return Object.assign(Array.from(current || []), resolver);
+}
+
+function emit(state: Observable, key: Signal): void {
   const listeners = LISTENERS.get(state)!;
   const notReady = listeners.has(onReady);
 
@@ -103,30 +168,26 @@ function emit(state: Observable, key: Event): void {
   PENDING.delete(state);
 }
 
-function event(
-  subject: Observable,
-  key?: string | number | symbol | null,
-  silent?: boolean
-) {
-  if (key === null) return emit(subject, key);
+function event(state: Observable, key?: Event | null, silent?: boolean) {
+  if (key === null) return emit(state, key);
 
-  if (!key) return emit(subject, true);
+  if (!key) return emit(state, true);
 
-  let pending = PENDING_KEYS.get(subject);
+  let pending = PENDING_KEYS.get(state);
 
   if (!pending) {
-    PENDING_KEYS.set(subject, (pending = new Set()));
+    PENDING_KEYS.set(state, (pending = new Set()));
 
     if (!silent)
       enqueue(() => {
-        emit(subject, false);
-        PENDING_KEYS.delete(subject);
+        emit(state, false);
+        PENDING_KEYS.delete(state);
       });
   }
 
   pending.add(key);
 
-  if (!silent) emit(subject, key);
+  if (!silent) emit(state, key);
 }
 
 function enqueue(eventHandler: () => void) {
@@ -170,6 +231,7 @@ function watch<T extends Observable>(
   callback: Effect<T>,
   argument?: boolean
 ) {
+  let cause: readonly Event[];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -177,7 +239,9 @@ function watch<T extends Observable>(
     let ignore: boolean = true;
 
     function onUpdate(): void | PromiseLite<void> {
-      if (ignore || reset === null) return;
+      cause = [...(PENDING_KEYS.get(target) || [])];
+
+      if (reset === null || ignore) return;
 
       ignore = true;
 
@@ -193,7 +257,8 @@ function watch<T extends Observable>(
     try {
       const exit = argument === false ? undefined : scope();
       const output = callback(
-        target[Observable](onUpdate, argument === true) as T
+        target[Observable](onUpdate, argument === true) as T,
+        cause
       );
       const flush = exit ? exit() : () => {};
 
@@ -204,6 +269,8 @@ function watch<T extends Observable>(
 
         flush();
       };
+
+      cause = [];
     } catch (err) {
       if (err instanceof Promise) {
         reset = undefined;
@@ -222,7 +289,7 @@ function watch<T extends Observable>(
 
   if (EffectContext && argument !== false) EffectContext.add(cleanup);
 
-  addListener(target, (key) => {
+  listener(target, (key) => {
     if (key === true) invoke();
     else if (!reset) return reset;
 
@@ -234,7 +301,7 @@ function watch<T extends Observable>(
 
 let EffectContext: Set<() => void> | undefined;
 
-export function scope() {
+function scope() {
   const last = EffectContext;
   const context = (EffectContext = new Set());
 
@@ -244,4 +311,13 @@ export function scope() {
   };
 }
 
-export { addListener, watch, event, Notify, PENDING_KEYS, Observable };
+export {
+  listener,
+  event,
+  Observable,
+  observe,
+  observing,
+  pending,
+  watch,
+  scope
+};

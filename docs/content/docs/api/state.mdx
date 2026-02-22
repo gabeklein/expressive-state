@@ -1,0 +1,188 @@
+---
+title: State
+description: The State base class — all methods and properties
+---
+
+`State` is the base class you extend to create reactive state.
+
+```ts
+import State from '@expressive/react';
+// or
+import { State } from '@expressive/state';
+```
+
+---
+
+## Static Methods
+
+### `State.new()`
+
+Create an instance outside of React:
+
+```ts
+const counter = Counter.new();
+```
+
+With initial values:
+
+```ts
+const counter = Counter.new({ count: 10 });
+```
+
+With callback:
+
+```ts
+const counter = Counter.new((c) => {
+  c.count = 10;
+});
+```
+
+### `State.use()` <small>(React only)</small>
+
+Create an instance scoped to a React component. See [React Hooks](/docs/react/hooks).
+
+```tsx
+const counter = Counter.use();
+```
+
+### `State.get()` <small>(React only)</small>
+
+Consume from React context. See [React Hooks](/docs/react/hooks).
+
+```tsx
+const counter = Counter.get();
+```
+
+### `State.as()` <small>(React only)</small>
+
+Create a React component. See [React Components](/docs/react/components).
+
+```tsx
+const View = Counter.as((props, state) => <div>{state.count}</div>);
+```
+
+---
+
+## Instance Methods
+
+### `.get()`
+
+Overloaded method for subscriptions, export, and property access.
+
+**Export all values:**
+
+```ts
+const values = state.get();
+// { count: 0, name: 'John', ... }
+```
+
+Returns a plain object snapshot of all enumerable properties. Refs extract `.current`, computed values provide their result.
+
+**Get a single property:**
+
+```ts
+const count = state.get('count');
+```
+
+**Subscribe to changes (effect):**
+
+```ts
+state.get((current) => {
+  console.log(current.foo, current.bar);
+  // Re-runs when foo or bar change
+});
+```
+
+Return a cleanup function:
+
+```ts
+state.get((current) => {
+  const id = setInterval(() => log(current.value), 1000);
+  return () => clearInterval(id);
+});
+```
+
+**Subscribe to a single property:**
+
+```ts
+state.get('count', (key, thisArg) => {
+  console.log('Count changed:', thisArg.count);
+});
+```
+
+**Subscribe to destruction:**
+
+```ts
+state.get(null, () => {
+  console.log('State destroyed');
+});
+```
+
+**Silent reads via `is`:**
+
+```ts
+state.get((proxy) => {
+  proxy.value;      // subscribes
+  proxy.is.value;   // does NOT subscribe
+});
+```
+
+### `.set()`
+
+Bulk update properties:
+
+```ts
+state.set({ count: 10, name: 'Jane' });
+```
+
+Useful for restoring saved state:
+
+```ts
+const saved = JSON.parse(localStorage.getItem('state')!);
+state.set(saved);
+```
+
+---
+
+## Instance Properties
+
+### `.is`
+
+Non-enumerable self-reference. Used for write access after destructuring and silent reads:
+
+```ts
+const { name, is } = state;
+is.name = 'Jane'; // write
+```
+
+---
+
+## Lifecycle Methods
+
+These are *not* on the `State` prototype. Define them on your class to opt in.
+
+### `new()`
+
+Runs once on creation. Return a cleanup function for teardown:
+
+```ts
+class Timer extends State {
+  new() {
+    const id = setInterval(() => this.elapsed++, 1000);
+    return () => clearInterval(id);
+  }
+}
+```
+
+### `use()` <small>(React only)</small>
+
+Runs every render. Use for interfacing with React hooks:
+
+```ts
+class Nav extends State {
+  use() {
+    const navigate = useNavigate();
+    if (this.shouldRedirect) navigate('/home');
+  }
+}
+```

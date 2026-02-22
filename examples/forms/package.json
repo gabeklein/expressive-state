@@ -4,7 +4,7 @@
   "main": "src/index.tsx",
   "module": "src/Demo.tsx",
   "dependencies": {
-    "@expressive/react": "^0.71.0",
+    "@expressive/react": "*",
     "react": "^19",
     "react-dom": "^19"
   },

@@ -7,7 +7,7 @@
       "ES2020",
       "DOM"
     ],
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "sourceMap": true,

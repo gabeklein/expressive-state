@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "noUnusedLocals": true,
+    "strict": true,
+    "lib": [
+      "dom"
+    ]
+  }
+}

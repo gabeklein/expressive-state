@@ -1,0 +1,241 @@
+---
+title: React
+description: Hooks, components, and JSX runtime for React integration
+---
+
+## State.use()
+
+Creates a new state instance scoped to the component lifecycle:
+
+```tsx
+const counter = Counter.use();
+```
+
+The instance is created on mount and destroyed on unmount. Accessing properties creates subscriptions — the component re-renders when those properties change.
+
+### With initial values
+
+```tsx
+const form = Form.use({
+  username: 'john',
+  email: 'john@example.com',
+});
+```
+
+### With callback
+
+```tsx
+const timer = Timer.use((t) => {
+  t.startAt(Date.now());
+});
+```
+
+### Destructuring as subscription
+
+```tsx
+const { count, increment } = Counter.use();
+// Only `count` triggers re-renders
+```
+
+<br/>
+
+---
+
+<br/>
+
+## State.get()
+
+Consumes a state from context (provided by `Provider` or `State.as()`):
+
+```tsx
+function Profile() {
+  const user = UserService.get();
+  return <p>{user.name}</p>;
+}
+```
+
+### Optional lookup
+
+```tsx
+const user = UserService.get(false); // User | undefined
+```
+
+### Computed values
+
+```tsx
+const name = AppState.get($ => $.user.name);
+// Only re-renders when user.name changes
+```
+
+### Computed object
+
+```tsx
+const summary = Cart.get($ => ({
+  total: $.total,
+  count: $.count,
+  empty: $.items.length === 0,
+}));
+```
+
+### Effect (no re-render)
+
+Return `null` from the factory to run a side effect without subscribing:
+
+```tsx
+AppState.get($ => {
+  console.log('User changed:', $.user);
+  return null;
+});
+```
+
+### Manual refresh
+
+```tsx
+const data = DataService.get(($, refresh) => {
+  const reload = () => refresh(fetch('/api/data'));
+  return { items: $.items, reload };
+});
+```
+
+<br/>
+
+---
+
+<br/>
+
+## State.as()
+
+Converts a State class into a React component.
+
+### With render function
+
+```tsx
+const CounterView = Counter.as((props, state) => (
+  <div>
+    <p>{state.count}</p>
+    <button onClick={state.increment}>+1</button>
+  </div>
+));
+
+<CounterView count={5} /> // state fields accepted as props
+```
+
+### With custom props
+
+```tsx
+interface LabelProps { label: string; }
+
+const LabeledCounter = Counter.as((props: LabelProps, state) => (
+  <div>
+    <label>{props.label}</label>
+    <span>{state.count}</span>
+  </div>
+));
+
+<LabeledCounter label="Score" count={0} />
+```
+
+### As provider (no render function)
+
+```tsx
+const CounterProvider = Counter.as({ count: 0 });
+
+<CounterProvider>
+  <ChildComponent /> {/* Counter available in context */}
+</CounterProvider>
+```
+
+### Special props
+
+All `.as()` components accept `is` (creation callback), `fallback` (Suspense), and `children`.
+
+```tsx
+<CounterView
+  is={(counter) => console.log('created', counter)}
+  fallback={<Loading />}
+/>
+```
+
+<br/>
+
+---
+
+<br/>
+
+## Provider & Consumer
+
+### Provider
+
+Makes state available to all descendants:
+
+```tsx
+import { Provider } from '@expressive/react';
+
+// Single class
+<Provider for={AppState}><App /></Provider>
+
+// Multiple classes
+<Provider for={{ AppState, Theme, Auth }}><App /></Provider>
+
+// Pre-configured instance
+<Provider for={Theme.new({ mode: 'dark' })}><App /></Provider>
+
+// With callback and Suspense
+<Provider
+  for={DataService}
+  forEach={(svc) => svc.init()}
+  fallback={<Loading />}>
+  <App />
+</Provider>
+```
+
+### Consumer
+
+Render-prop access to context state:
+
+```tsx
+import { Consumer } from '@expressive/react';
+
+<Consumer for={UserService}>
+  {(user) => <p>{user.name}</p>}
+</Consumer>
+```
+
+<br/>
+
+---
+
+<br/>
+
+## JSX Runtime
+
+Use State classes directly as JSX elements — no `.as()` needed.
+
+### Setup
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@expressive/react"
+  }
+}
+```
+
+### Usage
+
+```tsx
+class Card extends State {
+  title = '';
+  children?: ReactNode;
+}
+
+<Card title="Hello">
+  <p>This is the card content</p>
+</Card>
+```
+
+The JSX runtime creates an instance, provides it to context, and renders children. Any descendant can access the state via `State.get()`.
+
+The JSX runtime is optional. It's useful when your State classes naturally map to component boundaries. For state that doesn't render children, `State.use()` or `Provider` is more appropriate.

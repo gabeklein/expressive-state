@@ -1,0 +1,11 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "getting-started",
+    "features",
+    "comparisons",
+    "---API Reference---",
+    "api",
+    "advanced"
+  ]
+}

@@ -62,7 +62,7 @@ it('will ignore assignment with same value', async () => {
 
   const update = await state.set();
 
-  expect(update).toBeUndefined();
+  expect(update.length).toEqual(0);
 });
 
 it('will update from within a method', async () => {
@@ -609,7 +609,7 @@ describe('get method', () => {
     it('will watch values', async () => {
       const test = Test.new();
       const anyTest = expect.any(Test);
-      const effect = vi.fn((state: Test, set) => {
+      const effect = vi.fn((state: Test) => {
         void state.value1;
         void state.value2;
         void state.value3;
@@ -618,14 +618,14 @@ describe('get method', () => {
 
       test.get(effect);
 
-      expect(effect).toBeCalledWith(anyTest, new Set());
+      expect(effect).toBeCalledWith(anyTest, []);
 
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
       await expect(test).toHaveUpdated('value1');
 
-      expect(effect).toBeCalledWith(anyTest, new Set(['value1']));
+      expect(effect).toBeCalledWith(anyTest, ['value1']);
 
       test.value2 = 3;
       test.value3 = 4;
@@ -633,10 +633,7 @@ describe('get method', () => {
       // wait for update event to flush queue
       await expect(test).toHaveUpdated('value2', 'value3', 'value4');
 
-      expect(effect).toBeCalledWith(
-        anyTest,
-        new Set(['value2', 'value3', 'value4'])
-      );
+      expect(effect).toBeCalledWith(anyTest, ['value2', 'value3', 'value4']);
 
       // expect two syncronous groups of updates.
       expect(effect).toBeCalledTimes(3);
@@ -855,8 +852,8 @@ describe('get method', () => {
 
     it('will call only when ready', async () => {
       class Test2 extends Test {
-        constructor() {
-          super();
+        constructor(...args: State.Args) {
+          super(args);
           this.get((state) => {
             void state.value1;
             void state.value3;
@@ -1164,8 +1161,8 @@ describe('get method', () => {
         class Test extends State {
           value1 = 1;
 
-          constructor() {
-            super();
+          constructor(...args: State.Args) {
+            super(args);
             this.get((state) => mock(state.value1));
           }
         }
@@ -1187,8 +1184,8 @@ describe('get method', () => {
             return $.value1 + 1;
           });
 
-          constructor() {
-            super();
+          constructor(...args: State.Args) {
+            super(args);
             this.get((state) => mock(state.value2));
           }
         }
@@ -1385,7 +1382,7 @@ describe('set method', () => {
       expect(update).toEqual([event]);
     });
 
-    it('will be undefined if no update', async () => {
+    it('will resolve empty array if no update', async () => {
       class Test extends State {
         foo = 'foo';
       }
@@ -1393,7 +1390,7 @@ describe('set method', () => {
       const test = Test.new();
       const update = test.set();
 
-      expect(update).toBeUndefined();
+      await expect(update).resolves.toEqual([]);
     });
 
     it('will force initial update', async () => {

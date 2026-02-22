@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@expressive/state": "^0.73.1",
-    "@expressive/react": "^0.71.0"
+    "@expressive/react": "0.74.1"
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.3",
