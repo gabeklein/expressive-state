@@ -15,6 +15,12 @@ describe('State.use', () => {
       expect(hook.result.current).toBeInstanceOf(Test);
     });
 
+    it.todo('will pass instance name as argument', () => {
+      const hook = renderHook(() => Test.use('ID'));
+
+      expect(hook.result.current.toString()).toBe('ID');
+    });
+
     it('will subscribe to instance of controller', async () => {
       const willRender = vi.fn();
       const { result } = renderHook(() => {
@@ -58,8 +64,7 @@ describe('State.use', () => {
       const didDestroy = vi.fn();
 
       class Test extends State {
-        constructor() {
-          super();
+        protected new() {
           this.get(null, didDestroy);
         }
       }
@@ -182,10 +187,8 @@ describe('State.use', () => {
       class Test extends State {
         ambient = get(Ambient);
 
-        constructor() {
-          super(() => {
-            expect(this.ambient).toBeInstanceOf(Ambient);
-          });
+        protected new() {
+          expect(this.ambient).toBeInstanceOf(Ambient);
         }
       }
 
@@ -319,8 +322,8 @@ describe('State.get', () => {
       class Foo extends State {
         bar = get(Bar);
 
-        constructor() {
-          super('ID');
+        constructor(...args: State.Args) {
+          super(args, 'ID');
         }
       }
 

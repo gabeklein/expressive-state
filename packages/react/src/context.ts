@@ -1,4 +1,4 @@
-import State, { Context } from '@expressive/state';
+import { State, Context } from '@expressive/state';
 import {
   createContext,
   createElement,
@@ -75,7 +75,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 
   useEffect(() => () => context.pop(), [context]);
 
-  context.use(props.for, (state) => {
+  context.set(props.for, (state) => {
     if (props.forEach) {
       const cleanup = props.forEach(state);
 

@@ -1,10 +1,11 @@
 import {
-  addListener,
+  listener,
   watch,
   event,
   Observable,
-  Notify,
-  PENDING_KEYS
+  observing,
+  observe,
+  pending
 } from './observable';
 
 const define = Object.defineProperty;
@@ -16,16 +17,16 @@ const ID = new WeakMap<State, string>();
 const STATE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given State. */
-const NOTIFY = new WeakMap<State.Extends, Set<Notify>>();
+const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<State, State | null>();
 
-/** List of methods defined by a given type. */
-const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
-
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
+
+/** List of methods defined by a given type. */
+const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
@@ -68,7 +69,10 @@ declare namespace State {
   type Field<T> = Exclude<keyof T, keyof State>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
-  type Event<T> = Field<T> | number | symbol | (string & {});
+  type Event<T = State> = Field<T> | number | symbol | (string & {});
+
+  /** Any event signal dispatched to listeners, including lifecycle meta events. */
+  type Signal<T = State> = Event<T> | true | false | null;
 
   /** Export/Import compatible value for a given property in a State. */
   type Export<R> = R extends { get(): infer T } ? T : R;
@@ -92,7 +96,7 @@ declare namespace State {
 
   type OnEvent<T extends State> = (
     this: T,
-    key: unknown,
+    key: Signal<T>,
     source: T
   ) => void | (() => void) | null;
 
@@ -121,7 +125,7 @@ declare namespace State {
   type Effect<T> = (
     this: T,
     current: T,
-    update: Set<State.Event<T>>
+    update: readonly State.Event<T>[] | undefined
   ) => EffectCallback | Promise<void> | null | void;
 
   /**
@@ -130,6 +134,9 @@ declare namespace State {
    * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if state is destroyed.
    */
   type EffectCallback = (update: boolean | null) => void;
+
+  type Pending<T extends State> = readonly Event<T>[] &
+    PromiseLike<readonly Event<T>[]>;
 }
 
 interface State {
@@ -148,26 +155,7 @@ abstract class State implements Observable {
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {
-    const watch = new Set<unknown>();
-    const proxy = Object.create(this);
-
-    addListener(this, (key) => {
-      if (watch.has(key)) callback();
-    });
-
-    OBSERVER.set(proxy, (key, value) => {
-      if (value === undefined && required)
-        throw new Error(`${this}.${key} is required in this context.`);
-
-      watch.add(key);
-
-      if (value instanceof Object && Observable in value)
-        return value[Observable](callback, required) || value;
-
-      return value;
-    });
-
-    return proxy as this;
+    return observe(this, callback, required);
   }
 
   /**
@@ -241,7 +229,7 @@ abstract class State implements Observable {
 
     if (arg1 === undefined) return values(self);
     if (typeof arg1 == 'function') return effect(self, arg1);
-    if (typeof arg2 == 'function') return addListener(self, arg2, arg1);
+    if (typeof arg2 == 'function') return listener(self, arg2, arg1);
     if (arg1 === null) return Object.isFrozen(STATE.get(self));
     return access(self, arg1, arg2);
   }
@@ -251,7 +239,7 @@ abstract class State implements Observable {
    *
    * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
-  set(): PromiseLike<State.Event<this>[]> | undefined;
+  set(): State.Pending<this>;
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
@@ -261,10 +249,7 @@ abstract class State implements Observable {
    * @param silent - If an update does occur, listeners will not be refreshed automatically.
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
-  set(
-    assign?: State.Assign<this>,
-    silent?: boolean
-  ): PromiseLike<State.Event<this>[]> | undefined;
+  set(assign?: State.Assign<this>, silent?: boolean): State.Pending<this>;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -280,7 +265,7 @@ abstract class State implements Observable {
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: State.Event<this>): PromiseLike<State.Event<this>[]>;
+  set(key: State.Event<this>): State.Pending<this>;
 
   /**
    * Set a value for a property. This will update the value and notify listeners.
@@ -301,7 +286,7 @@ abstract class State implements Observable {
     key: State.Event<this>,
     value: unknown,
     init?: boolean
-  ): PromiseLike<State.Event<this>[]>;
+  ): State.Pending<this>;
 
   /**
    * Call a function when update occurs.
@@ -345,7 +330,7 @@ abstract class State implements Observable {
     const self = this.is;
 
     if (typeof arg1 == 'function')
-      return addListener(self, (key) => {
+      return listener(self, (key) => {
         if (arg2 === key || (arg2 === undefined && typeof key == 'string'))
           return arg1.call(self, key, self);
       });
@@ -361,20 +346,7 @@ abstract class State implements Observable {
       update(self, arg1 as string | number, arg2);
     }
 
-    const pending = PENDING_KEYS.get(this);
-
-    if (pending)
-      return <PromiseLike<State.Event<this>[]>>{
-        then: (resolve) =>
-          new Promise<any>((res) => {
-            const remove = addListener(this, (key) => {
-              if (key !== true) {
-                remove();
-                return () => res(Array.from(pending));
-              }
-            });
-          }).then(resolve)
-      };
+    return pending(self) as State.Pending<this>;
   }
 
   /**
@@ -440,21 +412,21 @@ define(State, 'toString', {
   }
 });
 
-function assign(subject: State, data: State.Assign<State>, silent?: boolean) {
-  const methods = METHODS.get(subject.constructor)!;
+function assign(state: State, data: State.Assign<State>, silent?: boolean) {
+  const methods = METHODS.get(state.constructor)!;
 
   for (const key in data) {
     const bind = methods.get(key);
 
-    if (bind) bind.call(subject, data[key]);
-    else if (key in subject && key !== 'is') {
-      const desc = Object.getOwnPropertyDescriptor(subject, key)!;
+    if (bind) bind.call(state, data[key]);
+    else if (key in state && key !== 'is') {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
       const set = desc && (desc.set as (value: any, silent?: boolean) => void);
 
       if (set) {
-        set.call(subject, data[key], silent);
+        set.call(state, data[key], silent);
       } else {
-        (subject as any)[key] = data[key];
+        (state as any)[key] = data[key];
       }
     }
   }
@@ -473,7 +445,7 @@ function prepare(state: State) {
 
   while (T.name) {
     for (const cb of NOTIFY.get(T) || []) {
-      addListener(state, cb);
+      listener(state, cb);
     }
 
     if (T === State) break;
@@ -519,49 +491,49 @@ function prepare(state: State) {
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(self: State, ...args: State.Args) {
-  const state = {} as Record<string | number | symbol, unknown>;
+function init(state: State, ...args: State.Args) {
+  const store = {} as Record<string | number | symbol, unknown>;
 
-  STATE.set(self, state);
+  STATE.set(state, store);
 
   args = args.flat().filter((arg) => {
-    if (typeof arg == 'string') ID.set(self, arg);
+    if (typeof arg == 'string') ID.set(state, arg);
     else return true;
   });
 
-  addListener(self, () => {
-    if (!PARENT.has(self)) PARENT.set(self, null);
+  listener(state, () => {
+    if (!PARENT.has(state)) PARENT.set(state, null);
 
-    for (const key in self) {
-      const desc = Object.getOwnPropertyDescriptor(self, key)!;
+    for (const key in state) {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
 
-      if ('value' in desc) manage(self, key, desc.value, true);
+      if ('value' in desc) manage(state, key, desc.value, true);
     }
 
     for (const arg of args) {
       const use =
         typeof arg == 'function'
-          ? arg.call(self, self)
+          ? arg.call(state, state)
           : (arg as State.Assign<State>);
 
       if (use instanceof Promise)
         use.catch((err) => {
-          console.error(`Async error in constructor for ${self}:`);
+          console.error(`Async error in constructor for ${state}:`);
           console.error(err);
         });
       else if (Array.isArray(use)) args.push(...use);
-      else if (typeof use == 'function') addListener(self, use, null);
-      else if (typeof use == 'object') assign(self, use, true);
+      else if (typeof use == 'function') listener(state, use, null);
+      else if (typeof use == 'object') assign(state, use, true);
     }
 
-    addListener(
-      self,
+    listener(
+      state,
       () => {
-        for (const [_, value] of self)
-          if (value instanceof State && PARENT.get(value) === self)
+        for (const [_, value] of state)
+          if (value instanceof State && PARENT.get(value) === state)
             value.set(null);
 
-        Object.freeze(state);
+        Object.freeze(store);
       },
       null
     );
@@ -571,55 +543,49 @@ function init(self: State, ...args: State.Args) {
 }
 
 function manage(
-  target: State,
+  state: State,
   key: string | number,
   value: any,
   silent?: boolean
 ) {
-  const state = STATE.get(target)!;
+  const store = STATE.get(state)!;
 
   function get(this: State) {
-    return follow(this, key, state[key]);
+    return observing(this, key, store[key]);
   }
 
   function set(value: unknown, silent?: boolean) {
-    update(target, key, value, silent);
+    update(state, key, value, silent);
     if (value instanceof State && !PARENT.has(value)) {
-      PARENT.set(value, target);
+      PARENT.set(value, state);
       event(value);
     }
   }
 
-  define(target, key, { set, get });
+  define(state, key, { set, get });
   set(value, silent);
 }
 
-function effect<T extends State>(target: T, fn: State.Effect<T>) {
-  const effect = METHOD.get(fn) || fn;
-  let pending = new Set<State.Event<T>>();
+function effect<T extends State>(state: T, fn: State.Effect<T>) {
+  const effect: State.Effect<T> = METHOD.get(fn) || fn;
 
-  return watch(target, (proxy) => {
-    const cb = effect.call(proxy, proxy, pending);
+  return watch(state, (proxy, changed) => {
+    const cb = effect.call(proxy, proxy, changed || []);
 
-    if (cb === null) return cb;
-
-    return (update) => {
-      pending = PENDING_KEYS.get(target)!;
-      if (typeof cb == 'function') cb(update);
-    };
+    if (typeof cb == 'function' || cb === null) return cb;
   });
 }
 
-function values<T extends State>(target: T): State.Values<T> {
+function values<T extends State>(state: T): State.Values<T> {
   const values = {} as any;
   let isNotRecursive;
 
   if (!EXPORT) {
     isNotRecursive = true;
-    EXPORT = new Map([[target, values]]);
+    EXPORT = new Map([[state, values]]);
   }
 
-  for (let [key, value] of target) {
+  for (let [key, value] of state) {
     if (EXPORT.has(value)) value = EXPORT.get(value);
     else if (
       value &&
@@ -637,37 +603,28 @@ function values<T extends State>(target: T): State.Values<T> {
   return Object.freeze(values);
 }
 
-type Proxy<T = any> = (key: string | number, value: T) => T;
+function access(state: State, property: string, required?: boolean) {
+  const store = STATE.get(state)!;
 
-const OBSERVER = new WeakMap<State, Proxy>();
-
-function follow(from: State, key: string | number, value?: any) {
-  const observe = OBSERVER.get(from);
-  return observe ? observe(key, value) : value;
-}
-
-function access(subject: State, property: string, required?: boolean) {
-  const state = STATE.get(subject)!;
-
-  if (property in state || required === false) {
-    const value = state[property];
+  if (property in store || required === false) {
+    const value = store[property];
 
     if (value !== undefined || !required) return value;
   }
 
-  if (METHODS.get(subject.constructor)!.has(property))
-    return METHOD.get((subject as any)[property]);
+  if (METHODS.get(state.constructor)!.has(property))
+    return METHOD.get((state as any)[property]);
 
-  const error = new Error(`${subject}.${property} is not yet available.`);
+  const error = new Error(`${state}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
-    addListener(subject, (key) => {
+    listener(state, (key) => {
       if (key === property) {
-        resolve(state[key]);
+        resolve(store[key]);
         return null;
       }
 
       if (key === null) {
-        reject(new Error(`${subject} is destroyed.`));
+        reject(new Error(`${state} is destroyed.`));
       }
     });
   });
@@ -681,33 +638,33 @@ function access(subject: State, property: string, required?: boolean) {
 }
 
 function update<T>(
-  subject: State,
+  state: State,
   key: string | number | symbol,
   value: T,
   arg?: boolean | State.Setter<T>
 ) {
-  const state = STATE.get(subject)!;
+  const store = STATE.get(state)!;
 
-  if (Object.isFrozen(state))
+  if (Object.isFrozen(store))
     throw new Error(
-      `Tried to update ${subject}.${String(key)} but state is destroyed.`
+      `Tried to update ${state}.${String(key)} but state is destroyed.`
     );
 
-  const previous = state[key] as T;
+  const previous = store[key] as T;
 
   if (typeof arg == 'function') {
-    const out = arg.call(subject, value, previous);
+    const out = arg.call(state, value, previous);
 
     if (out === false) return false;
 
     if (typeof out == 'function') value = out();
   }
 
-  if (value === previous && key in state) return;
+  if (value === previous && key in store) return;
 
-  state[key] = value;
+  store[key] = value;
 
-  if (arg !== true) event(subject, key);
+  if (arg !== true) event(state, key);
 
   return true;
 }
@@ -720,4 +677,4 @@ function uid() {
     .toUpperCase();
 }
 
-export { event, METHOD, State, PARENT, STATE, uid, access, update, follow };
+export { event, METHOD, State, PARENT, STATE, uid, access, update };

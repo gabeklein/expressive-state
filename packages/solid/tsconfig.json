@@ -1,11 +1,12 @@
-
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "es2020",
     "esModuleInterop": true,
-    "lib": ["ES2020", "DOM"],
-    "moduleResolution": "node",
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
+    "moduleResolution": "bundler",
     "noUnusedLocals": true,
     "sourceMap": true,
     "strict": true,

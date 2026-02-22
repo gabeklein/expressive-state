@@ -1,0 +1,584 @@
+---
+title: Features
+description: Everything Expressive State can do
+---
+
+## Updates & Methods
+
+State updates are direct assignments. No setter functions, no dispatch, no immutable update patterns.
+
+```tsx
+class Profile extends State {
+  name = 'John';
+  email = 'john@example.com';
+}
+
+function Editor() {
+  const { name, email, is } = Profile.use();
+
+  return (
+    <div>
+      <input value={name} onChange={e => is.name = e.target.value} />
+      <input value={email} onChange={e => is.email = e.target.value} />
+    </div>
+  );
+}
+```
+
+### The `is` property
+
+Every State instance has a non-enumerable `is` property that references itself. This gives write access after destructuring:
+
+```tsx
+const { name, is } = Profile.use();
+is.name = 'Jane'; // triggers re-render
+```
+
+> **Silent reads** — reading through `is` does *not* create a subscription. Useful when you need a value without re-rendering when it changes.
+
+### Auto-bound methods
+
+Methods are automatically bound. Destructure and pass them anywhere:
+
+```tsx
+class Counter extends State {
+  count = 0;
+  increment() { this.count++; }
+  reset() { this.count = 0; }
+}
+
+function Controls() {
+  const { count, increment, reset } = Counter.use();
+
+  return (
+    <div>
+      <span>{count}</span>
+      <button onClick={increment}>+</button>
+      <button onClick={reset}>Reset</button>
+    </div>
+  );
+}
+```
+
+No `useCallback`, no `.bind(this)`. Methods just work as event handlers.
+
+### Batch updates
+
+Multiple assignments in the same synchronous block are batched into a single re-render:
+
+```tsx
+submit() {
+  this.name = this.name.trim();
+  this.email = this.email.toLowerCase();
+  this.submitted = true;
+  // ONE re-render
+}
+```
+
+<br/>
+
+---
+
+<br/>
+
+## Computed Values
+
+Use the `set` instruction to create properties that compute from other state and update automatically.
+
+```tsx
+import State, { set } from '@expressive/react';
+
+class Cart extends State {
+  items = [
+    { name: 'Widget', price: 10, qty: 2 },
+    { name: 'Gadget', price: 15, qty: 1 },
+  ];
+
+  total = set(this, $ =>
+    $.items.reduce((sum, item) => sum + item.price * item.qty, 0)
+  );
+
+  count = set(this, $ =>
+    $.items.reduce((sum, item) => sum + item.qty, 0)
+  );
+}
+```
+
+`set(this, fn)` creates a reactive computed value. The `$` parameter is a tracking proxy — accessed properties become dependencies. When they change, the value recomputes.
+
+### Self-reactive computed
+
+Pass `true` as the first argument to react to properties on the same instance:
+
+```tsx
+class Converter extends State {
+  celsius = 0;
+  fahrenheit = set(true, self => self.celsius * 9 / 5 + 32);
+}
+```
+
+### Lazy factories
+
+`set` with a plain function creates a value computed once on first access:
+
+```tsx
+class Config extends State {
+  settings = set(() => loadSettingsFromDisk());
+
+  // Async factory — integrates with Suspense
+  profile = set(async () => {
+    const res = await fetch('/api/profile');
+    return res.json();
+  });
+}
+```
+
+<br/>
+
+---
+
+<br/>
+
+## Async & Suspense
+
+No react-query, no SWR, no middleware — just async methods and `set()`.
+
+### Async methods
+
+Regular async methods work as you'd expect:
+
+```tsx
+class UserProfile extends State {
+  user: User | null = null;
+  loading = false;
+
+  async load(id: string) {
+    this.loading = true;
+    try {
+      const res = await fetch(`/api/users/${id}`);
+      this.user = await res.json();
+    } finally {
+      this.loading = false;
+    }
+  }
+}
+```
+
+### Suspense integration
+
+For data that must be available before rendering, use an async `set()`:
+
+```tsx
+class UserProfile extends State {
+  data = set(async () => {
+    const res = await fetch('/api/user');
+    return res.json();
+  });
+}
+
+function ProfileView() {
+  const { data } = UserProfile.use();
+  return <h1>{data.name}</h1>; // guaranteed resolved
+}
+
+// Wrap with Suspense:
+<Suspense fallback={<Spinner />}>
+  <ProfileView />
+</Suspense>
+```
+
+### Required values
+
+`set<T>()` with no arguments creates a placeholder that suspends until assigned:
+
+```tsx
+class Session extends State {
+  userId = set<string>();  // suspends until set
+}
+```
+
+### Reusable async patterns
+
+```tsx
+abstract class Query<T> extends State {
+  abstract url: string;
+  data: T | null = null;
+  loading = false;
+  error: Error | null = null;
+
+  async fetch() {
+    this.loading = true;
+    try {
+      const res = await fetch(this.url);
+      this.data = await res.json();
+    } catch (e) {
+      this.error = e as Error;
+    } finally {
+      this.loading = false;
+    }
+  }
+}
+
+class UserQuery extends Query<User> {
+  url = '/api/user';
+}
+```
+
+This replaces react-query for many use cases — and it's just TypeScript classes.
+
+<br/>
+
+---
+
+<br/>
+
+## Context & Sharing
+
+When multiple components need the same state, use `Provider` to share it and `State.get()` to access it.
+
+```tsx
+import State, { Provider } from '@expressive/react';
+
+class Theme extends State {
+  color = 'blue';
+  toggle() { this.color = this.color === 'blue' ? 'red' : 'blue'; }
+}
+
+function App() {
+  return (
+    <Provider for={Theme}>
+      <Header />
+      <Content />
+    </Provider>
+  );
+}
+
+function Header() {
+  const { color, toggle } = Theme.get();
+
+  return (
+    <header style={{ color }}>
+      <button onClick={toggle}>Toggle theme</button>
+    </header>
+  );
+}
+```
+
+The class itself is the context key — no string identifiers, no separate context objects. Full type safety automatically.
+
+### Dependency injection
+
+Inside a State class, use the `get` instruction to declare dependencies:
+
+```tsx
+import State, { get } from '@expressive/react';
+
+class Dashboard extends State {
+  auth = get(AuthService);          // required
+  analytics = get(Analytics, false); // optional
+}
+```
+
+When `Dashboard` is created inside a `Provider` tree, it automatically finds and connects to the provided states.
+
+### Computed from context
+
+`State.get()` accepts a factory for derived values:
+
+```tsx
+function OrderSummary() {
+  const summary = Cart.get($ => ({
+    total: $.total,
+    count: $.count,
+    empty: $.items.length === 0,
+  }));
+
+  if (summary.empty) return <p>Cart is empty</p>;
+  return <p>{summary.count} items — ${summary.total}</p>;
+}
+```
+
+<br/>
+
+---
+
+<br/>
+
+## Composition
+
+States can own other states. This keeps concerns separated while allowing fine-grained reactivity across the tree.
+
+### Child state via assignment
+
+```tsx
+class App extends State {
+  auth = new AuthService();
+  theme = new ThemeService();
+  cart = new CartService();
+}
+```
+
+Child states are created with the parent and destroyed with the parent. They share the parent's context.
+
+### Nested state
+
+```tsx
+class Address extends State {
+  street = '';
+  city = '';
+  zip = '';
+}
+
+class UserProfile extends State {
+  name = 'John';
+  address = new Address();
+}
+
+function ProfileEditor() {
+  const { name, address, is } = UserProfile.use();
+
+  return (
+    <div>
+      <input value={name} onChange={e => is.name = e.target.value} />
+      <input
+        value={address.street}
+        onChange={e => address.is.street = e.target.value}
+      />
+    </div>
+  );
+}
+```
+
+> Child state changes automatically trigger updates in parent subscriptions.
+
+### Fine-grained subscriptions across nesting
+
+Components only re-render for the properties they actually access — even through nested states:
+
+```tsx
+function UserName() {
+  const { profile: { name } } = UserData.use();
+  // Only re-renders when name changes
+}
+
+function ThemeToggle() {
+  const { settings: { theme, is: settings } } = UserData.use();
+  // Only re-renders when theme changes
+}
+```
+
+### Downstream collection
+
+Collect all instances of a type from descendant context:
+
+```tsx
+class TabGroup extends State {
+  tabs = get(Tab, true); // readonly Tab[]
+  active = 0;
+}
+
+class Tab extends State {
+  label = '';
+  group = get(TabGroup);
+}
+```
+
+The `tabs` array updates automatically as `Tab` instances are created and destroyed.
+
+<br/>
+
+---
+
+<br/>
+
+## Lifecycle
+
+State classes have two lifecycle methods: `new()` for initialization and `use()` for render-time logic.
+
+> These methods are *not* on the `State` prototype. They're picked up automatically when present in your class.
+
+### `new()` — Initialization
+
+Runs once when the state is created. Return a cleanup function for teardown:
+
+```tsx
+class Timer extends State {
+  elapsed = 0;
+
+  new() {
+    const interval = setInterval(() => {
+      this.elapsed++;
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }
+}
+```
+
+### `use()` — Render-time hook (React only)
+
+Runs on **every render**. Use it to interface with external React hooks:
+
+```tsx
+import { useNavigate } from 'react-router-dom';
+
+class Navigation extends State {
+  shouldRedirect = false;
+
+  use() {
+    const navigate = useNavigate();
+    if (this.shouldRedirect) navigate('/dashboard');
+  }
+}
+```
+
+This is the bridge between Expressive and the React hook ecosystem.
+
+### Cleanup patterns
+
+```tsx
+class WebSocketState extends State {
+  messages: string[] = [];
+  connected = false;
+
+  new(url: string) {
+    const ws = new WebSocket(url);
+    ws.onopen = () => { this.connected = true; };
+    ws.onclose = () => { this.connected = false; };
+    ws.onmessage = (e) => {
+      this.messages = [...this.messages, e.data];
+    };
+    return () => ws.close();
+  }
+}
+```
+
+<br/>
+
+---
+
+<br/>
+
+## Refs
+
+The `ref` instruction creates mutable references — similar to React's `useRef` but declared on your class. Ref changes do **not** trigger re-renders.
+
+```tsx
+import State, { ref } from '@expressive/react';
+
+class VideoPlayer extends State {
+  videoElement = ref<HTMLVideoElement>();
+
+  play() { this.videoElement.current?.play(); }
+  pause() { this.videoElement.current?.pause(); }
+}
+
+function Player() {
+  const { videoElement, play, pause } = VideoPlayer.use();
+
+  return (
+    <div>
+      <video ref={videoElement}>
+        <source src="movie.mp4" />
+      </video>
+      <button onClick={play}>Play</button>
+      <button onClick={pause}>Pause</button>
+    </div>
+  );
+}
+```
+
+### Ref with callback
+
+```tsx
+class AutoFocus extends State {
+  input = ref<HTMLInputElement>((element) => {
+    element.focus();
+    return () => element.blur(); // cleanup
+  });
+}
+```
+
+### Ref proxy
+
+Create ref objects for all properties on a state:
+
+```tsx
+class Form extends State {
+  name = '';
+  email = '';
+  fields = ref(this);
+}
+
+form.fields.name.current = 'John';
+```
+
+<br/>
+
+---
+
+<br/>
+
+## Forms & Validation
+
+The `set` instruction doubles as a validator.
+
+```tsx
+import State, { set } from '@expressive/react';
+
+class SignupForm extends State {
+  email = set('', (value) => {
+    if (!value.includes('@')) return false; // reject update
+  });
+
+  password = set('', (value) => {
+    if (value.length < 8) return false;
+  });
+
+  get valid() {
+    return !!this.email && !!this.password;
+  }
+
+  submit() {
+    if (this.valid) createAccount(this.email, this.password);
+  }
+}
+
+const Signup = SignupForm.as((_, self) => (
+  <form onSubmit={e => { e.preventDefault(); self.submit(); }}>
+    <input value={self.email} onChange={e => self.email = e.target.value} />
+    <input type="password" value={self.password}
+           onChange={e => self.password = e.target.value} />
+    <button disabled={!self.valid}>Sign Up</button>
+  </form>
+));
+```
+
+### Debounced search
+
+The validation callback can return a cleanup function — useful for debouncing:
+
+```tsx
+class SearchForm extends State {
+  query = set('', (value) => {
+    const timer = setTimeout(() => this.performSearch(value), 300);
+    return () => clearTimeout(timer);
+  });
+
+  results: string[] = [];
+
+  async performSearch(q: string) {
+    const res = await fetch(`/api/search?q=${q}`);
+    this.results = await res.json();
+  }
+}
+```
+
+### Change tracking
+
+```tsx
+username = set('', (newValue, oldValue) => {
+  console.log(`Changed: "${oldValue}" → "${newValue}"`);
+  if (newValue === '' && oldValue !== '') return false; // prevent clearing
+});
+```

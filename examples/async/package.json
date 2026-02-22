@@ -4,7 +4,7 @@
   "main": "src/index.tsx",
   "module": "src/Situation.tsx",
   "dependencies": {
-    "@expressive/react": "latest",
+    "@expressive/react": "*",
     "react": "^19",
     "react-dom": "^19"
   },

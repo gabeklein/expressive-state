@@ -1,4 +1,5 @@
-import { access, follow, State, PARENT, STATE, uid, update } from '../state';
+import { observing } from '../observable';
+import { access, State, STATE, uid, update } from '../state';
 
 /**
  * Property initializer, will run upon instance creation.
@@ -28,52 +29,10 @@ const INSTRUCTION = new Map<symbol, Instruction>();
 
 function use<T>(instruction: Instruction<T>): T extends void ? unknown : T;
 
-function use<T extends State>(
-  Type: State.Type<T>,
-  required: false
-): T | undefined;
-
-function use<T extends State>(Type: State.Type<T>, ready?: (i: T) => void): T;
-
-function use(
-  arg1: State.Type | Instruction,
-  arg2?: ((i: State) => void) | boolean
-) {
-  if (State.is(arg1)) arg1 = childInstruction(arg1, arg2);
-
+function use(arg1: Instruction) {
   const token = Symbol('instruction-' + uid());
   INSTRUCTION.set(token, arg1);
   return token;
-}
-
-function childInstruction(
-  type: State.Type<State>,
-  arg2?: ((i: State) => void) | boolean
-): Instruction<any, any> {
-  return (key, subject) => {
-    function set(next: State | undefined) {
-      if (next ? !(next instanceof type) : arg2 !== false)
-        throw new Error(
-          `${subject}.${key} expected State of type ${type} but got ${
-            next && next.constructor
-          }.`
-        );
-
-      update(subject, key, next);
-
-      if (next && typeof arg2 == 'function') arg2(next);
-
-      return false;
-    }
-
-    const value = new type();
-
-    set(value);
-    PARENT.set(value, subject);
-    value.set();
-
-    return { set };
-  };
 }
 
 function init(this: State) {
@@ -101,7 +60,7 @@ function init(this: State) {
     Object.defineProperty(self, key, {
       enumerable: desc.enumerable !== false,
       get(this: State) {
-        return follow(
+        return observing(
           this,
           key,
           typeof desc.get == 'function'

@@ -1,0 +1,57 @@
+---
+title: Expressive State
+description: Class-based reactive state management for modern UI frameworks
+---
+
+Define classes to power your UI. Properties become reactive automatically — when they change, your components update too.
+
+```tsx
+import State from '@expressive/react';
+
+class Counter extends State {
+  count = 0;
+
+  increment() {
+    this.count++;
+  }
+
+  decrement() {
+    this.count--;
+  }
+}
+
+function CounterWidget() {
+  const { count, increment, decrement } = Counter.use();
+
+  return (
+    <div>
+      <button onClick={decrement}>-</button>
+      <span>{count}</span>
+      <button onClick={increment}>+</button>
+    </div>
+  );
+}
+```
+
+That's it. No reducers, no selectors, no boilerplate. Just a class and a hook.
+
+<br/>
+
+## What you get
+
+- **One import** — `State` is all you need. No extra packages for async, context, computed values, or validation.
+- **Type safety for free** — classes give you autocompletion, refactoring, and type inference out of the box.
+- **Fine-grained reactivity** — components only re-render when the properties they actually read change.
+- **Portable logic** — state lives in classes, not components. Easy to test, reuse, and reason about.
+- **AI-friendly** — explicit classes with clear properties and methods are easy for both humans and AI to navigate.
+
+<br/>
+
+## Quick links
+
+<Cards>
+  <Card title="Getting Started" href="/docs/getting-started" />
+  <Card title="Features" href="/docs/features/updates-and-methods" />
+  <Card title="React Integration" href="/docs/react/hooks" />
+  <Card title="API Reference" href="/docs/api/state" />
+</Cards>
