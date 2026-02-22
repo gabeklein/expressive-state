@@ -49,41 +49,16 @@ fields = ref(this);
 
 ## use()
 
-Create a child state owned by the parent.
-
-### `use(StateClass)`
-
-Eager creation, shares parent context:
-
-```ts
-child = use(ChildState);
-```
-
-### `use(StateClass, false)`
-
-Optional child (may be `undefined`):
-
-```ts
-maybe = use(ChildState, false);
-```
-
-### `use(StateClass, callback)`
-
-With ready callback:
-
-```ts
-auth = use(AuthService, (instance) => {
-  instance.initialize();
-});
-```
+Low-level primitive for defining custom property behavior during initialization.
 
 ### `use(factory)`
 
-Custom instruction — receives parent state and property key:
+Custom instruction — receives the property key, instance, and state store:
 
 ```ts
-custom = use((state, key) => {
-  return computedValue;
+custom = use((key, subject, state) => {
+  // key = property name, subject = instance, state = store
+  return { value: computedValue };
 });
 ```
 
@@ -176,6 +151,7 @@ email = set('', (newValue, oldValue) => {
 ```
 
 The callback can return:
+
 - `false` to reject the update
 - A cleanup function (called before next update)
 - `void` to accept

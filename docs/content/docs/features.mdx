@@ -308,15 +308,13 @@ function OrderSummary() {
 
 States can own other states. This keeps concerns separated while allowing fine-grained reactivity across the tree.
 
-### Child state with `use()`
+### Child state via assignment
 
 ```tsx
-import State, { use } from '@expressive/react';
-
 class App extends State {
-  auth = use(AuthService);
-  theme = use(ThemeService);
-  cart = use(CartService);
+  auth = new AuthService();
+  theme = new ThemeService();
+  cart = new CartService();
 }
 ```
 
