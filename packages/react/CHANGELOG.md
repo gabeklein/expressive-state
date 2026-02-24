@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.75.0](https://github.com/gabeklein/expressive-state/compare/react-v0.74.1...react-v0.75.0) (2026-02-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* `use(State)` no longer supported
+
+### Features
+
+* simplify use instruction by removing child state mode ([b201463](https://github.com/gabeklein/expressive-state/commit/b2014632c48d488f0f56dd0e6e7f2dee07efc1cf))
+
+
+### Bug Fixes
+
+* update moduleResolution to 'bundler' in tsconfig files ([b41c5c1](https://github.com/gabeklein/expressive-state/commit/b41c5c1ad01741c03e81f2a15dfd25b094fa42f3))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @expressive/state bumped to 0.75.0
+
 ## [0.74.1](https://github.com/gabeklein/expressive-state/compare/react-v0.74.0...react-v0.74.1) (2026-02-16)
 
 

@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.75.0](https://github.com/gabeklein/expressive-state/compare/state-v0.74.0...state-v0.75.0) (2026-02-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* `use(State)` no longer supported
+
+### Features
+
+* simplify use instruction by removing child state mode ([b201463](https://github.com/gabeklein/expressive-state/commit/b2014632c48d488f0f56dd0e6e7f2dee07efc1cf))
+
+
+### Bug Fixes
+
+* improve error message for context inclusion validation ([58b8978](https://github.com/gabeklein/expressive-state/commit/58b89784a2883904fff272ea9ccf25b2169edd79))
+* update moduleResolution to 'bundler' in tsconfig files ([b41c5c1](https://github.com/gabeklein/expressive-state/commit/b41c5c1ad01741c03e81f2a15dfd25b094fa42f3))
+
 ## [0.74.0](https://github.com/gabeklein/expressive-state/compare/state-v0.73.1...state-v0.74.0) (2026-02-16)
 
 
