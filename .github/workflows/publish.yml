@@ -1,11 +1,9 @@
 name: Publish Packages
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-    types:
-      - closed
   workflow_dispatch:
     inputs:
       ref:
@@ -31,14 +29,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    name: Check for changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    outputs:
+      has_changes: ${{ steps.changed.outputs.has_changes }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+
+      - name: Check for changed packages
+        id: changed
+        run: |
+          if pnpm lerna changed > /dev/null 2>&1; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
   publish-stable:
     name: Publish Stable
     runs-on: ubuntu-latest
+    needs: [check]
     if: >-
-      (github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' &&
-      startsWith(github.event.pull_request.head.ref, 'release-please--')) ||
+      (github.event_name == 'push' && needs.check.outputs.has_changes == 'true') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'stable')
     permissions:
       contents: write
@@ -48,9 +67,15 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || 'main' }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/setup
         with:
           registry-url: https://registry.npmjs.org
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Build packages
         run: pnpm build
@@ -58,8 +83,12 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Publish stable (from committed package versions)
-        run: pnpm lerna publish from-package --no-private --yes
+      - name: Version and publish
+        run: |
+          pnpm lerna version --conventional-commits --yes
+          pnpm lerna publish from-package --no-private --yes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-canary:
     name: Publish Canary

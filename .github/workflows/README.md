@@ -1,47 +1,39 @@
 # CI/CD Workflow Overview
 
-This directory contains release automation and CI/CD configuration.
+## Files
 
-## Source of truth
+- CI: [pr.yml](pr.yml) — runs on PRs to `main`
+- Publishing: [publish.yml](publish.yml) — runs on push to `main` and manual dispatch
+- PR helper: [.github/scripts/pr.sh](../scripts/pr.sh)
 
-- CI and release PR automation: [.github/workflows/ci.yml](workflows/ci.yml)
-- Stable/canary publishing: [.github/workflows/publish.yml](workflows/publish.yml)
-- Release-please config: [.github/release-please-config.json](release-please-config.json)
-- Release-please manifest: [.github/release-please-manifest.json](release-please-manifest.json)
-- PR helper script: [.github/scripts/pr.sh](scripts/pr.sh)
+## Flow
 
-## High-level flow
+1. Feature branch → `pnpm pr` → opens PR to `main` (opens in browser for review)
+2. CI runs build+test and posts a version preview comment on the PR
+3. Merge to `main` → publish checks for changed packages, versions, and publishes to npm
 
-1. Feature branches open PRs directly to `main`.
-2. CI runs build+test on all PRs to `main`.
-3. On push to `main`, `ci.yml` runs release-please to open/update a release PR.
-4. Release-please PRs get CI checks via workflow dispatch re-trigger.
-5. Merging the release PR triggers stable publish from `main` in `publish.yml`.
-6. Canary publish is manual via workflow dispatch in `publish.yml`.
+## Workflows
 
-## Workflow details
+### `pr.yml`
+Trigger: PRs to `main`.
 
-### `ci.yml`
-
-- Trigger: PRs to `main`, pushes to `main`, and workflow dispatch.
-- PR/dispatch jobs: test and build validation.
-- Push job: opens/updates the release PR with release-please, then dispatches CI on the release PR.
+- **Build** (`validate`): runs tests and build. Required check for branch protection.
+- **Version preview** (`version-preview`): computes the next version from conventional commits and posts/updates a PR comment. Shows "No package changes" if nothing releasable.
 
 ### `publish.yml`
+Trigger: push to `main`, or manual dispatch.
 
-- Trigger:
-  - merged PRs to `main` (`pull_request: closed`) for stable publish
-  - manual dispatch for stable/canary
-- Stable publish runs only for merged `release-please--*` PRs (or manual stable dispatch).
-- Canary publish runs only via manual dispatch.
+- **Check for changes** (`check`): runs `lerna changed` — if nothing changed, skips publish entirely.
+- **Publish Stable** (`publish-stable`): runs on push (when changes detected) or manual `stable` dispatch. Builds, tests, runs `lerna version --conventional-commits`, then `lerna publish from-package`.
+- **Publish Canary** (`publish-canary`): manual dispatch only (`channel: canary`). Publishes with `--canary` dist-tag.
 
-## Operational notes
+## Manual dispatch options
 
-- Source of truth is `main`.
-- Use conventional commits for reliable release-please versioning/changelog generation.
+`publish.yml` → Run workflow:
+- `channel`: `stable` or `canary`
+- `ref`: optional branch/SHA to publish from
+- `force_publish`: skip changed-package check for canary
 
-## Convenience command
+## Branch protection
 
-Create a PR from your current branch to `main`:
-
-- `pnpm pr`
+`main` requires the **Build** check to pass. `github-actions[bot]` is allowed to bypass for version bump commits from the publish bot.

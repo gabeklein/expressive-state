@@ -20,8 +20,4 @@ if [[ -n "$existing_pr" ]]; then
 fi
 
 echo "Creating PR: $branch -> main"
-env -u GITHUB_TOKEN gh pr create --base main --head "$branch" --fill
-
-pr_number="$(env -u GITHUB_TOKEN gh pr list --base main --head "$branch" --json number --jq '.[0].number')"
-echo "Enabling auto-merge for PR #$pr_number..."
-env -u GITHUB_TOKEN gh pr merge "$pr_number" --auto --squash
+env -u GITHUB_TOKEN gh pr create --base main --head "$branch" --fill --web
