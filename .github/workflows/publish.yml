@@ -58,17 +58,8 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Build packages
-        run: pnpm build
-
       - name: Publish stable (from committed package versions)
         run: pnpm lerna publish from-package --no-private --yes
-
-      - name: Sync staging with main
-        run: |
-          git checkout staging
-          git merge origin/main --no-edit
-          git push origin staging
 
   publish-canary:
     name: Publish Canary
@@ -84,9 +75,6 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           registry-url: https://registry.npmjs.org
-
-      - name: Build packages
-        run: pnpm build
 
       - name: Check for changed packages
         if: github.event.inputs.force_publish != 'true'
