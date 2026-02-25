@@ -1,6 +1,3 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { Suspense } from 'react';
-
 import { get, State, Provider, set } from '.';
 import {
   vi,
@@ -11,7 +8,11 @@ import {
   render,
   screen,
   afterEach,
-  afterAll
+  afterAll,
+  renderHook,
+  waitFor,
+  mockPromise,
+  renderWith
 } from '../vitest';
 
 describe('State.use', () => {
@@ -410,33 +411,6 @@ describe('State.use', () => {
 });
 
 describe('State.get', () => {
-  function renderWith<T>(Type: State.Type | State, hook: () => T) {
-    return renderHook(hook, {
-      wrapper(props) {
-        return (
-          <Provider for={Type}>
-            <Suspense fallback={null}>{props.children}</Suspense>
-          </Provider>
-        );
-      }
-    });
-  }
-
-  interface MockPromise<T> extends Promise<T> {
-    resolve: (value: T) => void;
-    reject: (reason?: any) => void;
-  }
-
-  function mockPromise<T = void>() {
-    const methods = {} as MockPromise<T>;
-    const promise = new Promise((res, rej) => {
-      methods.resolve = res;
-      methods.reject = rej;
-    }) as MockPromise<T>;
-
-    return Object.assign(promise, methods);
-  }
-
   const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   afterEach(() => {

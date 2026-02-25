@@ -1,6 +1,14 @@
-import { vi, afterAll, expect, it, describe } from '../vitest';
+import {
+  vi,
+  afterAll,
+  expect,
+  it,
+  describe,
+  act,
+  render,
+  screen
+} from '../vitest';
 
-import { act, render, screen } from '@testing-library/react';
 import { Suspense } from 'react';
 
 import { State, Consumer, get, Provider, set } from '.';
