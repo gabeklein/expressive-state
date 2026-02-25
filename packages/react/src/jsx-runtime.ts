@@ -6,33 +6,41 @@ import React from 'react';
 import { Pragma } from './state';
 import { provide } from './context';
 
-type Reserved = keyof State | 'render' | 'fallback';
+type Reserved = keyof State | 'props' | 'render' | 'fallback';
 
 type StateProps<T extends State> = {
   [K in Exclude<keyof T, Reserved>]?: T[K];
 };
 
-type ComponentProps<T extends State> = StateProps<T> & {
+interface AsComponent extends State {
+  props?: Record<string, any>;
+  render?(): React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+type BaseProps<T extends State> = {
   is?: (instance: T) => void;
   fallback?: React.ReactNode;
 };
 
-type ValidProps<T extends State> = StateProps<T> & {
-  is?: never;
-  get?: never;
-  set?: never;
-};
-
-interface AsComponent extends State {
-  render?(props: ValidProps<this>, self: this): React.ReactNode;
-  fallback?: React.ReactNode;
+type DefaultProps<T extends State> = T extends {
+  render: (...args: any[]) => any;
 }
+  ? {}
+  : { children?: React.ReactNode };
 
-type Props<T extends State> = T extends {
-  render(props: infer P, self: any): any;
+type ExplicitProps<T extends State> = T extends {
+  props?: infer P;
 }
-  ? ComponentProps<T> & Omit<P, keyof AsComponent>
-  : ComponentProps<T> & { children?: React.ReactNode };
+  ? NonNullable<P>
+  : {};
+
+type Props<T extends State> = StateProps<T> &
+  ExplicitProps<T> &
+  DefaultProps<T> &
+  BaseProps<T>;
+
+type NormalComponent<P> = new (...args: any[]) => { props: P };
 
 export declare namespace JSX {
   type ElementType =
@@ -41,11 +49,10 @@ export declare namespace JSX {
     | ((props: {}, ref?: any) => void);
 
   type LibraryManagedAttributes<C, P> =
-    // For normal class components, pull from props property explicitly because we dorked up ElementAttributesProperty.
-    C extends new (...args: any[]) => { props: infer U }
-      ? U
-      : C extends State.Extends<infer U>
-        ? Props<U>
+    C extends State.Extends<infer U>
+      ? Props<U>
+      : C extends NormalComponent<infer U>
+        ? U
         : React.JSX.LibraryManagedAttributes<C, P>;
 
   interface Element extends React.JSX.Element {}
@@ -109,25 +116,25 @@ function Render<T extends AsComponent>(
       };
     }
 
-    function Render(props: Props<T>) {
+    function Render(props: { children?: React.ReactNode }) {
       const render = METHOD.get(active.render) || active.render;
 
-      return render
-        ? render.call(active, props as StateProps<T>, active)
-        : props.children;
+      return render ? render.call(active) : props.children;
     }
 
     return (props: Props<T>) => {
       ready = false;
 
+      instance.props = props;
+
       Pragma.useEffect(didMount, []);
-      Promise.resolve(instance.set(props as {})).finally(() => {
+      Promise.resolve(instance.set(props)).finally(() => {
         ready = true;
       });
 
       return provide(
         context,
-        Pragma.createElement(Render, props as any),
+        Pragma.createElement(Render, props),
         props.fallback || active.fallback,
         String(instance)
       );

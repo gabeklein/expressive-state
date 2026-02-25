@@ -180,8 +180,10 @@ describe('element children', () => {
     const symbol = Symbol('foo');
 
     class Control extends State {
-      render(props: { children: symbol }) {
-        expect(props.children).toBe(symbol);
+      props!: { children: symbol };
+
+      render() {
+        expect(this.props.children).toBe(symbol);
         return 'Hello';
       }
     }
@@ -192,15 +194,45 @@ describe('element children', () => {
   });
 });
 
+describe('props property', () => {
+  it('will update on rerender', () => {
+    class Control extends State {
+      props!: { value: string };
+
+      render() {
+        return <>{this.props.value}</>;
+      }
+    }
+
+    const { rerender } = render(<Control value="foo" />);
+    screen.getByText('foo');
+
+    rerender(<Control value="bar" />);
+    screen.getByText('bar');
+  });
+
+  it('will be accessible on instance', () => {
+    class Control extends State {
+      props!: { value: string };
+    }
+
+    let ctrl!: Control;
+    render(<Control value="hello" is={(x) => (ctrl = x)} />);
+    expect(ctrl.props.value).toBe('hello');
+  });
+});
+
 describe('render method', () => {
   it('will be element output', () => {
     class Control extends State {
       foo = 'bar';
 
-      render(props: { bar: string }) {
+      props!: { bar: string };
+
+      render() {
         return (
           <>
-            <span>{props.bar}</span>
+            <span>{this.props.bar}</span>
             <span>{this.foo}</span>
           </>
         );
@@ -214,16 +246,17 @@ describe('render method', () => {
   });
 
   it('will accept function component', async () => {
-    function FunctionComponent(this: ClassComponent, props: { name: string }) {
+    function FunctionComponent(this: ClassComponent) {
       return (
         <div>
-          {this.salutation} {props.name}
+          {this.salutation} {this.props.name}
         </div>
       );
     }
 
     class ClassComponent extends State {
       salutation = 'Hello';
+      props!: { name: string };
       render = FunctionComponent;
     }
 
@@ -238,8 +271,10 @@ describe('render method', () => {
 
   it('will ignore children not handled', () => {
     class Control extends State {
-      render(props: { value: string }) {
-        return <>{props.value}</>;
+      props!: { value: string };
+
+      render() {
+        return <>{this.props.value}</>;
       }
     }
 
@@ -256,12 +291,13 @@ describe('render method', () => {
 
   it('will handle children if managed by this', () => {
     class Control extends State {
+      props!: { value: string };
       children = set<React.ReactNode>();
 
-      render(props: { value: string }) {
+      render() {
         return (
           <>
-            <span>{props.value}</span>
+            <span>{this.props.value}</span>
             {this.children}
           </>
         );
@@ -294,30 +330,6 @@ describe('render method', () => {
     });
 
     screen.getByText('foo');
-  });
-
-  it('will not pass is prop', () => {
-    class Invalid extends State {
-      render(props: { is: 'hello' }) {
-        return null;
-      }
-    }
-
-    // @ts-expect-error
-    void (<Invalid />);
-
-    class Test extends State {
-      render(props: { is?: 'hello' }) {
-        expect('is' in props).toBeFalsy();
-        return null;
-      }
-    }
-
-    const callback = vi.fn();
-
-    render(<Test is={callback} />);
-
-    expect(callback).toBeCalledTimes(1);
   });
 });
 
