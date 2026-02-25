@@ -238,4 +238,38 @@ class Card extends State {
 
 The JSX runtime creates an instance, provides it to context, and renders children. Any descendant can access the state via `State.get()`.
 
+### render() method
+
+Define a `render()` method to control output directly. When present, `children` is suppressed from the component's props type.
+
+```tsx
+class Greeting extends State {
+  name = 'World';
+
+  render() {
+    return <h1>Hello, {this.name}!</h1>;
+  }
+}
+
+<Greeting name="React" />;
+```
+
+### Explicit props
+
+Declare `props!: {}` to accept arbitrary props not managed as state fields. These are available as `this.props` inside `render()`.
+
+```tsx
+class Article extends State {
+  props!: { children: ReactNode; className?: string };
+
+  render() {
+    return (
+      <article className={this.props.className}>{this.props.children}</article>
+    );
+  }
+}
+
+<Article className="featured">...</Article>;
+```
+
 The JSX runtime is optional. It's useful when your State classes naturally map to component boundaries. For state that doesn't render children, `State.use()` or `Provider` is more appropriate.

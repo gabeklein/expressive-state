@@ -185,6 +185,36 @@ class Card extends State {
 <Card title="Hello"><p>Content</p></Card>  // no .as() needed
 ```
 
+### render() method
+
+Define a `render()` method to control output. When present, `children` is suppressed from the props type. Access state via `this`.
+
+```ts
+class Greeting extends State {
+  name = "World";
+
+  render() {
+    return <h1>Hello, {this.name}!</h1>;
+  }
+}
+
+<Greeting name="React" />
+```
+
+### Explicit props via `props!:`
+
+Declare `props!: {}` to accept arbitrary props not managed as state fields. Available as `this.props` in `render()`.
+
+```ts
+class Article extends State {
+  props!: { children: ReactNode; className?: string };
+
+  render() {
+    return <article className={this.props.className}>{this.props.children}</article>;
+  }
+}
+```
+
 The JSX runtime auto-wraps State classes, providing them to context and rendering children.
 
 ## Exports
