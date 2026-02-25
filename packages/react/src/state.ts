@@ -102,7 +102,7 @@ abstract class ReactState extends State {
     this: State.Type<T>,
     ...args: UseArgs<T>
   ): T {
-    return useNew(this, ...args);
+    return useOwnInstance(this, ...args);
   }
 
   /** Fetch instance of this class from context. */
@@ -135,7 +135,7 @@ abstract class ReactState extends State {
     this: State.Extends<T>,
     argument?: boolean | GetFactory<T, unknown>
   ) {
-    return useFrom<T, R>(this, argument);
+    return useFromContext<T, R>(this, argument);
   }
 
   static as<T extends State, P extends object = {}>(
@@ -161,7 +161,7 @@ abstract class ReactState extends State {
   }
 }
 
-function useNew<T extends ReactState>(
+function useOwnInstance<T extends ReactState>(
   Type: State.Type<T>,
   ...args: UseArgs<T>
 ): T {
@@ -220,7 +220,7 @@ function useNew<T extends ReactState>(
   return state[0](...args);
 }
 
-function useFrom<T extends State, R>(
+function useFromContext<T extends State, R>(
   Type: State.Extends<T>,
   argument?: boolean | GetFactory<T, unknown>
 ) {
