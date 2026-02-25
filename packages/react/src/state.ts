@@ -159,7 +159,7 @@ abstract class ReactState extends State {
     this: State.Type<T>,
     ...args: UseArgs<T>
   ): T {
-    const ambient = Context.use();
+    const outer = Context.use();
     const state = Pragma.useState(() => {
       let ready: boolean | undefined;
       let active: T;
@@ -182,7 +182,7 @@ abstract class ReactState extends State {
         } else return args;
       });
 
-      const context = ambient.push(instance);
+      const context = outer.push(instance);
 
       watch(instance, (current) => {
         active = current;
@@ -244,9 +244,9 @@ abstract class ReactState extends State {
     this: State.Extends<T>,
     argument?: boolean | GetFactory<T, unknown>
   ) {
-    const context = Context.use();
+    const outer = Context.use();
     const state = Pragma.useState(() => {
-      const instance = context.get(this);
+      const instance = outer.get(this);
 
       if (!instance)
         if (argument === false) return () => undefined;

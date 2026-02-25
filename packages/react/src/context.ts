@@ -18,10 +18,14 @@ declare module '@expressive/state' {
   }
 }
 
-Context.use = (create?: boolean) => {
-  const ambient = useContext(Layers);
+Context.use = (required?: boolean) => {
+  const context = useContext(Layers);
 
-  return create ? useMemo(() => ambient.push(), [ambient]) : ambient;
+  if (context || !required) return context;
+
+  throw new Error(
+    'No context found. Make sure to render a Provider above this component.'
+  );
 };
 
 declare namespace Consumer {
@@ -71,7 +75,8 @@ declare namespace Provider {
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const context = Context.use(true);
+  const ambient = useContext(Layers);
+  const context = useMemo(() => ambient.push(), [ambient]);
 
   useEffect(() => () => context.pop(), [context]);
 
