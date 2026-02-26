@@ -1,12 +1,7 @@
 import { State, Context, watch, event } from '@expressive/state';
 import { ReactNode } from 'react';
 import { provide, Layers } from './context';
-
-type PragmaType = {
-  useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
-  useEffect(effect: () => () => void, deps?: any[]): void;
-  createElement(type: any, props?: any, ...children: any[]): any;
-};
+import { Pragma } from './state';
 
 const OUTER = new WeakMap<object, Context>();
 const PROPS = new WeakMap<object, ComponentProps<any>>();
@@ -73,8 +68,7 @@ export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
 
 export function toComponent<T extends State, P>(
   Type: State.Type<T>,
-  argument: ((props: P, self: T) => ReactNode) | Props<T>,
-  pragma: PragmaType
+  argument: ((props: P, self: T) => ReactNode) | Props<T>
 ) {
   const Base = Type as unknown as State.Type<State>;
   const render = typeof argument === 'function' ? argument : undefined;
@@ -121,8 +115,8 @@ export function toComponent<T extends State, P>(
       PROPS.set(this, nextProps);
 
       if (render) {
-        const Self = RenderHook.bind(this, render as any, pragma);
-        this.render = () => pragma.createElement(Self);
+        const Self = RenderHook.bind(this, render as any);
+        this.render = () => Pragma.createElement(Self);
       } else if (!this.render) {
         this.render = () =>
           provide(
@@ -152,9 +146,8 @@ export function toComponent<T extends State, P>(
 function RenderHook<T extends Component, P extends State.Assign<T>>(
   this: T,
   render: (props: P, self: T) => ReactNode,
-  pragma: PragmaType
 ) {
-  const state = pragma.useState(() => {
+  const state = Pragma.useState(() => {
     event(this);
 
     const { context } = this;
@@ -181,12 +174,12 @@ function RenderHook<T extends Component, P extends State.Assign<T>>(
     return () => {
       ready = false;
 
-      pragma.useEffect(didMount, []);
+      Pragma.useEffect(didMount, []);
       setTimeout(() => (ready = true), 0);
 
       return provide(
         context,
-        pragma.createElement(View),
+        Pragma.createElement(View),
         this.props.fallback,
         String(this)
       );

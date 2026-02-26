@@ -157,7 +157,7 @@ abstract class ReactState extends State {
     this: State.Type<T>,
     argument: ((props: P, self: T) => ReactNode) | Props<T>
   ) {
-    return toComponent(this, argument, Pragma);
+    return toComponent(this, argument);
   }
 }
 
