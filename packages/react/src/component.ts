@@ -1,9 +1,8 @@
-import { State, Context, watch, event } from '@expressive/state';
+import { State, Context, watch, event, METHOD } from '@expressive/state';
 import { ReactNode } from 'react';
 import { provide, Layers } from './context';
 import { Pragma } from './state';
 
-const OUTER = new WeakMap<object, Context>();
 const PROPS = new WeakMap<object, ComponentProps<any>>();
 
 export type Props<T extends State> = {
@@ -68,7 +67,7 @@ export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
 
 export function toComponent<T extends State, P>(
   Type: State.Type<T>,
-  argument: ((props: P, self: T) => ReactNode) | Props<T>
+  argument?: ((props: P, self: T) => ReactNode) | Props<T>
 ) {
   const Base = Type as unknown as State.Type<State>;
   const render = typeof argument === 'function' ? argument : undefined;
@@ -89,12 +88,7 @@ export function toComponent<T extends State, P>(
       return Context.get(this)!;
     }
 
-    private set context(context: Context) {
-      if (OUTER.get(this) === context) return;
-
-      OUTER.set(this, context);
-      context.push(this);
-    }
+    private set context(context: Context) {}
 
     get state() {
       return this.get();
@@ -106,18 +100,26 @@ export function toComponent<T extends State, P>(
     fallback?: ReactNode = undefined;
 
     constructor(nextProps: any, ...rest: any[]) {
+      let context;
       const { is } = nextProps;
       const defaults = typeof argument === 'object' ? argument : {};
 
-      if (rest[0] instanceof Context) rest.shift();
+      if (rest[0] instanceof Context) {
+        context = rest.shift() as Context;
+      }
 
       super(nextProps, defaults, is, rest);
       PROPS.set(this, nextProps);
 
-      if (render) {
-        const Self = RenderHook.bind(this, render as any);
-        this.render = () => Pragma.createElement(Self);
-      } else if (!this.render) {
+      if (context) context.push(this);
+
+      const renderMethod = (this as any).render;
+      const r = render || METHOD.get(renderMethod) || renderMethod;
+
+      if (r) {
+        const AsComponent = Render.bind(this, r);
+        this.render = () => Pragma.createElement(AsComponent);
+      } else {
         this.render = () =>
           provide(
             this.context,
@@ -143,9 +145,9 @@ export function toComponent<T extends State, P>(
   return ReactType;
 }
 
-function RenderHook<T extends Component, P extends State.Assign<T>>(
+function Render<T extends Component, P extends State.Assign<T>>(
   this: T,
-  render: (props: P, self: T) => ReactNode,
+  render: (props: P, self: T) => ReactNode
 ) {
   const state = Pragma.useState(() => {
     event(this);
@@ -180,7 +182,7 @@ function RenderHook<T extends Component, P extends State.Assign<T>>(
       return provide(
         context,
         Pragma.createElement(View),
-        this.props.fallback,
+        this.props.fallback || this.fallback,
         String(this)
       );
     };
