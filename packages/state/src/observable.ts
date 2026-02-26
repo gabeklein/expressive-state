@@ -313,6 +313,7 @@ function scope() {
 
 export {
   listener,
+  emit,
   event,
   Observable,
   observe,

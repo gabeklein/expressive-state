@@ -5,7 +5,8 @@ import {
   Observable,
   observing,
   observe,
-  pending
+  pending,
+  emit
 } from './observable';
 
 const define = Object.defineProperty;
@@ -336,7 +337,6 @@ abstract class State implements Observable {
       });
 
     if (arg1 && typeof arg1 == 'object') {
-      event(self);
       assign(self, arg1, arg2 === true);
     } else if (!arg2) {
       event(self, arg1);
@@ -413,6 +413,8 @@ define(State, 'toString', {
 });
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
+  emit(state, true);
+
   const methods = METHODS.get(state.constructor)!;
 
   for (const key in data) {
