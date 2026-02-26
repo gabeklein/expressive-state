@@ -74,7 +74,7 @@ export function patch(
   type: React.ElementType | State.Type,
   ...args: any[]
 ): React.ReactElement {
-  if (State.is(type))
+  if (State.is(type) && !('isReactComponent' in type.prototype))
     if (RENDER.has(type)) type = RENDER.get(type)!;
     else RENDER.set(type, (type = toComponent(type)));
 
