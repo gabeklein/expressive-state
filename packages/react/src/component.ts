@@ -76,11 +76,11 @@ export function toComponent<T extends State, P>(
     static contextType = Layers;
 
     get props(): ComponentProps<this> {
-      return PROPS.get(this)!;
+      return PROPS.get(this.is)!;
     }
 
     private set props(props: ComponentProps<this>) {
-      PROPS.set(this, props);
+      PROPS.set(this.is, props);
       this.set(props as {});
     }
 
