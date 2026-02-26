@@ -3,14 +3,14 @@ import { ReactNode } from 'react';
 import { provide, Layers } from './context';
 import { Pragma } from './state';
 
-const PROPS = new WeakMap<object, ComponentProps<any>>();
+const PROPS = new WeakMap<object, Props<any>>();
 
-export type Props<T extends State> = {
+export type StateProps<T extends State> = {
   [K in Exclude<keyof T, keyof Component>]?: T[K];
 };
 
 export type Render<T extends State, P extends object> = ((
-  props: P & Props<T>,
+  props: P & StateProps<T>,
   self: T
 ) => ReactNode) &
   PropsValid<P, T>;
@@ -22,13 +22,13 @@ type PropsConflicting<P extends object, V extends object> = {
 }[Overlap<P, V>];
 
 type PropsValid<P extends object, T extends State> = [
-  PropsConflicting<P, Props<T>>
+  PropsConflicting<P, StateProps<T>>
 ] extends [never]
   ? unknown
   : never;
 
-type ComponentProps<T extends State> = Readonly<
-  Props<T> & {
+export type Props<T extends State> = Readonly<
+  StateProps<T> & {
     /**
      * Callback for newly created instance. Only called once.
      * @returns Callback to run when instance is destroyed.
@@ -49,7 +49,7 @@ type ComponentProps<T extends State> = Readonly<
 >;
 
 export interface Component<P = {}> extends State {
-  readonly props: ComponentProps<this> & P;
+  readonly props: Props<this> & P;
   context: Context;
   state: State.Values<this>;
   fallback?: ReactNode;
@@ -67,7 +67,7 @@ export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
 
 export function toComponent<T extends State, P>(
   Type: State.Type<T>,
-  argument?: ((props: P, self: T) => ReactNode) | Props<T>
+  argument?: ((props: P, self: T) => ReactNode) | StateProps<T>
 ) {
   const Base = Type as unknown as State.Type<State>;
   const render = typeof argument === 'function' ? argument : undefined;
@@ -75,11 +75,11 @@ export function toComponent<T extends State, P>(
   class ReactType extends Base {
     static contextType = Layers;
 
-    get props(): ComponentProps<this> {
+    get props(): Props<this> {
       return PROPS.get(this.is)!;
     }
 
-    private set props(props: ComponentProps<this>) {
+    private set props(props: Props<this>) {
       PROPS.set(this.is, props);
       this.set(props as {});
     }

@@ -5,17 +5,15 @@ import React from 'react';
 
 import { toComponent } from './component';
 
-type Reserved = keyof State | 'props' | 'render' | 'fallback';
-
-type StateProps<T extends State> = {
-  [K in Exclude<keyof T, Reserved>]?: T[K];
-};
-
 interface AsComponent extends State {
   props?: Record<string, any>;
   render?(): React.ReactNode;
   fallback?: React.ReactNode;
 }
+
+type StateProps<T extends State> = {
+  [K in Exclude<keyof T, keyof AsComponent>]?: T[K];
+};
 
 type BaseProps<T extends State> = {
   is?: (instance: T) => void;

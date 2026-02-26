@@ -5,7 +5,8 @@ import {
   Render,
   Component,
   ComponentType,
-  toComponent
+  toComponent,
+  StateProps
 } from './component';
 
 export const Pragma = {} as {
@@ -78,7 +79,7 @@ declare namespace ReactState {
   export import Effect = State.Effect;
   export import EffectCallback = State.EffectCallback;
 
-  export { GetFactory, GetEffect, UseArgs, Props, Component };
+  export { GetFactory, GetEffect, UseArgs, Component, Props };
 }
 
 abstract class ReactState extends State {
@@ -145,17 +146,17 @@ abstract class ReactState extends State {
 
   static as<T extends State, P extends object = {}>(
     this: ComponentType<T, P>,
-    withProps: Props<T>
+    withProps: StateProps<T>
   ): ComponentType<T, P>;
 
   static as<T extends State>(
     this: State.Type<T>,
-    withProps: Props<T>
+    withProps: StateProps<T>
   ): ComponentType<T, {}>;
 
   static as<T extends State, P>(
     this: State.Type<T>,
-    argument: ((props: P, self: T) => ReactNode) | Props<T>
+    argument: ((props: P, self: T) => ReactNode) | StateProps<T>
   ) {
     return toComponent(this, argument);
   }
