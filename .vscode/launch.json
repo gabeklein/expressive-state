@@ -22,7 +22,7 @@
       ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "cwd": "${fileDirname}"
+      "cwd": "${workspaceFolder}"
     }
   ]
 }
