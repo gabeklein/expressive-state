@@ -1,10 +1,9 @@
-import { State, Context, watch, METHOD } from '@expressive/state';
+import { State } from '@expressive/state';
 
 import Runtime from 'react/jsx-runtime';
 import React from 'react';
 
-import { Pragma } from './state';
-import { provide } from './context';
+import { toComponent } from './component';
 
 type Reserved = keyof State | 'props' | 'render' | 'fallback';
 
@@ -79,69 +78,12 @@ export function patch(
 ): React.ReactElement {
   if (State.is(type))
     if (RENDER.has(type)) type = RENDER.get(type)!;
-    else RENDER.set(type, (type = Render.bind(type)));
+    else RENDER.set(type, (type = toComponent(type)));
 
-  return this(type, ...args);
+  return this(type as React.ElementType, ...args);
 }
 
 export const jsx = patch.bind(Runtime.jsx);
 export const jsxs = patch.bind(Runtime.jsxs);
-
-function Render<T extends AsComponent>(
-  this: State.Type<T>,
-  props: Props<T>,
-  props2?: Props<T>
-) {
-  const { is, ...rest } = { ...props, ...props2 };
-
-  const ambient = Context.use();
-  const state = Pragma.useState<(props: any) => any>(() => {
-    const instance = this.new(rest as {}, is && ((x) => void is(x)));
-    const context = ambient.push(instance);
-
-    let ready: boolean | undefined;
-    let active: T;
-
-    watch(instance, (current) => {
-      active = current;
-
-      if (ready) state[1]((x) => x.bind(null));
-    });
-
-    function didMount() {
-      ready = true;
-      return () => {
-        context.pop();
-        instance.set(null);
-      };
-    }
-
-    function Render(props: { children?: React.ReactNode }) {
-      const render = METHOD.get(active.render) || active.render;
-
-      return render ? render.call(active) : props.children;
-    }
-
-    return (props: Props<T>) => {
-      ready = false;
-
-      instance.props = props;
-
-      Pragma.useEffect(didMount, []);
-      Promise.resolve(instance.set(props)).finally(() => {
-        ready = true;
-      });
-
-      return provide(
-        context,
-        Pragma.createElement(Render, props),
-        props.fallback || active.fallback,
-        String(instance)
-      );
-    };
-  });
-
-  return state[0](rest);
-}
 
 export { Fragment } from 'react';

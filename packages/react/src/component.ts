@@ -97,18 +97,18 @@ export function toComponent<T extends State, P>(
     private set state(_state: State.Values<this>) {}
 
     render!: () => ReactNode;
-    fallback?: ReactNode = undefined;
+    fallback?: ReactNode;
 
     constructor(nextProps: any, ...rest: any[]) {
       let context;
-      const { is } = nextProps;
+      const { is, ...props } = nextProps;
       const defaults = typeof argument === 'object' ? argument : {};
 
       if (rest[0] instanceof Context) {
         context = rest.shift() as Context;
       }
 
-      super(nextProps, defaults, is, rest);
+      super(props, defaults, rest, is && ((x) => void is(x)));
       PROPS.set(this, nextProps);
 
       if (context) context.push(this);
@@ -116,18 +116,8 @@ export function toComponent<T extends State, P>(
       const renderMethod = (this as any).render;
       const r = render || METHOD.get(renderMethod) || renderMethod;
 
-      if (r) {
-        const AsComponent = Render.bind(this, r);
-        this.render = () => Pragma.createElement(AsComponent);
-      } else {
-        this.render = () =>
-          provide(
-            this.context,
-            this.props.children || null,
-            this.props.fallback,
-            String(this)
-          );
-      }
+      const AsComponent = Render.bind(this, r);
+      this.render = () => Pragma.createElement(AsComponent);
     }
 
     /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
@@ -171,7 +161,10 @@ function Render<T extends Component, P extends State.Assign<T>>(
       };
     };
 
-    const View = () => render.call(active, this.props as any, active);
+    const View = () =>
+      render
+        ? render.call(active, this.props as any, active)
+        : active.props.children || null;
 
     return () => {
       ready = false;
@@ -182,7 +175,7 @@ function Render<T extends Component, P extends State.Assign<T>>(
       return provide(
         context,
         Pragma.createElement(View),
-        this.props.fallback || this.fallback,
+        this.props.fallback || active.fallback,
         String(this)
       );
     };
