@@ -1,4 +1,4 @@
-import { State, Context, watch, event, METHOD } from '@expressive/state';
+import { State, Context, watch, METHOD } from '@expressive/state';
 import { ReactNode } from 'react';
 import { provide, Layers } from './context';
 import { Pragma } from './state';
@@ -53,6 +53,8 @@ export interface Component<P = {}> extends State {
   context: Context;
   state: State.Values<this>;
   fallback?: ReactNode;
+
+  componentWillUnmount(): void;
 
   render(): ReactNode;
 
@@ -125,6 +127,11 @@ export function toComponent<T extends State, P>(
 
     /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
     forceUpdate!: (callback?: () => void) => void;
+
+    componentWillUnmount() {
+      this.context.pop();
+      this.set(null);
+    }
   }
 
   Object.defineProperty(ReactType, 'name', { value: 'React' + Type.name });
@@ -140,8 +147,6 @@ function Render<T extends Component, P extends State.Assign<T>>(
   render: (props: P, self: T) => ReactNode
 ) {
   const state = Pragma.useState(() => {
-    event(this);
-
     const { context } = this;
 
     let ready: boolean | undefined;
@@ -153,24 +158,16 @@ function Render<T extends Component, P extends State.Assign<T>>(
       if (ready) state[1]((x) => x.bind(null));
     });
 
-    const didMount = () => {
-      ready = true;
-      return () => {
-        context.pop();
-        this.set(null);
-      };
-    };
-
-    const View = () =>
-      render
-        ? render.call(active, this.props as any, active)
-        : active.props.children || null;
+    const View = render
+      ? () => render.call(active, this.props as any, active)
+      : () => this.props.children || null;
 
     return () => {
       ready = false;
 
-      Pragma.useEffect(didMount, []);
-      setTimeout(() => (ready = true), 0);
+      Pragma.useEffect(() => {
+        ready = true;
+      });
 
       return provide(
         context,
