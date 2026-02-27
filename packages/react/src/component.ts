@@ -1,6 +1,6 @@
 import { State, Context, watch, unbind } from '@expressive/state';
 import { ReactNode, createElement, useState, useEffect } from 'react';
-import { creactProvider, Layers } from './context';
+import { createProvider, Layers } from './context';
 
 const PROPS = new WeakMap<object, Props<any>>();
 
@@ -189,7 +189,7 @@ function Render<T extends Component, P extends State.Assign<T>>(
         ready = true;
       });
 
-      return creactProvider(
+      return createProvider(
         this.context,
         createElement(View),
         this.props.fallback || active.fallback,

@@ -98,11 +98,11 @@ class Provider<T extends State> extends Component<Provider.Props<T>> {
       }
     });
 
-    return creactProvider(this.ownContext, children, fallback, name);
+    return createProvider(this.ownContext, children, fallback, name);
   }
 }
 
-function creactProvider(
+function createProvider(
   context: Context,
   children: ReactNode,
   fallback?: ReactNode,
@@ -118,4 +118,4 @@ function creactProvider(
   });
 }
 
-export { Consumer, Provider, creactProvider };
+export { Consumer, Provider, createProvider };
