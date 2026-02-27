@@ -137,7 +137,10 @@ export function toComponent<T extends State, P>(
 
       if (context) context.push(this);
 
-      const AsComponent = Render.bind(this, render as any);
+      const AsComponent = Render.bind(
+        this,
+        render || unbind((this as any).render)
+      );
       this.render = () => createElement(AsComponent);
     }
 
@@ -166,17 +169,6 @@ function Render<T extends Component, P extends State.Assign<T>>(
   render?: (props: P, self: T) => ReactNode
 ) {
   const state = useState(() => {
-    let View: () => ReactNode;
-
-    if (render) {
-      View = () => render.call(active, this.props as any, active);
-    } else {
-      const render = unbind(this.render);
-      View = render
-        ? () => render.call(active)
-        : () => this.props.children || null;
-    }
-
     let ready: boolean | undefined;
     let active: T;
 
@@ -185,6 +177,10 @@ function Render<T extends Component, P extends State.Assign<T>>(
 
       if (ready) state[1]((x) => x.bind(null));
     });
+
+    const View = render
+      ? () => render.call(active, this.props as any, active)
+      : () => this.props.children || null;
 
     return () => {
       ready = false;
