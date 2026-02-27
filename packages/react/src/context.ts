@@ -1,12 +1,11 @@
 import { State, Context } from '@expressive/state';
 import {
+  Component,
   createContext,
   createElement,
   ReactNode,
   Suspense,
-  useContext,
-  useEffect,
-  useMemo
+  useContext
 } from 'react';
 
 export const Layers = createContext(new Context());
@@ -74,21 +73,33 @@ declare namespace Provider {
   }
 }
 
-function Provider<T extends State>(props: Provider.Props<T>) {
-  const ambient = useContext(Layers);
-  const context = useMemo(() => ambient.push(), [ambient]);
+class Provider<T extends State> extends Component<Provider.Props<T>> {
+  static contextType = Layers;
 
-  useEffect(() => () => context.pop(), [context]);
+  ownContext: Context;
 
-  context.set(props.for, (state) => {
-    if (props.forEach) {
-      const cleanup = props.forEach(state);
+  constructor(props: Provider.Props<T>, context: Context) {
+    super(props, context);
+    this.ownContext = context.push();
+  }
 
-      if (cleanup) state.set(cleanup, null);
-    }
-  });
+  componentWillUnmount() {
+    this.ownContext.pop();
+  }
 
-  return creactProvider(context, props.children, props.fallback, props.name);
+  render() {
+    const { for: source, forEach, children, fallback, name } = this.props;
+
+    this.ownContext.set(source, (state) => {
+      if (forEach) {
+        const cleanup = forEach(state);
+
+        if (cleanup) state.set(cleanup, null);
+      }
+    });
+
+    return creactProvider(this.ownContext, children, fallback, name);
+  }
 }
 
 function creactProvider(
