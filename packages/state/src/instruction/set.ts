@@ -1,5 +1,5 @@
 import { listener, scope, watch } from '../observable';
-import { access, event, METHOD, State, update } from '../state';
+import { access, event, unbind, State, update } from '../state';
 import { Instruction, use } from './use';
 
 const STALE = new WeakSet<() => void>();
@@ -101,9 +101,9 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       if (value instanceof State) {
         from = value;
         getter = argument as set.Compute<T, any>;
-      } else {
+      } else if (typeof argument == 'function') {
         // value === true, implicit this with method reference
-        const fn = METHOD.get(argument) || argument;
+        const fn = unbind(argument);
         getter = ((p, k) => fn.call(p, k, p)) as set.Compute<T, any>;
       }
 

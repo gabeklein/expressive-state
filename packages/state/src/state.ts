@@ -679,4 +679,10 @@ function uid() {
     .toUpperCase();
 }
 
-export { event, METHOD, State, PARENT, STATE, uid, access, update };
+function unbind<T extends Function>(fn: T): T;
+function unbind<T extends Function>(fn?: T): T | undefined;
+function unbind(fn?: Function) {
+  return METHOD.get(fn) || fn;
+}
+
+export { event, unbind, State, PARENT, STATE, uid, access, update };

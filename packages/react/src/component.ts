@@ -1,4 +1,4 @@
-import { State, Context, watch, METHOD } from '@expressive/state';
+import { State, Context, watch, unbind } from '@expressive/state';
 import { ReactNode } from 'react';
 import { provide, Layers } from './context';
 import { Pragma } from './state';
@@ -116,7 +116,7 @@ export function toComponent<T extends State, P>(
       if (context) context.push(this);
 
       const renderMethod = (this as any).render;
-      const r = render || METHOD.get(renderMethod) || renderMethod;
+      const r = render || unbind(renderMethod);
 
       const AsComponent = Render.bind(this, r);
       this.render = () => Pragma.createElement(AsComponent);
