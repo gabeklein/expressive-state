@@ -3,6 +3,7 @@ import { State } from '@expressive/state';
 import { createElement, useEffect, useState } from 'react';
 
 import { ReactState, Pragma } from './state';
+import './component';
 
 Pragma.useEffect = useEffect;
 Pragma.useState = useState;
@@ -16,7 +17,6 @@ Pragma.createElement = createElement;
  */
 declare module '@expressive/state' {
   namespace State {
-    export import as = ReactState.as;
     export import get = ReactState.get;
     export import use = ReactState.use;
   }
@@ -24,7 +24,6 @@ declare module '@expressive/state' {
 
 State.get = ReactState.get;
 State.use = ReactState.use;
-State.as = ReactState.as;
 
 export { ReactState as State, ReactState as default };
 export { Context, Observable, get, use, ref, set } from '@expressive/state';

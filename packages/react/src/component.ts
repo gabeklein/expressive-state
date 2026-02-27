@@ -1,7 +1,6 @@
 import { State, Context, watch, unbind } from '@expressive/state';
-import { ReactNode } from 'react';
+import { ReactNode, createElement, useState, useEffect } from 'react';
 import { provide, Layers } from './context';
-import { Pragma } from './state';
 
 const PROPS = new WeakMap<object, Props<any>>();
 
@@ -54,8 +53,6 @@ export interface Component<P = {}> extends State {
   state: State.Values<this>;
   fallback?: ReactNode;
 
-  componentWillUnmount(): void;
-
   render(): ReactNode;
 
   /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
@@ -63,15 +60,40 @@ export interface Component<P = {}> extends State {
 
   /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
   forceUpdate: (callback?: () => void) => void;
+
+  componentWillUnmount(): void;
 }
 
 export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
 
+declare module '@expressive/state' {
+  namespace State {
+    export function as<T extends State, P extends object = {}>(
+      this: State.Type<T>,
+      render: Render<T, P>
+    ): ComponentType<T, P>;
+
+    export function as<T extends State, P extends object = {}>(
+      this: ComponentType<T, P>,
+      withProps: StateProps<T>
+    ): ComponentType<T, P>;
+
+    export function as<T extends State>(
+      this: State.Type<T>,
+      withProps: StateProps<T>
+    ): ComponentType<T, {}>;
+
+    export type { Component, Props };
+  }
+}
+
+State.as = toComponent;
+
 export function toComponent<T extends State, P>(
-  Type: State.Type<T>,
+  this: State.Type<T>,
   argument?: ((props: P, self: T) => ReactNode) | StateProps<T>
 ) {
-  const Base = Type as unknown as State.Type<State>;
+  const Base = this as unknown as State.Type<State>;
   const render = typeof argument === 'function' ? argument : undefined;
 
   class ReactType extends Base {
@@ -116,7 +138,7 @@ export function toComponent<T extends State, P>(
       if (context) context.push(this);
 
       const AsComponent = Render.bind(this, render as any);
-      this.render = () => Pragma.createElement(AsComponent);
+      this.render = () => createElement(AsComponent);
     }
 
     /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
@@ -131,7 +153,7 @@ export function toComponent<T extends State, P>(
     }
   }
 
-  Object.defineProperty(ReactType, 'name', { value: 'React' + Type.name });
+  Object.defineProperty(ReactType, 'name', { value: 'React' + this.name });
   Object.defineProperty(ReactType.prototype, 'isReactComponent', {
     get: () => true
   });
@@ -167,13 +189,13 @@ function Render<T extends Component, P extends State.Assign<T>>(
     return () => {
       ready = false;
 
-      Pragma.useEffect(() => {
+      useEffect(() => {
         ready = true;
       });
 
       return provide(
         this.context,
-        Pragma.createElement(View),
+        createElement(View),
         this.props.fallback || active.fallback,
         String(this)
       );

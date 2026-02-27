@@ -1,13 +1,4 @@
 import { State, Context, watch } from '@expressive/state';
-import { ReactNode } from 'react';
-import {
-  Props,
-  Render,
-  Component,
-  ComponentType,
-  toComponent,
-  StateProps
-} from './component';
 
 export const Pragma = {} as {
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
@@ -79,7 +70,7 @@ declare namespace ReactState {
   export import Effect = State.Effect;
   export import EffectCallback = State.EffectCallback;
 
-  export { GetFactory, GetEffect, UseArgs, Component, Props };
+  export { GetFactory, GetEffect, UseArgs };
 }
 
 abstract class ReactState extends State {
@@ -137,28 +128,6 @@ abstract class ReactState extends State {
     argument?: boolean | GetFactory<T, unknown>
   ) {
     return useFromContext<T, R>(this, argument);
-  }
-
-  static as<T extends State, P extends object = {}>(
-    this: State.Type<T>,
-    render: Render<T, P>
-  ): ComponentType<T, P>;
-
-  static as<T extends State, P extends object = {}>(
-    this: ComponentType<T, P>,
-    withProps: StateProps<T>
-  ): ComponentType<T, P>;
-
-  static as<T extends State>(
-    this: State.Type<T>,
-    withProps: StateProps<T>
-  ): ComponentType<T, {}>;
-
-  static as<T extends State, P>(
-    this: State.Type<T>,
-    argument: ((props: P, self: T) => ReactNode) | StateProps<T>
-  ) {
-    return toComponent(this, argument);
   }
 }
 
