@@ -57,7 +57,7 @@ declare module '@expressive/state' {
      * Optional hook called when State.use() is invoked within a React component.
      *
      * This is called *every render* of the component, and will intercept
-     * arguments which would otherwise be merged into the State.
+     * arguments which would otherwise be passed into the State constructor.
      *
      * @param props Arguments passed to State.use().
      */
@@ -75,6 +75,7 @@ declare module '@expressive/state' {
       this: State.Type<T>,
       ...args: UseArgs<T>
     ): T;
+
     /** Fetch instance of this class from context. */
     function get<T extends State>(this: State.Extends<T>): T;
 
