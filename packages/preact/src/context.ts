@@ -1,8 +1,8 @@
 import { Context } from '@expressive/state';
+import { State } from '@expressive/react/state';
+
 import { ComponentChildren, createContext, createElement } from 'preact';
 import { useContext, useEffect, useMemo } from 'preact/hooks';
-
-import { ReactState as State } from '@expressive/react/state';
 
 const Lookup = createContext(new Context());
 

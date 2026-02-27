@@ -51,111 +51,84 @@ type UseArgs<T extends State> = T extends {
   ? P
   : State.Args<T>;
 
-declare namespace ReactState {
-  export import Extends = State.Extends;
-  export import Type = State.Type;
-  export import Args = State.Args;
-  export import Init = State.Init;
-  export import Assign = State.Assign;
-  export import Field = State.Field;
-  export import Event = State.Event;
-  export import Export = State.Export;
-  export import Value = State.Value;
-  export import Setter = State.Setter;
-  export import OnEvent = State.OnEvent;
-  export import OnUpdate = State.OnUpdate;
-  export import Values = State.Values;
-  export import Partial = State.Partial;
-  export import Ref = State.Ref;
-  export import Effect = State.Effect;
-  export import EffectCallback = State.EffectCallback;
-
-  export { GetFactory, GetEffect, UseArgs };
-}
-
-abstract class ReactState extends State {
-  /**
-   * Optional hook is called when State.use() is invoked within a React component.
-   *
-   * This is called *every render* of the component, and will intercept
-   * arguments which would otherwise be merged into the State.
-   *
-   * @param props Arguments passed to State.use().
-   */
-  protected use?(...props: any[]): Promise<void> | void;
-
-  /**
-   * Create and manage instance of this State within React component.
-   *
-   * @param args Arguments to pass to constructor or `use` method (if defined).
-   * @returns Managed instance of this State.
-   */
-  static use<T extends ReactState>(
-    this: State.Type<T>,
-    ...args: UseArgs<T>
-  ): T {
-    return useOwnInstance(this, ...args);
+declare module '@expressive/state' {
+  interface UseState extends State {
+    /**
+     * Optional hook called when State.use() is invoked within a React component.
+     *
+     * This is called *every render* of the component, and will intercept
+     * arguments which would otherwise be merged into the State.
+     *
+     * @param props Arguments passed to State.use().
+     */
+    use?(...props: any[]): Promise<void> | void;
   }
 
-  /** Fetch instance of this class from context. */
-  static get<T extends State>(this: State.Extends<T>): T;
+  namespace State {
+    /**
+     * Create and manage instance of this State within React component.
+     *
+     * @param args Arguments to pass to constructor or `use` method (if defined).
+     * @returns Managed instance of this State.
+     */
+    function use<T extends UseState>(
+      this: State.Type<T>,
+      ...args: UseArgs<T>
+    ): T;
+    /** Fetch instance of this class from context. */
+    function get<T extends State>(this: State.Extends<T>): T;
 
-  /** Fetch instance of this class optionally. */
-  static get<T extends State>(
-    this: State.Extends<T>,
-    required: false
-  ): T | undefined;
+    /** Fetch instance of this class optionally. */
+    function get<T extends State>(
+      this: State.Extends<T>,
+      required: false
+    ): T | undefined;
 
-  /** Fetch instance of this class from context. */
-  static get<T extends State>(
-    this: State.Extends<T>,
-    requireValues: true
-  ): Required<T>;
+    /** Fetch instance of this class from context. */
+    function get<T extends State>(
+      this: State.Extends<T>,
+      requireValues: true
+    ): Required<T>;
 
-  static get<T extends State, R>(
-    this: State.Extends<T>,
-    factory: GetFactory<T, Promise<R> | R>
-  ): NoVoid<R>;
+    function get<T extends State, R>(
+      this: State.Extends<T>,
+      factory: GetFactory<T, Promise<R> | R>
+    ): NoVoid<R>;
 
-  // TODO: eagerly match this so any nulls are caught - would prevent updates.
-  static get<T extends State>(
-    this: State.Extends<T>,
-    factory: GetEffect<T>
-  ): null;
+    function get<T extends State>(
+      this: State.Extends<T>,
+      factory: GetEffect<T>
+    ): null;
+  }
 
-  static get<T extends State, R>(
-    this: State.Extends<T>,
-    argument?: boolean | GetFactory<T, unknown>
-  ) {
-    return useFromContext<T, R>(this, argument);
+  namespace State {
+    export type { UseArgs, GetFactory, GetEffect, ForceRefresh };
   }
 }
 
-function useOwnInstance<T extends ReactState>(
-  Type: State.Type<T>,
+State.use = function <T extends State>(
+  this: State.Type<T>,
   ...args: UseArgs<T>
-): T {
+) {
   const outer = Context.use();
   const state = Pragma.useState(() => {
     let ready: boolean | undefined;
     let active: T;
 
-    let use = (...args: State.Args<T>): Promise<unknown> | void =>
-      Promise.all(
-        args
-          .flat()
-          .map(
-            (arg) =>
-              typeof arg == 'object' && instance.set(arg as State.Assign<T>)
-          )
-      );
+    const add = (arg: unknown) =>
+      typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
-    // Create instance - pass args to constructor if no use method
-    const instance = new Type((x) => {
-      if (x instanceof ReactState && (x as any).use) {
-        use = (x as any).use.bind(x);
+    let use = (...args: State.Args<T>) => {
+      return Promise.all(args.flat().map(add));
+    };
+
+    const instance = new this((x) => {
+      if (x instanceof State && 'use' in x && typeof x.use == 'function') {
+        use = x.use.bind(x);
         use(...args);
-      } else return args;
+      } else {
+        return args;
+      }
     });
 
     const context = outer.push(instance);
@@ -188,19 +161,19 @@ function useOwnInstance<T extends ReactState>(
   });
 
   return state[0](...args);
-}
+};
 
-function useFromContext<T extends State, R>(
-  Type: State.Extends<T>,
+State.get = function <T extends State, R>(
+  this: State.Extends<T>,
   argument?: boolean | GetFactory<T, unknown>
 ) {
   const outer = Context.use();
   const state = Pragma.useState(() => {
-    const instance = outer.get(Type);
+    const instance = outer.get(this);
 
     if (!instance)
       if (argument === false) return () => undefined;
-      else throw new Error(`Could not find ${Type} in context.`);
+      else throw new Error(`Could not find ${this} in context.`);
 
     let ready: boolean | undefined;
     let value: any;
@@ -271,6 +244,6 @@ function useFromContext<T extends State, R>(
   });
 
   return state[0]() as R;
-}
+};
 
-export { ReactState };
+export { State };
