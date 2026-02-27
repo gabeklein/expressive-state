@@ -88,10 +88,10 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     }
   });
 
-  return provide(context, props.children, props.fallback, props.name);
+  return creactProvider(context, props.children, props.fallback, props.name);
 }
 
-function provide(
+function creactProvider(
   context: Context,
   children: ReactNode,
   fallback?: ReactNode,
@@ -107,4 +107,4 @@ function provide(
   });
 }
 
-export { Consumer, Provider, provide };
+export { Consumer, Provider, creactProvider };
