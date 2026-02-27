@@ -89,7 +89,7 @@ declare module '@expressive/state' {
 
 State.as = toComponent;
 
-export function toComponent<T extends State, P>(
+export function toComponent<T extends State, P extends object = {}>(
   this: State.Type<T>,
   argument?: ((props: P, self: T) => ReactNode) | StateProps<T>
 ) {
@@ -161,7 +161,7 @@ export function toComponent<T extends State, P>(
     get: () => true
   });
 
-  return ReactType;
+  return ReactType as unknown as ComponentType<T, P>;
 }
 
 function Render<T extends Component, P extends State.Assign<T>>(
