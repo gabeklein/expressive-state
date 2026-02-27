@@ -115,10 +115,7 @@ export function toComponent<T extends State, P>(
 
       if (context) context.push(this);
 
-      const renderMethod = (this as any).render;
-      const r = render || unbind(renderMethod);
-
-      const AsComponent = Render.bind(this, r);
+      const AsComponent = Render.bind(this, render as any);
       this.render = () => Pragma.createElement(AsComponent);
     }
 
@@ -144,10 +141,19 @@ export function toComponent<T extends State, P>(
 
 function Render<T extends Component, P extends State.Assign<T>>(
   this: T,
-  render: (props: P, self: T) => ReactNode
+  render?: (props: P, self: T) => ReactNode
 ) {
-  const state = Pragma.useState(() => {
-    const { context } = this;
+  const state = useState(() => {
+    let View: () => ReactNode;
+
+    if (render) {
+      View = () => render.call(active, this.props as any, active);
+    } else {
+      const render = unbind(this.render);
+      View = render
+        ? () => render.call(active)
+        : () => this.props.children || null;
+    }
 
     let ready: boolean | undefined;
     let active: T;
@@ -158,10 +164,6 @@ function Render<T extends Component, P extends State.Assign<T>>(
       if (ready) state[1]((x) => x.bind(null));
     });
 
-    const View = render
-      ? () => render.call(active, this.props as any, active)
-      : () => this.props.children || null;
-
     return () => {
       ready = false;
 
@@ -170,7 +172,7 @@ function Render<T extends Component, P extends State.Assign<T>>(
       });
 
       return provide(
-        context,
+        this.context,
         Pragma.createElement(View),
         this.props.fallback || active.fallback,
         String(this)
