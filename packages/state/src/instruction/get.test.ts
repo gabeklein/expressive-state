@@ -30,8 +30,8 @@ describe('fetch mode', () => {
       ambient2 = get(Ambient);
     }
 
-    const test = Test.new();
-    const ambient = Ambient.new();
+    const test = new Test();
+    const ambient = new Ambient();
 
     new Context({ ambient }).push({ test });
 
@@ -111,7 +111,7 @@ describe('fetch mode', () => {
       maybe = get(MaybeParent, false);
     }
 
-    const instance = StandAlone.new();
+    const instance = new StandAlone();
 
     new Context({ instance });
 
@@ -182,8 +182,8 @@ describe('fetch mode', () => {
       ambient = get(Ambient);
       foo = 'bar';
     }
-    const test = Test.new();
-    const ambient = Ambient.new();
+    const test = new Test();
+    const ambient = new Ambient();
 
     new Context({ ambient, test });
 
@@ -199,8 +199,8 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
-    const child = Child.new();
+    const parent = new Parent();
+    const child = new Child();
 
     new Context({ parent }).push({ child });
 
@@ -213,9 +213,9 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
-    const child1 = Child.new();
-    const child2 = Child.new();
+    const parent = new Parent();
+    const child1 = new Child();
+    const child2 = new Child();
 
     new Context({ parent }).push({ child1, child2 });
 
@@ -228,7 +228,7 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
+    const parent = new Parent();
 
     new Context({ parent }).push({ Child });
 
@@ -244,8 +244,8 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
-    const child = Child2.new();
+    const parent = new Parent();
+    const child = new Child2();
 
     new Context({ parent }).push({ child });
 
@@ -259,7 +259,7 @@ describe('downstream collection', () => {
       children = get(Child2, true);
     }
 
-    const parent = Parent.new();
+    const parent = new Parent();
 
     new Context({ parent }).push({ Child });
 
@@ -273,7 +273,7 @@ describe('downstream collection', () => {
     }
     class Parent2 extends Parent {}
 
-    const parent = Parent2.new();
+    const parent = new Parent2();
 
     new Context({ parent }).push({ Child });
 
@@ -288,9 +288,9 @@ describe('downstream collection', () => {
       children = get(Child, true);
     }
 
-    const parent = Parent.new();
-    const child1 = Child.new();
-    const child2 = Child.new();
+    const parent = new Parent();
+    const child1 = new Child();
+    const child2 = new Child();
 
     const context = new Context({ parent });
     const context2 = context.push({ child1, child2 });
@@ -325,8 +325,8 @@ describe('downstream collection', () => {
     }
 
     const gotChild = vi.fn();
-    const parent = Parent.new();
-    const child = Child.new();
+    const parent = new Parent();
+    const child = new Child();
 
     new Context({ parent }).push({ child }).push({ child });
 
@@ -343,8 +343,8 @@ describe('downstream collection', () => {
     }
 
     const gotBaz = vi.fn();
-    const foo = Foo.new();
-    const baz = Baz.new();
+    const foo = new Foo();
+    const baz = new Baz();
 
     new Context({ foo }).push({ baz });
 
@@ -360,8 +360,8 @@ describe('downstream collection', () => {
       baz = new Baz();
     }
 
-    const foo = Foo.new();
-    const bar = Bar.new();
+    const foo = new Foo();
+    const bar = new Bar();
 
     new Context({ foo }).push({ bar });
 
@@ -381,8 +381,8 @@ describe('lifecycle callbacks', () => {
       remote = get(Remote, remoteCallback);
     }
 
-    const remote = Remote.new();
-    const test = Test.new();
+    const remote = new Remote();
+    const test = new Test();
 
     new Context({ remote, test });
 
@@ -397,8 +397,8 @@ describe('lifecycle callbacks', () => {
     }
 
     const gotChild = vi.fn();
-    const parent = Parent.new();
-    const child = Child.new();
+    const parent = new Parent();
+    const child = new Child();
 
     new Context({ parent }).push({ child });
 
@@ -416,9 +416,9 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, didAdd);
     }
 
-    const parent = Parent.new();
-    const child1 = Child.new();
-    const child2 = Child.new();
+    const parent = new Parent();
+    const child1 = new Child();
+    const child2 = new Child();
 
     const context = new Context({ parent });
     const context2 = context.push({ child1, child2 });
@@ -440,18 +440,18 @@ describe('lifecycle callbacks', () => {
     }
 
     const hasChild = vi.fn(() => false);
-    const parent = Parent.new();
+    const parent = new Parent();
     const context = new Context({ parent });
 
     context.push({
-      child: Child.new(),
-      child2: Child.new()
+      child: Child,
+      child2: Child
     });
 
     expect(hasChild).toBeCalledTimes(2);
     expect(parent.children.length).toBe(0);
 
-    context.push({ child: Child.new() });
+    context.push({ child: Child });
 
     await expect(parent).not.toUpdate();
     expect(hasChild).toBeCalledTimes(3);
@@ -472,8 +472,8 @@ describe('lifecycle callbacks', () => {
       remote = get(Remote, remoteCallback);
     }
 
-    const remote = Remote.new();
-    const test = Test.new();
+    const remote = new Remote();
+    const test = new Test();
 
     new Context({ remote, test });
 
@@ -496,8 +496,8 @@ describe('lifecycle callbacks', () => {
       remote = get(Remote, remoteCallback);
     }
 
-    const remote = Remote.new();
-    const test = Test.new();
+    const remote = new Remote();
+    const test = new Test();
 
     new Context({ remote, test });
 

@@ -206,8 +206,8 @@ describe('include', () => {
       }
     }
 
-    const foo = Foo.new();
-    const bar = Bar.new();
+    const foo = new Foo();
+    const bar = new Bar();
     const context = new Context({ foo, bar, Baz });
 
     const idPriorToUpdate = context.id;
@@ -231,7 +231,7 @@ describe('include', () => {
   });
 
   it('will register children implicitly', () => {
-    const foobar = FooBar.new();
+    const foobar = new FooBar();
     const context = new Context({ foobar });
 
     expect(context.get(FooBar)).toBe(foobar);
@@ -239,8 +239,8 @@ describe('include', () => {
   });
 
   it('will prefer explicit over implicit', () => {
-    const foo = Foo.new();
-    const foobar = FooBar.new();
+    const foo = new Foo();
+    const foobar = new FooBar();
     const context = new Context({ foobar, foo });
 
     expect(context.get(FooBar)).toBe(foobar);
