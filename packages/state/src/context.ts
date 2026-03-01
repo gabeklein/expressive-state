@@ -179,6 +179,8 @@ class Context {
     const reset: (() => void)[] = [];
     let T = I.constructor as State.Extends<T>;
 
+    if (OWNED.has(I)) reset.push(() => event(I, null));
+
     while (T !== State) {
       const K = key(T);
       const expects = this.upstream[K];
@@ -187,7 +189,7 @@ class Context {
         listener(I, (event) => {
           if (event === true) {
             const cb = expects(I);
-            if (cb) reset.unshift(cb);
+            if (cb) reset.push(cb);
           }
 
           return null;
@@ -200,8 +202,6 @@ class Context {
       T = Object.getPrototypeOf(T);
     }
 
-    if (OWNED.has(I)) reset.push(() => event(I, null));
-
     const waiting = LOOKUP.get(I);
 
     if (waiting instanceof Array) {
@@ -211,7 +211,7 @@ class Context {
     LOOKUP.set(I, this);
 
     return () => {
-      reset.forEach((cb) => cb());
+      reset.reverse().forEach((cb) => cb());
 
       let T = I.constructor as State.Extends;
 
