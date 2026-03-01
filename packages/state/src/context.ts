@@ -192,13 +192,11 @@ class Context {
    * Adds a State to this context.
    */
   add<T extends State>(I: T, implicit?: boolean) {
-    const { upstream, downstream, cleanup } = this;
-
     const done = new Set<() => void>();
     const T = I.constructor as State.Extends<T>;
 
     keys(T).forEach((K) => {
-      const expects = upstream[K];
+      const expects = this.upstream[K];
 
       if (expects)
         listener(I, (event) => {
@@ -212,12 +210,13 @@ class Context {
     });
 
     keys(T).forEach((K) => {
-      const value = downstream.hasOwnProperty(K) ? null : I;
+      const down = this.downstream;
+      const value = down.hasOwnProperty(K) ? null : I;
 
-      if (value || (downstream[K] !== I && !implicit)) downstream[K] = value;
+      if (value || (down[K] !== I && !implicit)) down[K] = value;
     });
 
-    cleanup.push(() => done.forEach((cb) => cb()));
+    this.cleanup.push(() => done.forEach((cb) => cb()));
 
     const waiting = LOOKUP.get(I);
 
