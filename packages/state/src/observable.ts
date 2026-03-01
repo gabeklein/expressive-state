@@ -17,6 +17,7 @@ type Notify<T extends Observable = any> = (
 type EffectCleanup = (update: boolean | null) => void;
 
 type Effect<T extends Observable> = (
+  this: T,
   proxy: T,
   changed: readonly Event[]
 ) => EffectCleanup | Promise<void> | null | void;
@@ -231,7 +232,7 @@ function watch<T extends Observable>(
   callback: Effect<T>,
   argument?: boolean
 ) {
-  let cause: readonly Event[];
+  let cause: readonly Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
 
@@ -256,10 +257,8 @@ function watch<T extends Observable>(
 
     try {
       const exit = argument === false ? undefined : scope();
-      const output = callback(
-        target[Observable](onUpdate, argument === true) as T,
-        cause
-      );
+      const proxy = target[Observable](onUpdate, argument === true) as T;
+      const output = callback.call(proxy, proxy, cause);
       const flush = exit ? exit() : () => {};
 
       ignore = false;
