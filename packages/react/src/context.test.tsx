@@ -678,7 +678,7 @@ describe('has instruction', () => {
 
     const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
-    const foo = Foo.new();
+    const foo = new Foo();
 
     render(
       <Provider for={foo}>

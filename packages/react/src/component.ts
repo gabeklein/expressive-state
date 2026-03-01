@@ -109,7 +109,7 @@ State.as = function <T extends State, P extends object = {}>(
     }
 
     get context() {
-      return Context.for(this)!;
+      return Context.for(this);
     }
 
     private set context(context: Context) {}

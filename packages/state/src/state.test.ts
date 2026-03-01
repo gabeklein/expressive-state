@@ -2135,22 +2135,37 @@ describe('on method (static)', () => {
 });
 
 describe('context method (static)', () => {
+  class Test extends State {}
+
   it('will get context', () => {
-    class Test extends State {}
+    const test = new Test();
 
-    const test = Test.new();
-
-    expect(Context.for(test)).toBeUndefined();
+    expect(Context.for(test, false)).toBeUndefined();
 
     const context = new Context({ test });
 
     expect(Context.for(test)).toBe(context);
   });
 
-  it('will callback when attached', () => {
-    class Test extends State {}
+  it('will throw if context not found by default', () => {
+    const test = new Test();
 
-    const test = Test.new();
+    expect(() => Context.for(test)).toThrow();
+    expect(() => Context.for(test, true)).toThrow();
+  });
+
+  it('will return undefined if required is false', () => {
+    const test = new Test();
+
+    expect(Context.for(test, false)).toBeUndefined();
+
+    const context = new Context({ test });
+
+    expect(Context.for(test, false)).toBe(context);
+  });
+
+  it('will callback when attached', () => {
+    const test = new Test();
     const mock = vi.fn();
 
     Context.for(test, mock);
@@ -2158,6 +2173,16 @@ describe('context method (static)', () => {
     expect(mock).not.toBeCalled();
 
     const context = new Context({ test });
+
+    expect(mock).toBeCalledWith(context);
+  });
+
+  it('will callback immediately if context already exists', () => {
+    const test = new Test();
+    const context = new Context({ test });
+    const mock = vi.fn();
+
+    Context.for(test, mock);
 
     expect(mock).toBeCalledWith(context);
   });
