@@ -149,7 +149,9 @@ class Context {
       const exists = this.inputs[K];
 
       if (!exists) {
-        init.set(this.add(V), true);
+        const I = V instanceof State ? V : new (V as State.Type<T>)();
+        init.set(this.add(I), true);
+        if (I !== V) this.cleanup.push(() => event(I, null));
       }
       // Context must force-reset because inputs are no longer safe,
       // however probably should do that on a per-state basis.
@@ -189,20 +191,11 @@ class Context {
   /**
    * Adds a State to this context.
    */
-  protected add<T extends State>(input: T | State.Type<T>, implicit?: boolean) {
+  protected add<T extends State>(I: T, implicit?: boolean) {
     const { upstream, downstream, cleanup } = this;
 
     const done = new Set<() => void>();
-    let T: State.Extends<T>;
-    let I: T;
-
-    if (typeof input == 'function') {
-      T = input;
-      I = new input() as T;
-    } else {
-      T = input.constructor as State.Extends<T>;
-      I = input;
-    }
+    const T = I.constructor as State.Extends<T>;
 
     keys(T).forEach((K) => {
       const expects = upstream[K];
@@ -224,10 +217,7 @@ class Context {
       if (value || (downstream[K] !== I && !implicit)) downstream[K] = value;
     });
 
-    cleanup.push(() => {
-      done.forEach((cb) => cb());
-      if (I !== input) event(I, null);
-    });
+    cleanup.push(() => done.forEach((cb) => cb()));
 
     const waiting = LOOKUP.get(I);
 
