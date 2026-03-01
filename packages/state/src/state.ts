@@ -173,6 +173,10 @@ abstract class State implements Observable {
    **/
   get(): State.Values<this>;
 
+  get<T extends State>(type: State.Type<T>, arg?: true): T;
+
+  get<T extends State>(type: State.Type<T>, arg: boolean): T | undefined;
+
   /**
    * Run a function which will run automatically when accessed values change.
    *
@@ -224,12 +228,13 @@ abstract class State implements Observable {
   get(status: null, callback: () => void): () => void;
 
   get(
-    arg1?: State.Effect<this> | string | null,
+    arg1?: State.Effect<this> | State.Type | string | null,
     arg2?: boolean | State.OnUpdate<this, any>
   ) {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
+    if (State.is(arg1)) return Context.for(self).get(arg1, arg2 !== false);
     if (typeof arg1 == 'function') return effect(self, arg1);
     if (typeof arg2 == 'function') return listener(self, arg2, arg1);
     if (arg1 === null) return Object.isFrozen(STATE.get(self));

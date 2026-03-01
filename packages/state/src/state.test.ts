@@ -1,4 +1,5 @@
 import { vi, expect, it, describe, mockError, mockPromise } from '../vitest';
+import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
@@ -527,6 +528,45 @@ describe('get method', () => {
 
       expect(method.call(test2)).toBe('foo');
       expect(test.get('method').call(test2)).toBe('bar');
+    });
+  });
+
+  describe('context', () => {
+    class Foo extends State {}
+    class Bar extends State {}
+
+    it('will get peer state from context', () => {
+      const foo = new Foo();
+      const bar = new Bar();
+
+      new Context({ foo, bar });
+
+      expect(foo.get(Bar)).toBe(bar);
+    });
+
+    it('will return undefined if not found', () => {
+      const foo = new Foo();
+
+      new Context({ foo });
+
+      expect(foo.get(Bar, false)).toBeUndefined();
+    });
+
+    it('will throw if required and not found', () => {
+      const foo = new Foo();
+
+      new Context({ foo });
+
+      expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
+    });
+
+    it('will get from parent context', () => {
+      const bar = new Bar();
+      const foo = new Foo();
+
+      new Context({ bar }).push({ foo });
+
+      expect(foo.get(Bar)).toBe(bar);
     });
   });
 
