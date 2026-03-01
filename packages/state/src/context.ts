@@ -15,17 +15,6 @@ function key(T: State.Extends) {
   return K;
 }
 
-function keys(from: State.Extends) {
-  const keys = new Set<symbol>();
-
-  do {
-    keys.add(key(from));
-    from = Object.getPrototypeOf(from);
-  } while (from !== State);
-
-  return keys;
-}
-
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
@@ -178,45 +167,34 @@ class Context {
   }
 
   /**
-   * Create a child context, optionally registering one or more States to it.
-   *
-   * @param inputs State, State class, or map of States / State classes to register.
-   */
-  public push(inputs?: Context.Accept) {
-    const next = new Context(this);
-    if (inputs) next.set(inputs);
-    return next;
-  }
-
-  /**
    * Adds a State to this context.
    */
   add<T extends State>(I: T, implicit?: boolean) {
-    const done = new Set<() => void>();
-    const T = I.constructor as State.Extends<T>;
+    const reset = new Set<() => void>();
+    let T = I.constructor as State.Extends<T>;
 
-    keys(T).forEach((K) => {
+    while (T !== State) {
+      const K = key(T);
       const expects = this.upstream[K];
 
       if (expects)
         listener(I, (event) => {
           if (event === true) {
             const cb = expects(I);
-            if (cb) done.add(cb);
+            if (cb) reset.add(cb);
           }
 
           return null;
         });
-    });
 
-    keys(T).forEach((K) => {
       const down = this.downstream;
       const value = down.hasOwnProperty(K) ? null : I;
 
       if (value || (down[K] !== I && !implicit)) down[K] = value;
-    });
+      T = Object.getPrototypeOf(T);
+    }
 
-    this.cleanup.push(() => done.forEach((cb) => cb()));
+    this.cleanup.push(() => reset.forEach((cb) => cb()));
 
     const waiting = LOOKUP.get(I);
 
@@ -227,6 +205,17 @@ class Context {
     LOOKUP.set(I, this);
 
     return I;
+  }
+
+  /**
+   * Create a child context, optionally registering one or more States to it.
+   *
+   * @param inputs State, State class, or map of States / State classes to register.
+   */
+  public push(inputs?: Context.Accept) {
+    const next = new Context(this);
+    if (inputs) next.set(inputs);
+    return next;
   }
 
   /**
