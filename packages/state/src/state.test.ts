@@ -1,5 +1,4 @@
 import { vi, expect, it, describe, mockError, mockPromise } from '../vitest';
-import { Context } from './context';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
@@ -2131,59 +2130,5 @@ describe('on method (static)', () => {
     expect(mock).toBeCalledWith('foo', 'baz');
 
     done();
-  });
-});
-
-describe('context method (static)', () => {
-  class Test extends State {}
-
-  it('will get context', () => {
-    const test = new Test();
-
-    expect(Context.for(test, false)).toBeUndefined();
-
-    const context = new Context({ test });
-
-    expect(Context.for(test)).toBe(context);
-  });
-
-  it('will throw if context not found by default', () => {
-    const test = new Test();
-
-    expect(() => Context.for(test)).toThrow();
-    expect(() => Context.for(test, true)).toThrow();
-  });
-
-  it('will return undefined if required is false', () => {
-    const test = new Test();
-
-    expect(Context.for(test, false)).toBeUndefined();
-
-    const context = new Context({ test });
-
-    expect(Context.for(test, false)).toBe(context);
-  });
-
-  it('will callback when attached', () => {
-    const test = new Test();
-    const mock = vi.fn();
-
-    Context.for(test, mock);
-
-    expect(mock).not.toBeCalled();
-
-    const context = new Context({ test });
-
-    expect(mock).toBeCalledWith(context);
-  });
-
-  it('will callback immediately if context already exists', () => {
-    const test = new Test();
-    const context = new Context({ test });
-    const mock = vi.fn();
-
-    Context.for(test, mock);
-
-    expect(mock).toBeCalledWith(context);
   });
 });

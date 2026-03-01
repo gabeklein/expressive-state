@@ -367,3 +367,57 @@ describe('Context.get callback overload (downstream registration)', () => {
     expect(cleanup).toBeCalledTimes(1);
   });
 });
+
+describe('for method (static)', () => {
+  class Test extends State {}
+
+  it('will get context', () => {
+    const test = new Test();
+
+    expect(Context.for(test, false)).toBeUndefined();
+
+    const context = new Context({ test });
+
+    expect(Context.for(test)).toBe(context);
+  });
+
+  it('will throw if context not found by default', () => {
+    const test = new Test();
+
+    expect(() => Context.for(test)).toThrow();
+    expect(() => Context.for(test, true)).toThrow();
+  });
+
+  it('will return undefined if required is false', () => {
+    const test = new Test();
+
+    expect(Context.for(test, false)).toBeUndefined();
+
+    const context = new Context({ test });
+
+    expect(Context.for(test, false)).toBe(context);
+  });
+
+  it('will callback when attached', () => {
+    const test = new Test();
+    const mock = vi.fn();
+
+    Context.for(test, mock);
+
+    expect(mock).not.toBeCalled();
+
+    const context = new Context({ test });
+
+    expect(mock).toBeCalledWith(context);
+  });
+
+  it('will callback immediately if context already exists', () => {
+    const test = new Test();
+    const context = new Context({ test });
+    const mock = vi.fn();
+
+    Context.for(test, mock);
+
+    expect(mock).toBeCalledWith(context);
+  });
+});
