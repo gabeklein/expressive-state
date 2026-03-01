@@ -1,6 +1,6 @@
 import { State, Context, watch, unbind } from '@expressive/state';
-import { ReactNode, createElement, useState, useEffect } from 'react';
-import { createProvider, Layers } from './context';
+import { ReactNode, createElement, useState, useEffect, Suspense } from 'react';
+import { Layers } from './context';
 
 const PROPS = new WeakMap<object, Props<any>>();
 
@@ -38,12 +38,12 @@ export type Props<T extends State> = Readonly<
      * A fallback react tree to show when suspended.
      * If not provided, `fallback` property of the State will be used.
      */
-    fallback?: React.ReactNode;
+    fallback?: ReactNode;
 
     /**
      * Children to render within component. Will be passed as `children` prop.
      */
-    children?: React.ReactNode;
+    children?: ReactNode;
   }
 >;
 
@@ -70,7 +70,7 @@ declare module '@expressive/state' {
   namespace State {
     export function as<T extends State, P extends object = {}>(
       this: State.Type<T>,
-      render: Render<T, P>
+      render?: Render<T, P>
     ): ComponentType<T, P>;
 
     export function as<T extends State, P extends object = {}>(
@@ -87,9 +87,7 @@ declare module '@expressive/state' {
   }
 }
 
-State.as = toComponent;
-
-export function toComponent<T extends State, P extends object = {}>(
+State.as = function <T extends State, P extends object = {}>(
   this: State.Type<T>,
   argument?: ((props: P, self: T) => ReactNode) | StateProps<T>
 ) {
@@ -162,7 +160,7 @@ export function toComponent<T extends State, P extends object = {}>(
   });
 
   return ReactType as unknown as ComponentType<T, P>;
-}
+};
 
 function Render<T extends Component, P extends State.Assign<T>>(
   this: T,
@@ -189,12 +187,21 @@ function Render<T extends Component, P extends State.Assign<T>>(
         ready = true;
       });
 
-      return createProvider(
-        this.context,
-        createElement(View),
-        this.props.fallback || active.fallback,
-        String(this)
-      );
+      let children: ReactNode = createElement(View);
+      const fallback = this.props.fallback || active.fallback;
+
+      if (fallback !== undefined)
+        children = createElement(
+          Suspense,
+          { fallback, name: String(this) },
+          children
+        );
+
+      return createElement(Layers.Provider, {
+        key: this.context.id,
+        value: this.context,
+        children
+      });
     };
   });
 

@@ -1,9 +1,7 @@
-import { State } from '@expressive/state';
+import { State } from '.';
 
 import Runtime from 'react/jsx-runtime';
 import React from 'react';
-
-import { toComponent } from './component';
 
 interface AsComponent extends State {
   props?: Record<string, any>;
@@ -76,7 +74,7 @@ export function patch(
 ): React.ReactElement {
   if (State.is(type) && !('isReactComponent' in type.prototype))
     if (RENDER.has(type)) type = RENDER.get(type)!;
-    else RENDER.set(type, (type = toComponent.call(type)));
+    else RENDER.set(type, (type = type.as()));
 
   return this(type as React.ElementType, ...args);
 }

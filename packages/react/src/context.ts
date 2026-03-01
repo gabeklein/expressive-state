@@ -1,11 +1,12 @@
 import { State, Context } from '@expressive/state';
 import {
-  Component,
   createContext,
   createElement,
   ReactNode,
   Suspense,
-  useContext
+  useContext,
+  useEffect,
+  useMemo
 } from 'react';
 
 export const Layers = createContext(new Context());
@@ -73,41 +74,22 @@ declare namespace Provider {
   }
 }
 
-class Provider<T extends State> extends Component<Provider.Props<T>> {
-  static contextType = Layers;
+function Provider<T extends State>(props: Provider.Props<T>) {
+  const ambient = useContext(Layers);
+  const context = useMemo(() => ambient.push(), [ambient]);
 
-  ownContext: Context;
+  useEffect(() => () => context.pop(), [context]);
 
-  constructor(props: Provider.Props<T>, context: Context) {
-    super(props, context);
-    this.ownContext = context.push();
-  }
+  context.set(props.for, (state) => {
+    if (props.forEach) {
+      const cleanup = props.forEach(state);
 
-  componentWillUnmount() {
-    this.ownContext.pop();
-  }
+      if (cleanup) state.set(cleanup, null);
+    }
+  });
 
-  render() {
-    const { for: source, forEach, children, fallback, name } = this.props;
+  let { children, fallback, name } = props;
 
-    this.ownContext.set(source, (state) => {
-      if (forEach) {
-        const cleanup = forEach(state);
-
-        if (cleanup) state.set(cleanup, null);
-      }
-    });
-
-    return createProvider(this.ownContext, children, fallback, name);
-  }
-}
-
-function createProvider(
-  context: Context,
-  children: ReactNode,
-  fallback?: ReactNode,
-  name?: string | undefined
-): ReactNode {
   if (fallback !== undefined)
     children = createElement(Suspense, { fallback, name }, children);
 
@@ -118,4 +100,4 @@ function createProvider(
   });
 }
 
-export { Consumer, Provider, createProvider };
+export { Consumer, Provider };
