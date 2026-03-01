@@ -561,7 +561,7 @@ function manage(
     update(state, key, value, silent);
     if (value instanceof State && !PARENT.has(value)) {
       PARENT.set(value, state);
-      Context.get(state)?.add(value, true);
+      Context.for(state)?.add(value, true);
       event(value);
     }
   }

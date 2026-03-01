@@ -2140,11 +2140,11 @@ describe('context method (static)', () => {
 
     const test = Test.new();
 
-    expect(Context.get(test)).toBeUndefined();
+    expect(Context.for(test)).toBeUndefined();
 
     const context = new Context({ test });
 
-    expect(Context.get(test)).toBe(context);
+    expect(Context.for(test)).toBe(context);
   });
 
   it('will callback when attached', () => {
@@ -2153,7 +2153,7 @@ describe('context method (static)', () => {
     const test = Test.new();
     const mock = vi.fn();
 
-    Context.get(test, mock);
+    Context.for(test, mock);
 
     expect(mock).not.toBeCalled();
 

@@ -40,7 +40,7 @@ class Context {
    * Get the context for a specified State. If a callback is provided, it will be run when
    * the context becomes available.
    */
-  static get<T extends State>(
+  static for<T extends State>(
     on: State,
     callback: (got: Context) => void
   ): void;
@@ -48,9 +48,9 @@ class Context {
   /**
    * Get the context for a specified State. Returns undefined if none are found.
    */
-  static get<T extends State>(on: State): Context | undefined;
+  static for<T extends State>(on: State): Context | undefined;
 
-  static get({ is }: State, callback?: (got: Context) => void) {
+  static for({ is }: State, callback?: (got: Context) => void) {
     const context = LOOKUP.get(is);
 
     if (context instanceof Context) {

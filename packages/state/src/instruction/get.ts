@@ -71,7 +71,7 @@ function get<R, T extends State>(
         update(subject, key, Object.freeze(Array.from(applied)));
       };
 
-      Context.get(subject, (context) => {
+      Context.for(subject, (context) => {
         context.get(Type, (state) => {
           let remove: (() => void) | undefined;
           let flush: (() => void) | undefined;
@@ -143,7 +143,7 @@ function get<R, T extends State>(
     }
 
     // Check context
-    Context.get(subject, (context) => {
+    Context.for(subject, (context) => {
       const self = context.get(Type);
 
       if (self && self !== subject) assign(self);
