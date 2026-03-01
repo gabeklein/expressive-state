@@ -54,70 +54,12 @@ function get<T extends State>(
 
 function get<R, T extends State>(
   Type: Type<T>,
-  arg1?: Function | boolean,
-  arg2?: Function
+  arg1?: get.Callback<T> | boolean,
+  arg2?: get.Callback<T>
 ) {
-  const isDownstream = arg1 === true;
-  const isOptional = arg1 === false;
+  if (arg1 === true) return getDownstream(Type, arg2);
 
-  return use<T[] | T>((key, subject) => {
-    // Downstream collection mode
-    if (isDownstream) {
-      const callback =
-        typeof arg2 === 'function' ? (arg2 as get.Callback<T>) : undefined;
-
-      const applied = new Set<State>();
-      const reset = () => {
-        update(subject, key, Object.freeze(Array.from(applied)));
-      };
-
-      Context.for(subject, (context) => {
-        context.get(Type, (state) => {
-          let remove: (() => void) | undefined;
-          let flush: (() => void) | undefined;
-
-          if (applied.has(state)) return;
-
-          if (callback) {
-            const exit = scope();
-
-            try {
-              const done = callback(state, subject);
-
-              if (done === false) return false;
-              if (typeof done == 'function') remove = done;
-            } finally {
-              flush = exit();
-            }
-          }
-
-          applied.add(state);
-          reset();
-
-          const done = () => {
-            if (flush) flush();
-            ignore();
-
-            applied.delete(state);
-            reset();
-
-            if (typeof remove == 'function') remove();
-
-            remove = undefined;
-          };
-
-          const ignore = state.set(done, null);
-
-          return done;
-        });
-      });
-
-      return {
-        value: [],
-        enumerable: false
-      };
-    }
-
+  return use<T>((key, subject) => {
     // Upstream mode
     const hasParent = PARENT.get(subject) as T;
 
@@ -147,14 +89,72 @@ function get<R, T extends State>(
       const self = context.get(Type);
 
       if (self && self !== subject) assign(self);
-      else if (!isOptional)
+      else if (arg1 !== false)
         throw new Error(
           `Required ${Type} not found in context for ${subject}.`
         );
     });
 
     return {
-      get: !isOptional,
+      get: arg1 !== false,
+      enumerable: false
+    };
+  });
+}
+
+function getDownstream<T extends State>(
+  Type: Type<T>,
+  callback: get.Callback<T> | undefined
+) {
+  return use<T[]>((key, subject) => {
+    const applied = new Set<State>();
+    const reset = () => {
+      update(subject, key, Object.freeze(Array.from(applied)));
+    };
+
+    Context.for(subject, (context) => {
+      context.get(Type, (state) => {
+        let remove: (() => void) | undefined;
+        let flush: (() => void) | undefined;
+
+        if (applied.has(state)) return;
+
+        if (callback) {
+          const exit = scope();
+
+          try {
+            const done = callback(state, subject);
+
+            if (done === false) return false;
+            if (typeof done == 'function') remove = done;
+          } finally {
+            flush = exit();
+          }
+        }
+
+        applied.add(state);
+        reset();
+
+        const done = () => {
+          if (flush) flush();
+          ignore();
+
+          applied.delete(state);
+          reset();
+
+          if (typeof remove == 'function') remove();
+
+          remove = undefined;
+        };
+
+        const ignore = state.set(done, null);
+
+        return done;
+      });
+    });
+
+    return {
+      value: [],
       enumerable: false
     };
   });
