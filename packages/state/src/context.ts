@@ -2,6 +2,7 @@ import { listener } from './observable';
 import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
+const OWNED = new WeakSet<State>();
 const KEYS = new Map<State.Extends, symbol>();
 
 function key(T: State.Extends) {
@@ -63,6 +64,7 @@ class Context {
 
   protected inputs: Record<string | number, State | State.Extends> = {};
   protected cleanup: (() => void)[] = [];
+  protected perState = new Map<State, (() => void)[]>();
 
   upstream: Record<symbol, Context.Expect> = {};
   downstream: Record<symbol, State | null> = {};
@@ -134,7 +136,24 @@ class Context {
     if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
 
-    for (const [K, V] of Object.entries(inputs)) {
+    Object.keys({ ...this.inputs, ...inputs }).forEach((K) => {
+      const V = inputs[K];
+      const E = this.inputs[K];
+
+      if (E === V) return;
+
+      if (E) {
+        this.id = uid(); //TODO: remove this when able to remount context state independent of React tree.
+        if (E instanceof State) {
+          this.remove(E);
+        } else {
+          const instance = this.downstream[key(E)];
+          if (instance) this.remove(instance);
+        }
+      }
+
+      if (!V) return;
+
       if (!(State.is(V) || V instanceof State))
         throw new Error(
           `Context can only include an instance or class of State but got ${
@@ -142,21 +161,11 @@ class Context {
           }.`
         );
 
-      const exists = this.inputs[K];
-
-      if (!exists) {
-        const I = V instanceof State ? V : new (V as State.Type<T>)();
-        init.set(this.add(I), true);
-        if (I !== V) this.cleanup.push(() => event(I, null));
-      }
-      // Context must force-reset because inputs are no longer safe,
-      // however probably should do that on a per-state basis.
-      else if (exists !== V) {
-        this.pop();
-        this.set(inputs);
-        this.id = uid();
-      }
-    }
+      const I = V instanceof State ? V : new (V as State.Type<T>)();
+      if (I !== V) OWNED.add(I);
+      this.add(I);
+      init.set(I, true);
+    });
 
     for (const [state, explicit] of init) {
       state.set();
@@ -170,7 +179,7 @@ class Context {
    * Adds a State to this context.
    */
   add<T extends State>(I: T, implicit?: boolean) {
-    const reset = new Set<() => void>();
+    const reset: (() => void)[] = [];
     let T = I.constructor as State.Extends<T>;
 
     while (T !== State) {
@@ -181,7 +190,7 @@ class Context {
         listener(I, (event) => {
           if (event === true) {
             const cb = expects(I);
-            if (cb) reset.add(cb);
+            if (cb) reset.unshift(cb);
           }
 
           return null;
@@ -194,7 +203,8 @@ class Context {
       T = Object.getPrototypeOf(T);
     }
 
-    this.cleanup.push(() => reset.forEach((cb) => cb()));
+    if (OWNED.has(I)) reset.push(() => event(I, null));
+    this.perState.set(I, reset);
 
     const waiting = LOOKUP.get(I);
 
@@ -205,6 +215,25 @@ class Context {
     LOOKUP.set(I, this);
 
     return I;
+  }
+
+  protected remove(I: State) {
+    const callbacks = this.perState.get(I);
+
+    if (callbacks) {
+      callbacks.forEach((cb) => cb());
+      this.perState.delete(I);
+    }
+
+    let T = I.constructor as State.Extends;
+
+    while (T !== State) {
+      const K = key(T);
+      if (this.downstream[K] === I) delete this.downstream[K];
+      T = Object.getPrototypeOf(T);
+    }
+
+    LOOKUP.delete(I);
   }
 
   /**
@@ -227,6 +256,8 @@ class Context {
     this.inputs = this.upstream = this.downstream = {};
     this.cleanup.forEach((cb) => cb());
     this.cleanup = [];
+    this.perState.forEach((callbacks) => callbacks.forEach((cb) => cb()));
+    this.perState.clear();
   }
 }
 
