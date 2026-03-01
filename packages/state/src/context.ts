@@ -63,8 +63,8 @@ class Context {
   public id = uid();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
-  protected cleanup: (() => void)[] = [];
-  protected cleanups = new Map<string | number, () => void>();
+  protected cleanup = new Map<string | number, () => void>();
+  protected children = new Set<Context>();
 
   upstream: Record<symbol, Context.Expect> = {};
   downstream: Record<symbol, State | null> = {};
@@ -73,7 +73,7 @@ class Context {
     if (arg instanceof Context) {
       this.upstream = Object.create(arg.upstream);
       this.downstream = Object.create(arg.downstream);
-      arg.cleanup.unshift(() => this.pop());
+      arg.children.add(this);
     } else if (arg) {
       this.set(arg);
     }
@@ -131,7 +131,7 @@ class Context {
     inputs: Context.Accept<T>,
     forEach?: Context.Expect<T>
   ) {
-    const { cleanups } = this;
+    const { cleanup } = this;
     const init: State[] = [];
 
     if (typeof inputs == 'function' || inputs instanceof State)
@@ -145,8 +145,8 @@ class Context {
 
       if (E) {
         this.id = uid(); //TODO: remove this when able to remount context state independent of React tree.
-        cleanups.get(K)?.();
-        cleanups.delete(K);
+        cleanup.get(K)?.();
+        cleanup.delete(K);
       }
 
       if (!V) return;
@@ -160,7 +160,7 @@ class Context {
 
       const I = V instanceof State ? V : new (V as State.Type<T>)();
       if (I !== V) OWNED.add(I);
-      cleanups.set(K, this.add(I));
+      cleanup.set(K, this.add(I));
       init.push(I);
     });
 
@@ -243,10 +243,10 @@ class Context {
    */
   public pop() {
     this.inputs = this.upstream = this.downstream = {};
+    this.children.forEach((x) => x.pop());
+    this.children.clear();
     this.cleanup.forEach((cb) => cb());
-    this.cleanup = [];
-    this.cleanups.forEach((cb) => cb());
-    this.cleanups.clear();
+    this.cleanup.clear();
   }
 }
 
