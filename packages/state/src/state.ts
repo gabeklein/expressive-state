@@ -573,10 +573,10 @@ function manage(
 }
 
 function effect<T extends State>(state: T, fn: State.Effect<T>) {
-  const effect: State.Effect<T> = METHOD.get(fn) || fn;
+  fn = unbind(fn);
 
   return watch(state, (proxy, changed) => {
-    const cb = effect.call(proxy, proxy, changed || []);
+    const cb = fn.call(proxy, proxy, changed || []);
 
     if (typeof cb == 'function' || cb === null) return cb;
   });
@@ -619,7 +619,7 @@ function access(state: State, property: string, required?: boolean) {
   }
 
   if (METHODS.get(state.constructor)!.has(property))
-    return METHOD.get((state as any)[property]);
+    return unbind((state as any)[property]);
 
   const error = new Error(`${state}.${property} is not yet available.`);
   const promise = new Promise<any>((resolve, reject) => {
