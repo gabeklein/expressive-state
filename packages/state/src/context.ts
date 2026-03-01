@@ -1,5 +1,5 @@
 import { listener } from './observable';
-import { event, State, PARENT, uid } from './state';
+import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<State.Extends, symbol>();
@@ -164,14 +164,7 @@ class Context {
 
     for (const [state, explicit] of init) {
       state.set();
-
       if (explicit && forEach) forEach(state as T);
-
-      for (const [_key, value] of state)
-        if (PARENT.get(value as State) === state) {
-          this.add(value as State, true);
-          init.set(value as State, false);
-        }
     }
 
     this.inputs = inputs;
@@ -191,7 +184,7 @@ class Context {
   /**
    * Adds a State to this context.
    */
-  protected add<T extends State>(I: T, implicit?: boolean) {
+  add<T extends State>(I: T, implicit?: boolean) {
     const { upstream, downstream, cleanup } = this;
 
     const done = new Set<() => void>();
