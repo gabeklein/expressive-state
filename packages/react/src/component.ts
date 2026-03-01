@@ -1,6 +1,6 @@
 import { State, Context, watch, unbind } from '@expressive/state';
-import { ReactNode, createElement, useState, useEffect, Suspense } from 'react';
-import { Layers } from './context';
+import { ReactNode, createElement, useState, useEffect } from 'react';
+import { Layers, Provide } from './context';
 
 const PROPS = new WeakMap<object, Props<any>>();
 
@@ -97,6 +97,8 @@ State.as = function <T extends State, P extends object = {}>(
   class ReactType extends Base {
     static contextType = Layers;
 
+    fallback?: ReactNode;
+
     get props(): Props<this> {
       return PROPS.get(this.is)!;
     }
@@ -118,9 +120,6 @@ State.as = function <T extends State, P extends object = {}>(
 
     private set state(_state: State.Values<this>) {}
 
-    render!: () => ReactNode;
-    fallback?: ReactNode;
-
     constructor(nextProps: any, ...rest: any[]) {
       let context;
       const { is, ...props } = nextProps;
@@ -141,6 +140,8 @@ State.as = function <T extends State, P extends object = {}>(
       );
       this.render = () => createElement(AsComponent);
     }
+
+    render!: () => ReactNode;
 
     /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
     setState!: (state: any, callback?: () => void) => void;
@@ -187,20 +188,11 @@ function Render<T extends Component, P extends State.Assign<T>>(
         ready = true;
       });
 
-      let children: ReactNode = createElement(View);
-      const fallback = this.props.fallback || active.fallback;
-
-      if (fallback !== undefined)
-        children = createElement(
-          Suspense,
-          { fallback, name: String(this) },
-          children
-        );
-
-      return createElement(Layers.Provider, {
-        key: this.context.id,
-        value: this.context,
-        children
+      return createElement(Provide, {
+        context: this.context,
+        name: String(this),
+        fallback: this.props.fallback || active.fallback,
+        children: createElement(View)
       });
     };
   });

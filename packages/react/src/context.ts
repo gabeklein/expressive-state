@@ -88,7 +88,18 @@ function Provider<T extends State>(props: Provider.Props<T>) {
     }
   });
 
-  let { children, fallback, name } = props;
+  return createElement(Provide, { context, ...props });
+}
+
+interface ProvideProps {
+  context: Context;
+  children?: ReactNode;
+  fallback?: ReactNode;
+  name?: string | undefined;
+}
+
+function Provide(props: ProvideProps) {
+  let { context, children, fallback, name } = props;
 
   if (fallback !== undefined)
     children = createElement(Suspense, { fallback, name }, children);
@@ -100,4 +111,4 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   });
 }
 
-export { Consumer, Provider };
+export { Consumer, Provider, Provide };
