@@ -64,7 +64,7 @@ class Context {
 
   protected inputs: Record<string | number, State | State.Extends> = {};
   protected cleanup: (() => void)[] = [];
-  protected perState = new Map<State, (() => void)[]>();
+  protected cleanups = new Map<string | number, () => void>();
 
   upstream: Record<symbol, Context.Expect> = {};
   downstream: Record<symbol, State | null> = {};
@@ -131,7 +131,8 @@ class Context {
     inputs: Context.Accept<T>,
     forEach?: Context.Expect<T>
   ) {
-    const init = new Map<State, boolean>();
+    const { cleanups } = this;
+    const init: State[] = [];
 
     if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
@@ -144,12 +145,8 @@ class Context {
 
       if (E) {
         this.id = uid(); //TODO: remove this when able to remount context state independent of React tree.
-        if (E instanceof State) {
-          this.remove(E);
-        } else {
-          const instance = this.downstream[key(E)];
-          if (instance) this.remove(instance);
-        }
+        cleanups.get(K)?.();
+        cleanups.delete(K);
       }
 
       if (!V) return;
@@ -163,13 +160,13 @@ class Context {
 
       const I = V instanceof State ? V : new (V as State.Type<T>)();
       if (I !== V) OWNED.add(I);
-      this.add(I);
-      init.set(I, true);
+      cleanups.set(K, this.add(I));
+      init.push(I);
     });
 
-    for (const [state, explicit] of init) {
+    for (const state of init) {
       state.set();
-      if (explicit && forEach) forEach(state as T);
+      if (forEach) forEach(state as T);
     }
 
     this.inputs = inputs;
@@ -204,7 +201,6 @@ class Context {
     }
 
     if (OWNED.has(I)) reset.push(() => event(I, null));
-    this.perState.set(I, reset);
 
     const waiting = LOOKUP.get(I);
 
@@ -214,26 +210,19 @@ class Context {
 
     LOOKUP.set(I, this);
 
-    return I;
-  }
+    return () => {
+      reset.forEach((cb) => cb());
 
-  protected remove(I: State) {
-    const callbacks = this.perState.get(I);
+      let T = I.constructor as State.Extends;
 
-    if (callbacks) {
-      callbacks.forEach((cb) => cb());
-      this.perState.delete(I);
-    }
+      while (T !== State) {
+        const K = key(T);
+        if (this.downstream[K] === I) delete this.downstream[K];
+        T = Object.getPrototypeOf(T);
+      }
 
-    let T = I.constructor as State.Extends;
-
-    while (T !== State) {
-      const K = key(T);
-      if (this.downstream[K] === I) delete this.downstream[K];
-      T = Object.getPrototypeOf(T);
-    }
-
-    LOOKUP.delete(I);
+      LOOKUP.delete(I);
+    };
   }
 
   /**
@@ -256,8 +245,8 @@ class Context {
     this.inputs = this.upstream = this.downstream = {};
     this.cleanup.forEach((cb) => cb());
     this.cleanup = [];
-    this.perState.forEach((callbacks) => callbacks.forEach((cb) => cb()));
-    this.perState.clear();
+    this.cleanups.forEach((cb) => cb());
+    this.cleanups.clear();
   }
 }
 
