@@ -557,45 +557,57 @@ function manage(
   silent?: boolean
 ) {
   const store = STATE.get(state)!;
+  const adopt = inContext(state, store, key);
 
   function get(this: State) {
     return observing(this, key, store[key]);
   }
 
-  let drop: (() => void) | undefined;
-  let cancel: (() => void) | undefined;
-
   function set(value: unknown, silent?: boolean) {
-    cancel && cancel();
-    cancel = undefined;
-    drop && drop();
-    drop = undefined;
-
     update(state, key, value, silent);
-
-    if (!(value instanceof State) || PARENT.has(value)) return;
-
-    PARENT.set(value, state);
-
-    Context.for(state, (ctx) => {
-      if (store[key] === value) {
-        drop = ctx.add(value, true);
-        cancel = listener(
-          state,
-          () => {
-            drop && drop();
-            drop = undefined;
-          },
-          null
-        );
-      }
-    });
-
-    event(value);
+    adopt(value);
   }
 
   define(state, key, { set, get });
   set(value, silent);
+}
+
+function inContext(
+  state: State,
+  store: Record<any, any>,
+  key: string | number
+) {
+  let drop: (() => void) | undefined;
+
+  function adopt(value: State) {
+    if (!PARENT.has(value)) PARENT.set(value, state);
+
+    Context.for(state, (ctx) => {
+      if (store[key] === value) drop = ctx.add(value, true);
+    });
+    event(value);
+  }
+
+  let next: (value: State) => void = (value) => {
+    listener(
+      state,
+      () => {
+        drop && drop();
+        drop = undefined;
+      },
+      null
+    );
+    next = adopt;
+    adopt(value);
+  };
+
+  return (value: unknown) => {
+    if (drop) {
+      drop();
+      drop = undefined;
+    }
+    if (value instanceof State) next(value);
+  };
 }
 
 function values<T extends State>(state: T): State.Values<T> {
