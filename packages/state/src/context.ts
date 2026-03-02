@@ -189,12 +189,11 @@ class Context {
       const expects = this.upstream[K];
 
       if (expects)
-        listener(I, (event) => {
-          if (event === true) {
+        listener(I, (ev) => {
+          if (ev === true) {
             const cb = expects(I);
             if (cb) reset.push(cb);
           }
-
           return null;
         });
 

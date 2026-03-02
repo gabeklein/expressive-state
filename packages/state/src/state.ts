@@ -562,16 +562,36 @@ function manage(
     return observing(this, key, store[key]);
   }
 
+  let drop: (() => void) | undefined;
+  let cancel: (() => void) | undefined;
+
   function set(value: unknown, silent?: boolean) {
+    cancel && cancel();
+    cancel = undefined;
+    drop && drop();
+    drop = undefined;
+
     update(state, key, value, silent);
-    if (value instanceof State && !PARENT.has(value)) {
-      PARENT.set(value, state);
-      Context.for(state, (ctx) => {
-        const drop = ctx.add(value, true);
-        listener(state, drop, null);
-      });
-      event(value);
-    }
+
+    if (!(value instanceof State) || PARENT.has(value)) return;
+
+    PARENT.set(value, state);
+
+    Context.for(state, (ctx) => {
+      if (store[key] === value) {
+        drop = ctx.add(value, true);
+        cancel = listener(
+          state,
+          () => {
+            drop && drop();
+            drop = undefined;
+          },
+          null
+        );
+      }
+    });
+
+    event(value);
   }
 
   define(state, key, { set, get });

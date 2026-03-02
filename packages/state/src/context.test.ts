@@ -352,6 +352,44 @@ describe('include', () => {
     expect(context.get(Foo)).toBe(foobar.foo);
   });
 
+  it('will drop implicit child when property is overwritten', () => {
+    const foo1 = new Foo();
+    const foo2 = new Foo();
+
+    class Parent extends State {
+      child: Foo = foo1;
+    }
+
+    const ctx = new Context({ Parent });
+    const parent = ctx.get(Parent, true);
+
+    expect(ctx.get(Foo)).toBe(foo1);
+
+    parent.child = foo2;
+
+    expect(ctx.get(Foo)).toBe(foo2);
+  });
+
+  it('will not add stale implicit if property changes before context attaches', () => {
+    const foo1 = new Foo();
+    const foo2 = new Foo();
+
+    class Parent extends State {
+      child: Foo = foo1;
+    }
+
+    // State.new initializes the state (runs manage) but doesn't attach a context yet
+    const parent = Parent.new();
+
+    // overwrite child before context attaches - queues second Context.for callback
+    parent.child = foo2;
+
+    const ctx = new Context({ parent });
+
+    // only foo2 should be in context; stale foo1 callback was skipped
+    expect(ctx.get(Foo)).toBe(foo2);
+  });
+
   it('will prefer explicit over implicit', () => {
     const foo = new Foo();
     const foobar = new FooBar();
@@ -468,22 +506,37 @@ describe('Context.get callback overload (downstream registration)', () => {
     context.pop();
   });
 
-  it('should call callback when inner is popped', () => {
+  it('will call cleanup when state is removed', () => {
     const context = new Context();
     const cleanup = vi.fn();
     const cb = vi.fn(() => cleanup);
 
     context.get(DownstreamState, cb);
 
-    // Create a child context and register callback there
     const child = context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
 
-    // Pop child context
     child.pop();
 
     expect(cleanup).toBeCalledTimes(1);
+    expect(cb).toBeCalledTimes(1);
+  });
+
+  it('will not call callback for new additions after cancel', () => {
+    const context = new Context();
+    const cb = vi.fn();
+
+    const cancel = context.get(DownstreamState, cb);
+    context.push(DownstreamState);
+
+    expect(cb).toBeCalledTimes(1);
+    cancel();
+
+    context.push(DownstreamState);
+
+    expect(cb).toBeCalledTimes(1);
+    context.pop();
   });
 });
 
