@@ -567,7 +567,8 @@ function manage(
     if (value instanceof State && !PARENT.has(value)) {
       PARENT.set(value, state);
       Context.for(state, (ctx) => {
-        ctx.add(value, true);
+        const drop = ctx.add(value, true);
+        listener(state, drop, null);
       });
       event(value);
     }

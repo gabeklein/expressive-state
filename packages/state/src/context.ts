@@ -174,6 +174,9 @@ class Context {
 
   /**
    * Adds a State to this context.
+   *
+   * @param I State to add.
+   * @param implicit Whether to avoid overriding an existing downstream value of the same type. Defaults to false.
    */
   add<T extends State>(I: T, implicit?: boolean) {
     const reset: (() => void)[] = [];

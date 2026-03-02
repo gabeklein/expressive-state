@@ -113,6 +113,87 @@ it('will ignore if multiple but same', () => {
   expect(got).toBe(example);
 });
 
+it('will remove implicit children on pop', () => {
+  class Parent extends State {
+    child = new Example();
+  }
+
+  const ctx = new Context({ Parent });
+  const { child } = ctx.get(Parent, true);
+
+  expect(Context.for(child)).toBe(ctx);
+
+  ctx.pop();
+
+  expect(Context.for(child, false)).toBeUndefined();
+});
+
+it('will remove implicit children when parent removed via set', () => {
+  class Parent extends State {
+    child = new Example();
+  }
+
+  const ctx = new Context({ Parent });
+  const { child } = ctx.get(Parent, true);
+
+  ctx.set({});
+
+  expect(Context.for(child, false)).toBeUndefined();
+  expect(ctx.get(Example)).toBeUndefined();
+});
+
+it('will remove implicit downstream on removal', () => {
+  class Parent extends State {
+    child = new Example();
+  }
+
+  const ctx = new Context({ Parent });
+  const parent = ctx.get(Parent, true);
+  expect(ctx.get(Example)).toBe(parent.child);
+
+  ctx.set({});
+
+  expect(ctx.get(Example)).toBeUndefined();
+});
+
+it('will remove multiple implicit children when parent is removed', () => {
+  class Parent extends State {
+    a = new Example();
+    b = new Example2();
+  }
+
+  const ctx = new Context({ Parent });
+  expect(ctx.get(Example)).toBeInstanceOf(Example);
+  expect(ctx.get(Example2)).toBeInstanceOf(Example2);
+
+  ctx.set({});
+
+  expect(ctx.get(Example)).toBeUndefined();
+  expect(ctx.get(Example2)).toBeUndefined();
+});
+
+it('child pop is safe to call before parent pop', () => {
+  const destroyed = vi.fn();
+
+  class Test extends State {
+    protected new() {
+      return destroyed;
+    }
+  }
+
+  const parent = new Context();
+  const child = parent.push({ Test });
+
+  child.pop();
+
+  expect(destroyed).toBeCalledTimes(1);
+
+  // parent.pop() cascades into already-popped child — must not double-destroy
+  parent.pop();
+
+  expect(destroyed).toBeCalledTimes(1);
+});
+
 it('will destroy modules created by layer', () => {
   class Test extends State {
     destroyed = vi.fn();
@@ -433,7 +514,7 @@ describe('for method (static)', () => {
 
     const context = new Context({ test });
 
-    expect(Context.for(test, false)).toBe(context);
+    expect(Context.for(test)).toBe(context);
   });
 
   it('will callback when attached', () => {
