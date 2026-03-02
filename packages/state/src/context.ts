@@ -1,5 +1,5 @@
 import { listener } from './observable';
-import { event, State, uid } from './state';
+import { access, event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<State.Extends, symbol>();
@@ -205,8 +205,30 @@ class Context {
       T = Object.getPrototypeOf(T);
     }
 
+    const adopted = new Map<string, () => void>();
+
+    const adopt = (k: string, v: unknown) => {
+      adopted.get(k)?.();
+      adopted.delete(k);
+
+      if (v instanceof State && !(LOOKUP.get(v) instanceof Context)) {
+        adopted.set(k, this.add(v, true));
+        event(v);
+      }
+    };
+
+    cleanup.add(
+      listener(I, (ev) => {
+        if (typeof ev === 'string') adopt(ev, access(I, ev, false));
+        else if (ev === true)
+          for (const [k, v] of I) if (v instanceof State) adopt(k, v);
+      })
+    );
+
     const reset = () => {
       cleanup.forEach((cb) => cb());
+      adopted.forEach((cb) => cb());
+      adopted.clear();
 
       let T = I.constructor as State.Extends;
 
