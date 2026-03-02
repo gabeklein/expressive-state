@@ -124,7 +124,7 @@ describe('fetch mode', () => {
       child = new Adopted('ID');
     }
     class Adopted extends State {
-      expects = get(Expected);
+      expects = get(Expected, false);
     }
 
     const attempt = () => Unexpected.new('ID');
