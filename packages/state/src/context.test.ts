@@ -541,6 +541,47 @@ describe('Context.get callback overload (downstream registration)', () => {
   });
 });
 
+describe('with existing context', () => {
+  class Foo extends State {}
+
+  it('will not reassign context if state already has one', () => {
+    const foo = Foo.new();
+    const original = new Context({ foo });
+    const other = new Context();
+
+    other.set(foo);
+
+    expect(other.get(Foo)).toBe(foo);
+    expect(Context.for(foo)).toBe(original);
+  });
+
+  it('will keep original context after second context pops', () => {
+    const foo = Foo.new();
+    const original = new Context({ foo });
+    const other = new Context();
+
+    other.set(foo);
+    other.pop();
+
+    expect(Context.for(foo)).toBe(original);
+  });
+
+  it('will flush waiting callbacks on first context only', () => {
+    const foo = Foo.new();
+    const mock = vi.fn();
+
+    Context.for(foo, mock);
+
+    const first = new Context({ foo });
+    expect(mock).toBeCalledWith(first);
+
+    const second = new Context();
+    second.set(foo);
+
+    expect(mock).toBeCalledTimes(1);
+  });
+});
+
 describe('for method (static)', () => {
   class Test extends State {}
 

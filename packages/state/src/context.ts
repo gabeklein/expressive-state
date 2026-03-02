@@ -182,7 +182,7 @@ class Context {
    * @param implicit Whether to avoid overriding an existing downstream value of the same type. Defaults to false.
    */
   add<T extends State>(I: T, implicit?: boolean) {
-    const reset = new Set<() => void>();
+    const cleanup = new Set<() => void>();
     let T = I.constructor as State.Extends<T>;
 
     while (T !== State) {
@@ -193,7 +193,7 @@ class Context {
         listener(I, (ev) => {
           if (ev === true) {
             const cb = expects(I);
-            if (cb) reset.add(cb);
+            if (cb) cleanup.add(cb);
           }
           return null;
         });
@@ -205,16 +205,8 @@ class Context {
       T = Object.getPrototypeOf(T);
     }
 
-    const waiting = LOOKUP.get(I);
-
-    if (waiting instanceof Array) {
-      waiting.forEach((cb) => cb(this));
-    }
-
-    LOOKUP.set(I, this);
-
-    return () => {
-      reset.forEach((cb) => cb());
+    const reset = () => {
+      cleanup.forEach((cb) => cb());
 
       let T = I.constructor as State.Extends;
 
@@ -223,7 +215,18 @@ class Context {
         if (this.downstream[K] === I) delete this.downstream[K];
         T = Object.getPrototypeOf(T);
       }
+    };
 
+    const waiting = LOOKUP.get(I);
+
+    if (waiting instanceof Context) return reset;
+
+    if (waiting instanceof Array) waiting.forEach((cb) => cb(this));
+
+    LOOKUP.set(I, this);
+
+    return () => {
+      reset();
       LOOKUP.delete(I);
     };
   }
