@@ -2,7 +2,6 @@ import { listener } from './observable';
 import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
-const OWNED = new WeakSet<State>();
 const KEYS = new Map<State.Extends, symbol>();
 
 function key(T: State.Extends) {
@@ -159,8 +158,12 @@ class Context {
         );
 
       const I = V instanceof State ? V : new (V as State.Type<T>)();
-      if (I !== V) OWNED.add(I);
-      cleanup.set(K, this.add(I));
+
+      const clear = this.add(I);
+      cleanup.set(K, () => {
+        clear();
+        if (I !== V) event(I, null);
+      });
       init.push(I);
     });
 
@@ -179,10 +182,8 @@ class Context {
    * @param implicit Whether to avoid overriding an existing downstream value of the same type. Defaults to false.
    */
   add<T extends State>(I: T, implicit?: boolean) {
-    const reset: (() => void)[] = [];
+    const reset = new Set<() => void>();
     let T = I.constructor as State.Extends<T>;
-
-    if (OWNED.has(I)) reset.push(() => event(I, null));
 
     while (T !== State) {
       const K = key(T);
@@ -192,7 +193,7 @@ class Context {
         listener(I, (ev) => {
           if (ev === true) {
             const cb = expects(I);
-            if (cb) reset.push(cb);
+            if (cb) reset.add(cb);
           }
           return null;
         });
@@ -213,7 +214,7 @@ class Context {
     LOOKUP.set(I, this);
 
     return () => {
-      reset.reverse().forEach((cb) => cb());
+      reset.forEach((cb) => cb());
 
       let T = I.constructor as State.Extends;
 
