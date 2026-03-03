@@ -141,24 +141,26 @@ class Context {
   ) {
     const K = key(Type);
 
+    const collect = (ctx: Context, out: T[]) => {
+      const own = ctx.downstream;
+      if (own.hasOwnProperty(K))
+        for (const [state] of own[K])
+          out.push(state as T);
+      ctx.children.forEach(c => collect(c, out));
+      return out;
+    };
+
     if (!cb)
-      return [] as T[];
+      return collect(this, []);
 
     const context = this.upstream;
     const arr = context.hasOwnProperty(K) ? context[K] : (context[K] = []);
 
     arr.push(cb as Context.Expect);
 
-    if (current) {
-      const walk = (ctx: Context) => {
-        const own = ctx.downstream;
-        if (own.hasOwnProperty(K))
-          for (const [state] of own[K])
-            cb(state as T);
-        ctx.children.forEach(walk);
-      };
-      walk(this);
-    }
+    if (current)
+      for (const state of collect(this, []))
+        cb(state);
 
     return () => {
       arr.splice(arr.indexOf(cb as Context.Expect), 1);

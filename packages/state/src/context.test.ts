@@ -602,7 +602,7 @@ describe('has method', () => {
     expect(cb).not.toBeCalled();
   });
 
-  it.fails('will return entries registered downstream', () => {
+  it('will return entries registered downstream', () => {
     const context = new Context();
     context.push(DownstreamState);
 
