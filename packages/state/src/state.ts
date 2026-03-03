@@ -141,15 +141,13 @@ declare namespace State {
     PromiseLike<readonly Event<T>[]>;
 }
 
-interface State {
+abstract class State implements Observable {
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
-  is: this;
-}
+  declare is: this;
 
-abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
