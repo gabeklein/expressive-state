@@ -113,7 +113,7 @@ function getDownstream<T extends State>(
     };
 
     Context.for(subject, (context) => {
-      context.get(Type, (state) => {
+      context.has(Type, (state) => {
         let remove: (() => void) | undefined;
         let flush: (() => void) | undefined;
 

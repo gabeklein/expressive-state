@@ -518,46 +518,33 @@ it('will throw on bad include property (no alias)', () => {
   );
 });
 
-describe('Context.get callback overload (downstream registration)', () => {
+describe('has method', () => {
   class DownstreamState extends State {}
 
-  it('should call callback when type is added downstream', () => {
+  it('will call callback when type is added downstream', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    // Register callback for DownstreamState
-    context.get(DownstreamState, cb);
-
-    // Add DownstreamState after callback registration
+    context.has(DownstreamState, cb);
     context.push(DownstreamState);
 
-    // Callback should be called with the instance
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamState);
   });
 
-  it('should clean up callback when context is popped', () => {
+  it('will clean up callback on cancel', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    // Register callback for DownstreamState
-    const cancel = context.get(DownstreamState, cb);
-
-    // Add DownstreamState after callback registration
+    const cancel = context.has(DownstreamState, cb);
     context.push(DownstreamState);
 
-    // Callback should be called
     expect(cb).toBeCalledTimes(1);
 
-    // Remove callback
     cancel();
-
-    // Add another DownstreamState (simulate re-adding)
     context.push(DownstreamState);
 
-    // Callback should not be called again
     expect(cb).toBeCalledTimes(1);
-
     context.pop();
   });
 
@@ -566,7 +553,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     const cleanup = vi.fn();
     const cb = vi.fn(() => cleanup);
 
-    context.get(DownstreamState, cb);
+    context.has(DownstreamState, cb);
 
     const child = context.push(DownstreamState);
 
@@ -582,7 +569,7 @@ describe('Context.get callback overload (downstream registration)', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    const cancel = context.get(DownstreamState, cb);
+    const cancel = context.has(DownstreamState, cb);
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
@@ -592,6 +579,37 @@ describe('Context.get callback overload (downstream registration)', () => {
 
     expect(cb).toBeCalledTimes(1);
     context.pop();
+  });
+
+  it('will fire for existing entries when current is true', () => {
+    const context = new Context();
+    const cb = vi.fn();
+
+    context.push(DownstreamState);
+    context.has(DownstreamState, cb, true);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamState);
+  });
+
+  it('will not fire for existing entries by default', () => {
+    const context = new Context();
+    const cb = vi.fn();
+
+    context.push(DownstreamState);
+    context.has(DownstreamState, cb);
+
+    expect(cb).not.toBeCalled();
+  });
+
+  it.fails('will return entries registered downstream', () => {
+    const context = new Context();
+    context.push(DownstreamState);
+
+    const entries = context.has(DownstreamState);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toBeInstanceOf(DownstreamState);
   });
 });
 

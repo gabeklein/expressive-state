@@ -33,7 +33,7 @@ declare namespace Context {
     | State.Type<T>
     | Record<string | number, T | State.Type<T>>;
 
-  type Expect<T extends State = State> = (state: T) => (() => void) | void;
+  type Expect<T extends State = State> = (state: T) => (() => void) | false | void;
 }
 
 class Context {
@@ -99,33 +99,14 @@ class Context {
     require: boolean
   ): T | undefined;
 
-  /** Run callback when a specified type is registered in context downstream. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    callback: (state: T) => void
-  ): () => void;
-
-  public get<T extends State>(
-    Type: State.Extends<T>,
-    arg2?: boolean | ((state: T) => void)
+    arg2?: boolean
   ) {
-    const K = key(Type);
-    const context = this.upstream;
-
-    if (typeof arg2 == 'function') {
-      const cb = arg2 as Context.Expect;
-      const arr = context.hasOwnProperty(K) ? context[K] : (context[K] = []);
-      arr.push(cb);
-      return () => {
-        arr.splice(arr.indexOf(cb), 1);
-        if (!arr.length) delete context[K];
-      };
-    }
-
     let found: T | undefined;
     let priority = false;
 
-    for (const [state, explicit] of this.downstream[K] || []) {
+    for (const [state, explicit] of this.downstream[key(Type)] || []) {
       if (found === state) continue;
       if (!found || (!priority && explicit)) {
         found = state as T;
@@ -141,6 +122,48 @@ class Context {
 
     if (found) return found;
     if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
+  }
+
+  /** Get all entries of a type registered downstream. */
+  public has<T extends State>(Type: State.Extends<T>): T[];
+
+  /** Subscribe to a type being registered downstream. */
+  public has<T extends State>(
+    Type: State.Extends<T>,
+    callback: Context.Expect<T>,
+    current?: boolean
+  ): () => void;
+
+  public has<T extends State>(
+    Type: State.Extends<T>,
+    cb?: Context.Expect<T>,
+    current?: boolean
+  ) {
+    const K = key(Type);
+
+    if (!cb)
+      return [] as T[];
+
+    const context = this.upstream;
+    const arr = context.hasOwnProperty(K) ? context[K] : (context[K] = []);
+
+    arr.push(cb as Context.Expect);
+
+    if (current) {
+      const walk = (ctx: Context) => {
+        const own = ctx.downstream;
+        if (own.hasOwnProperty(K))
+          for (const [state] of own[K])
+            cb(state as T);
+        ctx.children.forEach(walk);
+      };
+      walk(this);
+    }
+
+    return () => {
+      arr.splice(arr.indexOf(cb as Context.Expect), 1);
+      if (!arr.length) delete context[K];
+    };
   }
 
   /**
