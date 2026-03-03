@@ -15,6 +15,18 @@ function key(T: State.Extends) {
   return K;
 }
 
+function keys(state: State) {
+  let T = state.constructor as State.Extends;
+  const types = [] as symbol[];
+
+  while (T !== State) {
+    types.push(key(T));
+    T = Object.getPrototypeOf(T);
+  }
+
+  return types;
+}
+
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
@@ -65,8 +77,8 @@ class Context {
   protected cleanup = new Map<string | number, () => void>();
   protected children = new Set<Context>();
 
-  upstream: Record<symbol, Context.Expect> = {};
-  downstream: Record<symbol, State | null> = {};
+  upstream: Record<symbol, Context.Expect[]> = {};
+  downstream: Record<symbol, [State, boolean][]> = {};
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
@@ -98,23 +110,36 @@ class Context {
     arg2?: boolean | ((state: T) => void)
   ) {
     const K = key(Type);
+    const context = this.upstream;
 
     if (typeof arg2 == 'function') {
-      this.upstream[K] = arg2 as Context.Expect;
+      const cb = arg2 as Context.Expect;
+      const arr = context.hasOwnProperty(K) ? context[K] : (context[K] = []);
+      arr.push(cb);
       return () => {
-        delete this.upstream[K];
+        arr.splice(arr.indexOf(cb), 1);
+        if (!arr.length) delete context[K];
       };
     }
 
-    const result = this.downstream[K];
+    let found: T | undefined;
+    let priority = false;
 
-    if (result === null)
-      throw new Error(
-        `Did find ${Type} in context, but multiple were defined.`
-      );
+    for (const [state, explicit] of this.downstream[K] || []) {
+      if (found === state) continue;
+      if (!found || (!priority && explicit)) {
+        found = state as T;
+        priority = explicit;
+        continue;
+      }
+      if (!priority) return null;
+      if (explicit)
+        throw new Error(
+          `Did find ${Type} in context, but multiple were defined.`
+        );
+    }
 
-    if (result) return result as T;
-
+    if (found) return found;
     if (arg2) throw new Error(`Could not find ${Type} in context.`);
   }
 
@@ -175,69 +200,71 @@ class Context {
     this.inputs = inputs;
   }
 
-  /**
-   * Adds a State to this context.
-   *
-   * @param I State to add.
-   * @param implicit Whether to avoid overriding an existing downstream value of the same type. Defaults to false.
-   */
   add<T extends State>(I: T, implicit?: boolean) {
-    const cleanup = new Set<() => void>();
-    let T = I.constructor as State.Extends<T>;
-
-    while (T !== State) {
-      const K = key(T);
-      const expects = this.upstream[K];
-
-      if (expects)
-        listener(I, (ev) => {
-          if (ev === true) {
-            const cb = expects(I);
-            if (cb) cleanup.add(cb);
-          }
-          return null;
-        });
-
-      const down = this.downstream;
-      const value = down.hasOwnProperty(K) ? null : I;
-
-      if (value || (down[K] !== I && !implicit)) down[K] = value;
-      T = Object.getPrototypeOf(T);
-    }
-
+    const expects = [] as Context.Expect<T>[];
     const adopted = new Map<string, () => void>();
+    const cleanup = new Set<() => void>();
+
+    const observe = (I: State, explicit: boolean, key = '') => {
+      const context = this.downstream;
+
+      for (const K of keys(I)) {
+        if (!context.hasOwnProperty(K)) context[K] = [];
+        context[K].push([I, explicit]);
+      }
+
+      adopted.set(key, () => {
+        for (const K of keys(I)) {
+          const arr = context[K];
+          if (arr) {
+            const idx = arr.findIndex((e) => e[0] === I);
+            if (idx >= 0) arr.splice(idx, 1);
+            if (!arr.length) delete context[K];
+          }
+        }
+      });
+    };
 
     const adopt = (k: string, v: unknown) => {
       adopted.get(k)?.();
       adopted.delete(k);
 
-      if (v instanceof State && !(LOOKUP.get(v) instanceof Context)) {
-        adopted.set(k, this.add(v, true));
-        event(v);
-      }
+      if (v instanceof State)
+        if (LOOKUP.get(v) instanceof Context) {
+          observe(v, false, k);
+        } else {
+          adopted.set(k, this.add(v, true));
+          event(v);
+        }
     };
-
-    cleanup.add(
-      listener(I, (ev) => {
-        if (typeof ev === 'string') adopt(ev, access(I, ev, false));
-        else if (ev === true)
-          for (const [k, v] of I) if (v instanceof State) adopt(k, v);
-      })
-    );
 
     const reset = () => {
       cleanup.forEach((cb) => cb());
       adopted.forEach((cb) => cb());
       adopted.clear();
-
-      let T = I.constructor as State.Extends;
-
-      while (T !== State) {
-        const K = key(T);
-        if (this.downstream[K] === I) delete this.downstream[K];
-        T = Object.getPrototypeOf(T);
-      }
     };
+
+    observe(I, !implicit);
+
+    keys(I).forEach((K) => {
+      const E = this.upstream[K];
+      if (E) expects.push(...E);
+    });
+
+    cleanup.add(
+      listener(I, (ev) => {
+        if (typeof ev === 'string') adopt(ev, access(I, ev, false));
+        else if (ev === true) {
+          for (const cb of new Set(expects)) {
+            const r = cb(I);
+            if (r) cleanup.add(r);
+          }
+          for (const [k, v] of I) {
+            if (v instanceof State) adopt(k, v);
+          }
+        }
+      })
+    );
 
     const waiting = LOOKUP.get(I);
 

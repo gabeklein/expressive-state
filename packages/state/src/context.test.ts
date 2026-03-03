@@ -164,7 +164,9 @@ it('will remove multiple implicit children when parent is removed', () => {
   }
 
   const ctx = new Context({ Parent });
-  expect(ctx.get(Example)).toBeInstanceOf(Example);
+  // Example2 extends Example, so both a and b register under Example key
+  // This creates an implicit collision on Example — returns null
+  expect(ctx.get(Example)).toBeNull();
   expect(ctx.get(Example2)).toBeInstanceOf(Example2);
 
   ctx.set({});
@@ -389,6 +391,58 @@ describe('include', () => {
 
     // only foo2 should be in context; stale foo1 callback was skipped
     expect(ctx.get(Foo)).toBe(foo2);
+  });
+
+  it('will collide implicit children with shared ancestor', () => {
+    class Bar extends Foo {}
+
+    class Parent extends State {
+      foo = new Foo();
+      bar = new Bar();
+    }
+
+    const ctx = new Context({ Parent });
+
+    expect(ctx.get(Bar)).toBeInstanceOf(Bar);
+    expect(ctx.get(Foo)).toBeNull();
+  });
+
+  it('will uncollide when one implicit child is removed', () => {
+    class Bar extends Foo {}
+
+    class Parent extends State {
+      foo: Foo | undefined = new Foo();
+      bar = new Bar();
+    }
+
+    const ctx = new Context({ Parent });
+    const parent = ctx.get(Parent, true);
+
+    expect(ctx.get(Foo)).toBeNull();
+
+    parent.foo = undefined;
+
+    expect(ctx.get(Foo)).toBeInstanceOf(Bar);
+  });
+
+  it('will keep child in context if still referenced by another parent', () => {
+    const shared = new Foo();
+
+    class ParentA extends State {
+      child: Foo | undefined = shared;
+    }
+
+    class ParentB extends State {
+      child = shared;
+    }
+
+    const ctx = new Context({ ParentA, ParentB });
+
+    expect(ctx.get(Foo)).toBe(shared);
+
+    ctx.get(ParentA, true).child = undefined;
+
+    expect(ctx.get(Foo)).toBe(shared);
   });
 
   it('will prefer explicit over implicit', () => {
