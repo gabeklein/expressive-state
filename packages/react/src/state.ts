@@ -154,7 +154,9 @@ State.use = function <T extends State>(
       if (ready) {
         ready = false;
 
-        Promise.resolve(use(...args)).finally(() => (ready = true));
+        Promise.resolve(use(...args)).finally(() => {
+          ready = true;
+        });
       }
 
       return active;
