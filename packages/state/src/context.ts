@@ -234,9 +234,7 @@ class Context {
   }
 
   add<T extends State>(I: T, implicit?: boolean) {
-    const expects = [] as Context.Expect<T>[];
-    const cleanup = new Set<() => void>();
-    const remove = new Map<string, () => void>();
+    const cleanup = new Map<string | Function, () => void>();
 
     const observe = (I: State, explicit: boolean, key = '') => {
       const context = this.registry;
@@ -246,7 +244,7 @@ class Context {
         context[K].push([I, explicit]);
       }
 
-      remove.set(key, () => {
+      cleanup.set(key, () => {
         for (const K of keys(I)) {
           const arr = context[K];
           if (arr) {
@@ -259,28 +257,22 @@ class Context {
     };
 
     const adopt = (k: string, v: unknown) => {
-      remove.get(k)?.();
-      remove.delete(k);
+      cleanup.get(k)?.();
+      cleanup.delete(k);
 
       if (v instanceof State)
         if (LOOKUP.get(v) instanceof Context) {
           observe(v, false, k);
         } else {
-          remove.set(k, this.add(v, true));
+          cleanup.set(k, this.add(v, true));
           event(v);
         }
-    };
-
-    const reset = () => {
-      cleanup.forEach((cb) => cb());
-      cleanup.clear();
-      remove.forEach((cb) => cb());
-      remove.clear();
     };
 
     observe(I, !implicit);
 
     const IK = keys(I);
+    const expects = [] as Context.Expect<T>[];
 
     for (const K of IK) {
       const E = this.upstream[K];
@@ -295,24 +287,28 @@ class Context {
         if (downstream.hasOwnProperty(K))
           for (const cb of [...downstream[K]]) {
             const r = cb(I);
-            if (typeof r == 'function') cleanup.add(r);
+            if (typeof r == 'function') cleanup.set(r, r);
           }
     }
 
-    cleanup.add(
-      listener(I, (ev) => {
-        if (typeof ev === 'string') adopt(ev, access(I, ev, false));
-        else if (ev === true) {
-          for (const cb of new Set(expects)) {
-            const r = cb(I);
-            if (r) cleanup.add(r);
-          }
-          for (const [k, v] of I) {
-            if (v instanceof State) adopt(k, v);
-          }
+    const unwatch = listener(I, (key) => {
+      if (typeof key === 'string') adopt(key, access(I, key, false));
+      else if (key === true) {
+        for (const cb of new Set(expects)) {
+          const r = cb(I);
+          if (r) cleanup.set(r, r);
         }
-      })
-    );
+        for (const [k, v] of I) {
+          if (v instanceof State) adopt(k, v);
+        }
+      }
+    });
+
+    const reset = () => {
+      unwatch();
+      cleanup.forEach((cb) => cb());
+      cleanup.clear();
+    };
 
     const waiting = LOOKUP.get(I);
 
