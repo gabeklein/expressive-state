@@ -137,7 +137,11 @@ declare namespace State {
    */
   type EffectCallback = (update: boolean | null) => void;
 
-  type Pending<T extends State> = readonly Event<T>[] &
+  /**
+   * A list of keys updated, or events fired, since last update.
+   * This may be awaited to get full list (same array) when update is settled.
+   */
+  type Updated<T extends State> = readonly Event<T>[] &
     PromiseLike<readonly Event<T>[]>;
 }
 
@@ -244,7 +248,7 @@ abstract class State implements Observable {
    *
    * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
-  set(): State.Pending<this>;
+  set(): State.Updated<this>;
 
   /**
    * Update mulitple properties at once. Merges argument with current state.
@@ -254,7 +258,7 @@ abstract class State implements Observable {
    * @param silent - If an update does occur, listeners will not be refreshed automatically.
    * @returns Promise resolving an array of keys updated, `undefined` (immediately) if a noop.
    */
-  set(assign?: State.Assign<this>, silent?: boolean): State.Pending<this>;
+  set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -270,7 +274,7 @@ abstract class State implements Observable {
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: State.Event<this>): State.Pending<this>;
+  set(key: State.Event<this>): State.Updated<this>;
 
   /**
    * Set a value for a property. This will update the value and notify listeners.
@@ -291,7 +295,7 @@ abstract class State implements Observable {
     key: State.Event<this>,
     value: unknown,
     init?: boolean
-  ): State.Pending<this>;
+  ): State.Updated<this>;
 
   /**
    * Call a function when update occurs.
@@ -350,7 +354,7 @@ abstract class State implements Observable {
       update(self, arg1 as string | number, arg2);
     }
 
-    return pending(self) as State.Pending<this>;
+    return pending(self) as State.Updated<this>;
   }
 
   /**
