@@ -153,7 +153,7 @@ abstract class State implements Observable {
   constructor(...args: State.Args) {
     prepare(this);
     define(this, 'is', { value: this });
-    init(this, ...args, (x: this) => x.new && x.new());
+    init(this, ...args, this.new);
   }
 
   [Observable](callback: Observable.Callback, required?: boolean) {

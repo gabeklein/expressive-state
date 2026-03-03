@@ -1793,6 +1793,18 @@ describe('set method', () => {
 });
 
 describe('new method', () => {
+  it('will ignore instance-property new', () => {
+    const didCreate = vi.fn();
+
+    class Test extends State {
+      new = didCreate;
+    }
+
+    Test.new();
+
+    expect(didCreate).not.toBeCalled();
+  });
+
   it('will call if exists', () => {
     const didCreate = vi.fn();
 
