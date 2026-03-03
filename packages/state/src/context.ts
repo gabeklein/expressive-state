@@ -164,17 +164,16 @@ class Context {
 
     if (cb) return subscribe(this.upstream, K, cb);
 
-    function collect(ctx: Context, out: T[]) {
-      const own = ctx.registry;
+    const out: T[] = [];
+    const queue = new Set<Context>([this]);
 
-      if (own.hasOwnProperty(K))
-        for (const [state] of own[K]) out.push(state as T);
-
-      ctx.children.forEach((c) => collect(c, out));
-      return out;
+    for (const { registry, children } of queue) {
+      for (const c of children) queue.add(c);
+      if (registry.hasOwnProperty(K))
+        for (const [state] of registry[K]) out.push(state as T);
     }
 
-    return collect(this, []);
+    return out;
   }
 
   /**
@@ -288,19 +287,17 @@ class Context {
       if (E) expects.push(...E);
     }
 
-    const notify = (ctx: Context) => {
-      const N = ctx.downstream;
-      for (const K of IK) {
-        if (N.hasOwnProperty(K))
-          for (const cb of [...N[K]]) {
+    const queue = new Set(this.children);
+
+    for (const { downstream, children } of queue) {
+      for (const c of children) queue.add(c);
+      for (const K of IK)
+        if (downstream.hasOwnProperty(K))
+          for (const cb of [...downstream[K]]) {
             const r = cb(I);
             if (typeof r == 'function') cleanup.add(r);
           }
-      }
-      ctx.children.forEach(notify);
-    };
-
-    this.children.forEach(notify);
+    }
 
     cleanup.add(
       listener(I, (ev) => {
