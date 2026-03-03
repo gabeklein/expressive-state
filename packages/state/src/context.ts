@@ -27,13 +27,28 @@ function keys(state: State) {
   return types;
 }
 
+function subscribe(
+  record: Record<symbol, Function[]>,
+  K: symbol,
+  cb: Function
+) {
+  const arr = record.hasOwnProperty(K) ? record[K] : (record[K] = []);
+  arr.push(cb);
+  return () => {
+    arr.splice(arr.indexOf(cb), 1);
+    if (!arr.length) delete record[K];
+  };
+}
+
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
     | State.Type<T>
     | Record<string | number, T | State.Type<T>>;
 
-  type Expect<T extends State = State> = (state: T) => (() => void) | false | void;
+  type Expect<T extends State = State> = (
+    state: T
+  ) => (() => void) | false | void;
 }
 
 class Context {
@@ -77,13 +92,14 @@ class Context {
   protected cleanup = new Map<string | number, () => void>();
   protected children = new Set<Context>();
 
-  upstream: Record<symbol, Context.Expect[]> = {};
-  downstream: Record<symbol, [State, boolean][]> = {};
+  private registry: Record<symbol, [State, boolean][]> = {};
+  private upstream: Record<symbol, Context.Expect[]> = {};
+  private downstream: Record<symbol, Context.Expect[]> = {};
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
+      this.registry = Object.create(arg.registry);
       this.upstream = Object.create(arg.upstream);
-      this.downstream = Object.create(arg.downstream);
       arg.children.add(this);
     } else if (arg) {
       this.set(arg);
@@ -99,14 +115,24 @@ class Context {
     require: boolean
   ): T | undefined;
 
+  /** Subscribe to a type becoming available upstream. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    arg2?: boolean
+    callback: Context.Expect<T>
+  ): () => void;
+
+  public get<T extends State>(
+    Type: State.Extends<T>,
+    arg2?: boolean | Context.Expect<T>
   ) {
+    const K = key(Type);
+
+    if (typeof arg2 == 'function') return subscribe(this.downstream, K, arg2);
+
     let found: T | undefined;
     let priority = false;
 
-    for (const [state, explicit] of this.downstream[key(Type)] || []) {
+    for (const [state, explicit] of this.registry[K] || []) {
       if (found === state) continue;
       if (!found || (!priority && explicit)) {
         found = state as T;
@@ -130,42 +156,25 @@ class Context {
   /** Subscribe to a type being registered downstream. */
   public has<T extends State>(
     Type: State.Extends<T>,
-    callback: Context.Expect<T>,
-    current?: boolean
+    callback: Context.Expect<T>
   ): () => void;
 
-  public has<T extends State>(
-    Type: State.Extends<T>,
-    cb?: Context.Expect<T>,
-    current?: boolean
-  ) {
+  public has<T extends State>(Type: State.Extends<T>, cb?: Context.Expect<T>) {
     const K = key(Type);
 
-    const collect = (ctx: Context, out: T[]) => {
-      const own = ctx.downstream;
+    if (cb) return subscribe(this.upstream, K, cb);
+
+    function collect(ctx: Context, out: T[]) {
+      const own = ctx.registry;
+
       if (own.hasOwnProperty(K))
-        for (const [state] of own[K])
-          out.push(state as T);
-      ctx.children.forEach(c => collect(c, out));
+        for (const [state] of own[K]) out.push(state as T);
+
+      ctx.children.forEach((c) => collect(c, out));
       return out;
-    };
+    }
 
-    if (!cb)
-      return collect(this, []);
-
-    const context = this.upstream;
-    const arr = context.hasOwnProperty(K) ? context[K] : (context[K] = []);
-
-    arr.push(cb as Context.Expect);
-
-    if (current)
-      for (const state of collect(this, []))
-        cb(state);
-
-    return () => {
-      arr.splice(arr.indexOf(cb as Context.Expect), 1);
-      if (!arr.length) delete context[K];
-    };
+    return collect(this, []);
   }
 
   /**
@@ -231,7 +240,7 @@ class Context {
     const remove = new Map<string, () => void>();
 
     const observe = (I: State, explicit: boolean, key = '') => {
-      const context = this.downstream;
+      const context = this.registry;
 
       for (const K of keys(I)) {
         if (!context.hasOwnProperty(K)) context[K] = [];
@@ -265,16 +274,33 @@ class Context {
 
     const reset = () => {
       cleanup.forEach((cb) => cb());
+      cleanup.clear();
       remove.forEach((cb) => cb());
       remove.clear();
     };
 
     observe(I, !implicit);
 
-    keys(I).forEach((K) => {
+    const IK = keys(I);
+
+    for (const K of IK) {
       const E = this.upstream[K];
       if (E) expects.push(...E);
-    });
+    }
+
+    const notify = (ctx: Context) => {
+      const N = ctx.downstream;
+      for (const K of IK) {
+        if (N.hasOwnProperty(K))
+          for (const cb of [...N[K]]) {
+            const r = cb(I);
+            if (typeof r == 'function') cleanup.add(r);
+          }
+      }
+      ctx.children.forEach(notify);
+    };
+
+    this.children.forEach(notify);
 
     cleanup.add(
       listener(I, (ev) => {
@@ -322,7 +348,7 @@ class Context {
    * Will also run any cleanup callbacks registered when States were added.
    */
   public pop() {
-    this.inputs = this.upstream = this.downstream = {};
+    this.inputs = this.upstream = this.registry = this.downstream = {};
     this.children.forEach((x) => x.pop());
     this.children.clear();
     this.cleanup.forEach((cb) => cb());

@@ -581,27 +581,6 @@ describe('has method', () => {
     context.pop();
   });
 
-  it('will fire for existing entries when current is true', () => {
-    const context = new Context();
-    const cb = vi.fn();
-
-    context.push(DownstreamState);
-    context.has(DownstreamState, cb, true);
-
-    expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamState);
-  });
-
-  it('will not fire for existing entries by default', () => {
-    const context = new Context();
-    const cb = vi.fn();
-
-    context.push(DownstreamState);
-    context.has(DownstreamState, cb);
-
-    expect(cb).not.toBeCalled();
-  });
-
   it('will return entries registered downstream', () => {
     const context = new Context();
     context.push(DownstreamState);
@@ -610,6 +589,50 @@ describe('has method', () => {
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toBeInstanceOf(DownstreamState);
+  });
+});
+
+describe('get callback (upstream subscription)', () => {
+  class Upstream extends State {}
+
+  it('will call callback when type is added to parent', () => {
+    const parent = new Context();
+    const child = parent.push();
+    const cb = vi.fn();
+
+    child.get(Upstream, cb);
+    parent.set(Upstream);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][0]).toBeInstanceOf(Upstream);
+  });
+
+  it('will cancel subscription', () => {
+    const parent = new Context();
+    const child = parent.push();
+    const cb = vi.fn();
+
+    const cancel = child.get(Upstream, cb);
+    cancel();
+    parent.set(Upstream);
+
+    expect(cb).not.toBeCalled();
+  });
+
+  it('will call cleanup returned from callback', () => {
+    const parent = new Context();
+    const child = parent.push();
+    const cleanup = vi.fn();
+    const cb = vi.fn(() => cleanup);
+
+    child.get(Upstream, cb);
+    parent.set(Upstream);
+
+    expect(cb).toBeCalledTimes(1);
+
+    parent.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
   });
 });
 
