@@ -7,6 +7,7 @@ import {
   observing,
   observe,
   pending,
+  observable,
   emit
 } from './observable';
 
@@ -239,7 +240,7 @@ abstract class State implements Observable {
     if (State.is(arg1)) return Context.for(self).get(arg1, arg2 !== false);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2, arg1);
-    if (arg1 === null) return Object.isFrozen(STATE.get(self));
+    if (arg1 === null) return observable(self) === null;
     return access(self, arg1, arg2);
   }
 
@@ -542,8 +543,6 @@ function init(state: State, ...args: State.Args) {
         for (const [_, value] of state)
           if (value instanceof State && PARENT.get(value) === state)
             value.set(null);
-
-        Object.freeze(store);
       },
       null
     );
@@ -645,7 +644,7 @@ function update<T>(
 ) {
   const store = STATE.get(state)!;
 
-  if (Object.isFrozen(store))
+  if (observable(state) === null)
     throw new Error(
       `Tried to update ${state}.${String(key)} but state is destroyed.`
     );

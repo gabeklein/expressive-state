@@ -42,8 +42,8 @@ interface Observable {
 
 const Observable = Symbol('Observable');
 
-/** Placeholder event determines if state is initialized or not. */
-const onReady = () => null;
+/** Lifecycle status for any observable: false = pending, true = ready, null = terminated. */
+const READY = new WeakMap<Observable, true | null>();
 
 const LISTENERS = new WeakMap<
   Observable,
@@ -60,6 +60,13 @@ const PENDING_KEYS = new WeakMap<Observable, Set<string | number | symbol>>();
 const DISPATCH = new Set<() => void>();
 
 const OBSERVER = new WeakMap<object, Observer>();
+
+function observable(state: object): boolean | null | undefined {
+  if (Observable in state) {
+    const status = READY.get(state as Observable);
+    return status === undefined ? false : status;
+  }
+}
 
 function observe<T extends Observable>(
   object: T,
@@ -100,13 +107,12 @@ function listener<T extends Observable>(
 ) {
   let listeners = LISTENERS.get(subject)!;
 
-  if (!listeners)
-    LISTENERS.set(subject, (listeners = new Map([[onReady, undefined]])));
+  if (!listeners) LISTENERS.set(subject, (listeners = new Map()));
 
   if (select !== undefined && !(select instanceof Set))
     select = new Set([select]);
 
-  if (!listeners.has(onReady) && !select) {
+  if (READY.has(subject) && !select) {
     callback.call(subject, true, subject);
   }
 
@@ -139,9 +145,9 @@ function pending<K extends Event>(state: Observable) {
 
 function emit(state: Observable, key: Signal): void {
   const listeners = LISTENERS.get(state)!;
-  const notReady = listeners.has(onReady);
+  const isReady = READY.has(state);
 
-  if (key === true && !notReady) return;
+  if (key === true && isReady) return;
 
   let pending = PENDING.get(state);
 
@@ -150,7 +156,9 @@ function emit(state: Observable, key: Signal): void {
     return;
   }
 
-  PENDING.set(state, (pending = new Set(notReady ? [true, key] : [key])));
+  PENDING.set(state, (pending = new Set(isReady ? [key] : [true, key])));
+
+  if (key === true || key === null) READY.set(state, key);
 
   for (const key of pending)
     for (const [callback, filter] of listeners)
@@ -318,6 +326,7 @@ export {
   observe,
   observing,
   pending,
+  observable,
   watch,
   scope
 };
