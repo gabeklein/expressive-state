@@ -202,8 +202,8 @@ class Context {
 
   add<T extends State>(I: T, implicit?: boolean) {
     const expects = [] as Context.Expect<T>[];
-    const adopted = new Map<string, () => void>();
     const cleanup = new Set<() => void>();
+    const remove = new Map<string, () => void>();
 
     const observe = (I: State, explicit: boolean, key = '') => {
       const context = this.downstream;
@@ -213,7 +213,7 @@ class Context {
         context[K].push([I, explicit]);
       }
 
-      adopted.set(key, () => {
+      remove.set(key, () => {
         for (const K of keys(I)) {
           const arr = context[K];
           if (arr) {
@@ -226,22 +226,22 @@ class Context {
     };
 
     const adopt = (k: string, v: unknown) => {
-      adopted.get(k)?.();
-      adopted.delete(k);
+      remove.get(k)?.();
+      remove.delete(k);
 
       if (v instanceof State)
         if (LOOKUP.get(v) instanceof Context) {
           observe(v, false, k);
         } else {
-          adopted.set(k, this.add(v, true));
+          remove.set(k, this.add(v, true));
           event(v);
         }
     };
 
     const reset = () => {
       cleanup.forEach((cb) => cb());
-      adopted.forEach((cb) => cb());
-      adopted.clear();
+      remove.forEach((cb) => cb());
+      remove.clear();
     };
 
     observe(I, !implicit);
