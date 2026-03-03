@@ -559,20 +559,16 @@ function manage(
 ) {
   const store = STATE.get(state)!;
 
-  function get(this: State) {
-    return observing(this, key, store[key]);
-  }
-
-  function set(value: unknown, silent?: boolean) {
-    update(state, key, value, silent);
-    if (value instanceof State) {
-      if (!PARENT.has(value)) PARENT.set(value, state);
-      event(value);
+  define(state, key, {
+    get(this: State) {
+      return observing(this, key, store[key]);
+    },
+    set(value: unknown, silent?: boolean) {
+      update(state, key, value, silent);
     }
-  }
+  });
 
-  define(state, key, { set, get });
-  set(value, silent);
+  update(state, key, value, silent);
 }
 
 function values<T extends State>(state: T): State.Values<T> {
@@ -664,6 +660,11 @@ function update<T>(
   store[key] = value;
 
   if (arg !== true) event(state, key);
+
+  if (value instanceof State) {
+    if (!PARENT.has(value)) PARENT.set(value, state);
+    event(value);
+  }
 
   return true;
 }
