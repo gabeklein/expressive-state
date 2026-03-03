@@ -91,12 +91,12 @@ class Context {
   }
 
   /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends State>(Type: State.Extends<T>, require: true): T;
+  public get<T extends State>(Type: State.Extends<T>, require?: true): T;
 
   /** Find specified type registered to a parent context. Returns undefined if none are found. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    require?: boolean
+    require: boolean
   ): T | undefined;
 
   /** Run callback when a specified type is registered in context downstream. */
@@ -140,7 +140,7 @@ class Context {
     }
 
     if (found) return found;
-    if (arg2) throw new Error(`Could not find ${Type} in context.`);
+    if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
   /**

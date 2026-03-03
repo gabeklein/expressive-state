@@ -28,10 +28,10 @@ it('will create instance in context', () => {
   expect(context.get(Example)).toBeInstanceOf(Example);
 });
 
-it("will throw if context doesn't exist if required", () => {
+it("will throw if context doesn't exist", () => {
   const context = new Context();
 
-  const attempt = () => context.get(Example, true);
+  const attempt = () => context.get(Example);
 
   expect(attempt).toThrow('Could not find Example in context.');
 });
@@ -62,7 +62,7 @@ it.skip('will not include initialized child', () => {
 
   const context = new Context({ Test });
 
-  expect(context.get(Example)).toBeUndefined();
+  expect(context.get(Example, false)).toBeUndefined();
 });
 
 it('will access upstream controller', () => {
@@ -82,9 +82,9 @@ it('will register all subtypes', () => {
   expect(context.get(Example)).toBe(example2);
 });
 
-it('will return undefined if not found', () => {
+it('will return undefined if not required', () => {
   const context = new Context();
-  const got = context.get(Example);
+  const got = context.get(Example, false);
 
   expect(got).toBeUndefined();
 });
@@ -120,7 +120,7 @@ it('will remove implicit children on pop', () => {
   }
 
   const ctx = new Context({ Parent });
-  const { child } = ctx.get(Parent, true);
+  const { child } = ctx.get(Parent);
 
   expect(Context.for(child)).toBe(ctx);
 
@@ -135,12 +135,12 @@ it('will remove implicit children when parent removed via set', () => {
   }
 
   const ctx = new Context({ Parent });
-  const { child } = ctx.get(Parent, true);
+  const { child } = ctx.get(Parent);
 
   ctx.set({});
 
   expect(Context.for(child, false)).toBeUndefined();
-  expect(ctx.get(Example)).toBeUndefined();
+  expect(ctx.get(Example, false)).toBeUndefined();
 });
 
 it('will remove implicit downstream on removal', () => {
@@ -149,12 +149,12 @@ it('will remove implicit downstream on removal', () => {
   }
 
   const ctx = new Context({ Parent });
-  const parent = ctx.get(Parent, true);
+  const parent = ctx.get(Parent);
   expect(ctx.get(Example)).toBe(parent.child);
 
   ctx.set({});
 
-  expect(ctx.get(Example)).toBeUndefined();
+  expect(ctx.get(Example, false)).toBeUndefined();
 });
 
 it('will remove multiple implicit children when parent is removed', () => {
@@ -171,8 +171,8 @@ it('will remove multiple implicit children when parent is removed', () => {
 
   ctx.set({});
 
-  expect(ctx.get(Example)).toBeUndefined();
-  expect(ctx.get(Example2)).toBeUndefined();
+  expect(ctx.get(Example, false)).toBeUndefined();
+  expect(ctx.get(Example2, false)).toBeUndefined();
 });
 
 it('child pop is safe to call before parent pop', () => {
@@ -290,12 +290,12 @@ describe('include', () => {
     }
 
     const context = new Context({ Bar });
-    const bar = context.get(Bar, true);
+    const bar = context.get(Bar);
 
     context.set({});
 
     expect(bar.didDie).toBeCalled();
-    expect(context.get(Bar)).toBeUndefined();
+    expect(context.get(Bar, false)).toBeUndefined();
   });
 
   it('will replace owned instance when key changes', () => {
@@ -310,12 +310,12 @@ describe('include', () => {
     class Baz2 extends State {}
 
     const context = new Context({ Baz });
-    const baz = context.get(Baz, true);
+    const baz = context.get(Baz);
 
     context.set({ Baz: Baz2 });
 
     expect(baz.didDie).toBeCalled();
-    expect(context.get(Baz)).toBeUndefined();
+    expect(context.get(Baz, false)).toBeUndefined();
     expect(context.get(Baz2)).toBeInstanceOf(Baz2);
   });
 
@@ -327,7 +327,7 @@ describe('include', () => {
 
     context.set({});
 
-    expect(context.get(Bar)).toBeUndefined();
+    expect(context.get(Bar, false)).toBeUndefined();
     // bar should still be alive (not owned by context)
     expect(bar.is).not.toBeNull();
   });
@@ -343,8 +343,8 @@ describe('include', () => {
 
     context.set({});
 
-    expect(context.get(Child)).toBeUndefined();
-    expect(context.get(Base)).toBeUndefined();
+    expect(context.get(Child, false)).toBeUndefined();
+    expect(context.get(Base, false)).toBeUndefined();
   });
 
   it('will register children implicitly', () => {
@@ -364,7 +364,7 @@ describe('include', () => {
     }
 
     const ctx = new Context({ Parent });
-    const parent = ctx.get(Parent, true);
+    const parent = ctx.get(Parent);
 
     expect(ctx.get(Foo)).toBe(foo1);
 
@@ -416,7 +416,7 @@ describe('include', () => {
     }
 
     const ctx = new Context({ Parent });
-    const parent = ctx.get(Parent, true);
+    const parent = ctx.get(Parent);
 
     expect(ctx.get(Foo)).toBeNull();
 
@@ -440,7 +440,7 @@ describe('include', () => {
 
     expect(ctx.get(Foo)).toBe(shared);
 
-    ctx.get(ParentA, true).child = undefined;
+    ctx.get(ParentA).child = undefined;
 
     expect(ctx.get(Foo)).toBe(shared);
   });

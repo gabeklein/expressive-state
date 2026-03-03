@@ -17,7 +17,7 @@ describe('fetch mode', () => {
 
     const context = new Context({ Sibling, Test });
 
-    const test = context.get(Test, true);
+    const test = context.get(Test);
     const sibling = context.get(Sibling);
 
     expect(test.sibling).toBe(sibling);
@@ -171,7 +171,7 @@ describe('fetch mode', () => {
     }
 
     const context = new Context({ Foo, Bar });
-    const bar = context.get(Bar, true);
+    const bar = context.get(Bar);
 
     expect(bar.baz.foo).toBeInstanceOf(Foo);
   });

@@ -170,7 +170,7 @@ State.get = function <T extends State, R>(
 ) {
   const outer = Context.use();
   const state = Pragma.useState(() => {
-    const instance = outer.get(this);
+    const instance = outer.get(this, argument !== false);
 
     if (!instance)
       if (argument === false) return () => undefined;
