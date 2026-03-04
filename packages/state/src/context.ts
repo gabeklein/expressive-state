@@ -4,6 +4,33 @@ import { access, event, State, uid } from './state';
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
 const KEYS = new Map<State.Extends, symbol>();
 
+/**
+ * Get the context for a specified State. If a callback is provided, it will be run when
+ * the context becomes available.
+ */
+function context(on: State, callback: (got: Context) => void): void;
+
+/** Get the context for a specified State. Returns undefined if none are found. */
+function context(on: State, required?: true): Context;
+
+function context(on: State, required: boolean): Context | undefined;
+
+function context({ is }: State, arg?: ((got: Context) => void) | boolean) {
+  const found = LOOKUP.get(is);
+
+  if (found instanceof Context) {
+    if (typeof arg == 'function') arg(found);
+    return found;
+  }
+
+  if (typeof arg == 'function')
+    if (found) found.push(arg);
+    else LOOKUP.set(is, [arg]);
+  else if (arg !== false) {
+    throw new Error(`Could not find context for ${is}.`);
+  }
+}
+
 function key(T: State.Extends) {
   let K = KEYS.get(T);
 
@@ -56,40 +83,6 @@ declare namespace Context {
 }
 
 class Context {
-  /**
-   * Get the context for a specified State. If a callback is provided, it will be run when
-   * the context becomes available.
-   */
-  static for<T extends State>(
-    on: State,
-    callback: (got: Context) => void
-  ): void;
-
-  /**
-   * Get the context for a specified State. Returns undefined if none are found.
-   */
-  static for<T extends State>(on: State, required?: true): Context;
-
-  static for<T extends State>(
-    on: State,
-    required: boolean
-  ): Context | undefined;
-
-  static for({ is }: State, arg?: ((got: Context) => void) | boolean) {
-    const context = LOOKUP.get(is);
-
-    if (context instanceof Context) {
-      if (typeof arg == 'function') arg(context);
-      return context;
-    }
-
-    if (typeof arg == 'function')
-      if (context) context.push(arg);
-      else LOOKUP.set(is, [arg]);
-    else if (arg !== false)
-      throw new Error(`Could not find context for ${is}.`);
-  }
-
   public id = uid();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
@@ -281,8 +274,7 @@ class Context {
 
     let obj = this.upstream;
     while (obj && obj !== Object.prototype) {
-      for (const K of IK)
-        if (obj.hasOwnProperty(K)) expects.push(...obj[K]);
+      for (const K of IK) if (obj.hasOwnProperty(K)) expects.push(...obj[K]);
       obj = Object.getPrototypeOf(obj);
     }
 
@@ -371,4 +363,4 @@ Object.defineProperty(Context.prototype, 'toString', {
   }
 });
 
-export { Context };
+export { Context, context };

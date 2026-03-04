@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { Context } from './context';
+import { context, Context } from './context';
 import { State } from './state';
 
 class Example extends State {}
@@ -122,11 +122,11 @@ it('will remove implicit children on pop', () => {
   const ctx = new Context({ Parent });
   const { child } = ctx.get(Parent);
 
-  expect(Context.for(child)).toBe(ctx);
+  expect(context(child)).toBe(ctx);
 
   ctx.pop();
 
-  expect(Context.for(child, false)).toBeUndefined();
+  expect(context(child, false)).toBeUndefined();
 });
 
 it('will remove implicit children when parent removed via set', () => {
@@ -139,7 +139,7 @@ it('will remove implicit children when parent removed via set', () => {
 
   ctx.set({});
 
-  expect(Context.for(child, false)).toBeUndefined();
+  expect(context(child, false)).toBeUndefined();
   expect(ctx.get(Example, false)).toBeUndefined();
 });
 
@@ -384,7 +384,7 @@ describe('include', () => {
     // State.new initializes the state (runs manage) but doesn't attach a context yet
     const parent = new Parent();
 
-    // overwrite child before context attaches - queues second Context.for callback
+    // overwrite child before context attaches - queues second context callback
     parent.child = foo2;
 
     const ctx = new Context({ parent });
@@ -718,7 +718,7 @@ describe('with existing context', () => {
     other.set(foo);
 
     expect(other.get(Foo)).toBe(foo);
-    expect(Context.for(foo)).toBe(original);
+    expect(context(foo)).toBe(original);
   });
 
   it('will keep original context after second context pops', () => {
@@ -729,14 +729,14 @@ describe('with existing context', () => {
     other.set(foo);
     other.pop();
 
-    expect(Context.for(foo)).toBe(original);
+    expect(context(foo)).toBe(original);
   });
 
   it('will flush waiting callbacks on first context only', () => {
     const foo = Foo.new();
     const mock = vi.fn();
 
-    Context.for(foo, mock);
+    context(foo, mock);
 
     const first = new Context({ foo });
     expect(mock).toBeCalledWith(first);
@@ -748,56 +748,56 @@ describe('with existing context', () => {
   });
 });
 
-describe('for method (static)', () => {
+describe('context helper', () => {
   class Test extends State {}
 
   it('will get context', () => {
     const test = new Test();
 
-    expect(Context.for(test, false)).toBeUndefined();
+    expect(context(test, false)).toBeUndefined();
 
-    const context = new Context({ test });
+    const ctx = new Context({ test });
 
-    expect(Context.for(test)).toBe(context);
+    expect(context(test)).toBe(ctx);
   });
 
   it('will throw if context not found by default', () => {
     const test = new Test();
 
-    expect(() => Context.for(test)).toThrow();
-    expect(() => Context.for(test, true)).toThrow();
+    expect(() => context(test)).toThrow();
+    expect(() => context(test, true)).toThrow();
   });
 
   it('will return undefined if required is false', () => {
     const test = new Test();
 
-    expect(Context.for(test, false)).toBeUndefined();
+    expect(context(test, false)).toBeUndefined();
 
-    const context = new Context({ test });
+    const ctx = new Context({ test });
 
-    expect(Context.for(test)).toBe(context);
+    expect(context(test)).toBe(ctx);
   });
 
   it('will callback when attached', () => {
     const test = new Test();
     const mock = vi.fn();
 
-    Context.for(test, mock);
+    context(test, mock);
 
     expect(mock).not.toBeCalled();
 
-    const context = new Context({ test });
+    const ctx = new Context({ test });
 
-    expect(mock).toBeCalledWith(context);
+    expect(mock).toBeCalledWith(ctx);
   });
 
   it('will callback immediately if context already exists', () => {
     const test = new Test();
-    const context = new Context({ test });
+    const ctx = new Context({ test });
     const mock = vi.fn();
 
-    Context.for(test, mock);
+    context(test, mock);
 
-    expect(mock).toBeCalledWith(context);
+    expect(mock).toBeCalledWith(ctx);
   });
 });

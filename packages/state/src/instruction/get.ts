@@ -1,5 +1,5 @@
 import { scope } from '../observable';
-import { Context } from '../context';
+import { context } from '../context';
 import { State, PARENT, update } from '../state';
 import { use } from './use';
 
@@ -85,10 +85,10 @@ function get<R, T extends State>(
     }
 
     // Subscribe to context
-    Context.for(subject, (context) => {
+    context(subject, (ctx) => {
       let found = false;
 
-      context.get(Type, (state) => {
+      ctx.get(Type, (state) => {
         if (state !== subject) {
           found = true;
           assign(state);
@@ -118,8 +118,8 @@ function getDownstream<T extends State>(
       update(subject, key, Object.freeze(Array.from(applied)));
     };
 
-    Context.for(subject, (context) => {
-      context.has(Type, (state) => {
+    context(subject, (ctx) => {
+      ctx.has(Type, (state) => {
         let remove: (() => void) | undefined;
         let flush: (() => void) | undefined;
 

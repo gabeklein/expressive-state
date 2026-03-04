@@ -1,4 +1,4 @@
-import { State, Context, watch, unbind } from '@expressive/state';
+import { State, Context, watch, unbind, context } from '@expressive/state';
 import { ReactNode, createElement, useState, useEffect } from 'react';
 import { Layers, Provide } from './context';
 
@@ -109,7 +109,7 @@ State.as = function <T extends State, P extends object = {}>(
     }
 
     get context() {
-      return Context.for(this);
+      return context(this);
     }
 
     private set context(context: Context) {}

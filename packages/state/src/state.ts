@@ -1,4 +1,4 @@
-import { Context } from './context';
+import { context } from './context';
 import {
   listener,
   watch,
@@ -237,7 +237,7 @@ abstract class State implements Observable {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return Context.for(self).get(arg1, arg2 !== false);
+    if (State.is(arg1)) return context(self).get(arg1, arg2 !== false);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2, arg1);
     if (arg1 === null) return observable(self) === null;
