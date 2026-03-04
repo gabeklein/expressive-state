@@ -587,6 +587,82 @@ describe('lifecycle callbacks', () => {
   });
 });
 
+describe('upstream subscription', () => {
+  it('will update when implicit upstream is replaced', async () => {
+    class Peer extends State {}
+    class Parent extends State {
+      peer = new Peer();
+    }
+    class Child extends State {
+      peer = get(Peer);
+    }
+
+    const parent = new Parent();
+    const child = new Child();
+
+    new Context({ parent }).push({ child });
+
+    const first = parent.peer;
+    expect(child.peer).toBe(first);
+
+    parent.peer = new Peer();
+    await expect(parent).toHaveUpdated();
+
+    expect(child.peer).toBe(parent.peer);
+    expect(child.peer).not.toBe(first);
+  });
+
+  it('will update when upstream is added to ancestor context', async () => {
+    class Ambient extends State {}
+    class Child extends State {
+      ambient = get(Ambient, false);
+    }
+
+    const child = new Child();
+    const context = new Context();
+    context.push({ child });
+
+    expect(child.ambient).toBeUndefined();
+
+    context.set({ Ambient });
+    await expect(child).toHaveUpdated();
+
+    expect(child.ambient).toBeInstanceOf(Ambient);
+  });
+
+  it('will run callback when upstream is replaced', async () => {
+    class Peer extends State {
+      value = 'initial';
+    }
+
+    const callback = vi.fn();
+
+    class Parent extends State {
+      peer = new Peer();
+    }
+    class Child extends State {
+      peer = get(Peer, callback);
+    }
+
+    const parent = new Parent();
+    const child = new Child();
+
+    new Context({ parent }).push({ child });
+
+    expect(callback).toBeCalledTimes(1);
+    expect(callback).toBeCalledWith(parent.peer, child);
+
+    const replacement = new Peer();
+    replacement.value = 'replaced';
+    parent.peer = replacement;
+    await expect(parent).toHaveUpdated();
+
+    expect(callback).toBeCalledTimes(2);
+    expect(callback).toBeCalledWith(replacement, child);
+    expect(child.peer).toBe(replacement);
+  });
+});
+
 describe('async', () => {
   class Foo extends State {
     value = 'foobar';

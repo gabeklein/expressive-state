@@ -84,12 +84,18 @@ function get<R, T extends State>(
       return {};
     }
 
-    // Check context
+    // Subscribe to context
     Context.for(subject, (context) => {
-      const self = context.get(Type, false);
+      let found = false;
 
-      if (self && self !== subject) assign(self);
-      else if (arg1 !== false)
+      context.get(Type, (state) => {
+        if (state !== subject) {
+          found = true;
+          assign(state);
+        }
+      });
+
+      if (!found && arg1 !== false)
         throw new Error(
           `Required ${Type} not found in context for ${subject}.`
         );
