@@ -54,6 +54,12 @@ function keys(state: State) {
   return types;
 }
 
+function children(from: Context) {
+  const queue = new Set(from.children);
+  for (const q of queue) for (const c of q.children) queue.add(c);
+  return queue;
+}
+
 function subscribe(
   record: Record<symbol, Function[]>,
   K: symbol,
@@ -84,10 +90,10 @@ declare namespace Context {
 
 class Context {
   public id = uid();
+  public children = new Set<Context>();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
   protected cleanup = new Map<string | number, () => void>();
-  protected children = new Set<Context>();
 
   private registry: Record<symbol, [State, boolean][]> = {};
   private upstream: Record<symbol, Context.Expect[]> = {};
@@ -161,13 +167,10 @@ class Context {
     const K = key(Type);
 
     const out: T[] = [];
-    const queue = new Set<Context>([this]);
 
-    for (const { registry, children } of queue) {
-      for (const c of children) queue.add(c);
+    for (const { registry } of children(this))
       if (registry.hasOwnProperty(K))
         for (const [state] of registry[K]) out.push(state as T);
-    }
 
     if (cb) return subscribe(this.upstream, K, cb, out);
 
@@ -192,11 +195,11 @@ class Context {
     if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
 
-    Object.keys({ ...this.inputs, ...inputs }).forEach((K) => {
+    for (const K of Object.keys({ ...this.inputs, ...inputs })) {
       const V = inputs[K];
       const E = this.inputs[K];
 
-      if (E === V) return;
+      if (E === V) continue;
 
       if (E) {
         this.id = uid(); //TODO: remove this when able to remount context state independent of React tree.
@@ -204,7 +207,7 @@ class Context {
         cleanup.delete(K);
       }
 
-      if (!V) return;
+      if (!V) continue;
 
       if (!(State.is(V) || V instanceof State))
         throw new Error(
@@ -221,7 +224,7 @@ class Context {
         if (I !== V) event(I, null);
       });
       init.push(I);
-    });
+    }
 
     for (const state of init) {
       state.set();
@@ -278,17 +281,13 @@ class Context {
       obj = Object.getPrototypeOf(obj);
     }
 
-    const queue = new Set(this.children);
-
-    for (const { downstream, children } of queue) {
-      for (const c of children) queue.add(c);
+    for (const { downstream } of children(this))
       for (const K of IK)
         if (downstream.hasOwnProperty(K))
           for (const cb of [...downstream[K]]) {
             const r = cb(I);
             if (typeof r == 'function') cleanup.set(r, r);
           }
-    }
 
     const unwatch = listener(I, (key) => {
       if (typeof key === 'string') adopt(key, access(I, key, false));

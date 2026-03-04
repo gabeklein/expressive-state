@@ -123,7 +123,7 @@ function getDownstream<T extends State>(
         let remove: (() => void) | undefined;
         let flush: (() => void) | undefined;
 
-        if (state === subject || applied.has(state)) return;
+        if (applied.has(state)) return;
 
         if (callback) {
           const exit = scope();
