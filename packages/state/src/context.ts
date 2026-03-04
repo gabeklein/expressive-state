@@ -63,11 +63,8 @@ function children(from: Context) {
 function subscribe(
   record: Record<symbol, Function[]>,
   K: symbol,
-  cb: Context.Expect<any>,
-  existing: State[]
+  cb: Context.Expect<any>
 ) {
-  for (const state of existing) cb(state, true);
-
   const arr = record.hasOwnProperty(K) ? record[K] : (record[K] = []);
   arr.push(cb);
   return () => {
@@ -147,8 +144,10 @@ class Context {
         );
     }
 
-    if (typeof arg2 == 'function')
-      return subscribe(this.downstream, K, arg2, found ? [found] : []);
+    if (typeof arg2 == 'function') {
+      if (found) arg2(found, true);
+      return subscribe(this.downstream, K, arg2);
+    }
 
     if (found) return found;
     if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
@@ -172,7 +171,10 @@ class Context {
       if (registry.hasOwnProperty(K))
         for (const [state] of registry[K]) out.push(state as T);
 
-    if (cb) return subscribe(this.upstream, K, cb, out);
+    if (cb) {
+      for (const state of out) cb(state, true);
+      return subscribe(this.upstream, K, cb);
+    }
 
     return out;
   }
