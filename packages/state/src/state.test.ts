@@ -547,7 +547,7 @@ describe('get method', () => {
     it('will return undefined if not found', () => {
       const foo = new Foo();
 
-      new Context({ foo });
+      new Context(foo);
 
       expect(foo.get(Bar, false)).toBeUndefined();
     });
@@ -555,7 +555,7 @@ describe('get method', () => {
     it('will throw if required and not found', () => {
       const foo = new Foo();
 
-      new Context({ foo });
+      new Context(foo);
 
       expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
     });
@@ -564,7 +564,7 @@ describe('get method', () => {
       const bar = new Bar();
       const foo = new Foo();
 
-      new Context({ bar }).push({ foo });
+      new Context(bar).push(foo);
 
       expect(foo.get(Bar)).toBe(bar);
     });

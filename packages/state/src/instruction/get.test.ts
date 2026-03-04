@@ -33,7 +33,7 @@ describe('fetch mode', () => {
     const test = new Test();
     const ambient = new Ambient();
 
-    new Context({ ambient }).push({ test });
+    new Context(ambient).push(test);
 
     expect(test.ambient1).toBe(ambient);
     expect(test.ambient2).toBe(ambient);
@@ -99,7 +99,7 @@ describe('fetch mode', () => {
       }
     }
 
-    const attempt = () => new Context({ Child });
+    const attempt = () => new Context(Child);
 
     // should this throw immediately, or only on access?
     expect(attempt).toThrow(`Required Parent not found in context for ID.`);
@@ -113,7 +113,7 @@ describe('fetch mode', () => {
 
     const instance = new StandAlone();
 
-    new Context({ instance });
+    new Context(instance);
 
     expect(instance.maybe).toBeUndefined();
   });
@@ -202,7 +202,7 @@ describe('downstream collection', () => {
     const parent = new Parent();
     const child = new Child();
 
-    new Context({ parent }).push({ child });
+    new Context(parent).push(child);
 
     expect(parent.children).toEqual([child]);
   });
@@ -217,7 +217,7 @@ describe('downstream collection', () => {
     const child1 = new Child();
     const child2 = new Child();
 
-    new Context({ parent }).push({ child1, child2 });
+    new Context(parent).push({ child1, child2 });
 
     expect(parent.children).toEqual([child1, child2]);
   });
@@ -230,7 +230,7 @@ describe('downstream collection', () => {
 
     const parent = new Parent();
 
-    new Context({ parent }).push({ Child });
+    new Context(parent).push(Child);
 
     expect(Object.keys(parent)).not.toContain('children');
     expect(parent.children).toEqual([expect.any(Child)]);
@@ -247,7 +247,7 @@ describe('downstream collection', () => {
     const parent = new Parent();
     const child = new Child2();
 
-    new Context({ parent }).push({ child });
+    new Context(parent).push(child);
 
     expect(parent.children).toEqual([child]);
   });
@@ -261,7 +261,7 @@ describe('downstream collection', () => {
 
     const parent = new Parent();
 
-    new Context({ parent }).push({ Child });
+    new Context(parent).push(Child);
 
     expect(parent.children.length).toBe(0);
   });
@@ -275,7 +275,7 @@ describe('downstream collection', () => {
 
     const parent = new Parent2();
 
-    new Context({ parent }).push({ Child });
+    new Context(parent).push(Child);
 
     expect(parent.children.length).toBe(1);
   });
@@ -292,7 +292,7 @@ describe('downstream collection', () => {
     const child1 = new Child();
     const child2 = new Child();
 
-    const context = new Context({ parent });
+    const context = new Context(parent);
     const context2 = context.push({ child1, child2 });
 
     expect(parent.children).toEqual([child1, child2]);
@@ -312,7 +312,7 @@ describe('downstream collection', () => {
     const test2 = Test.new('2');
     const test3 = Test.new('3');
 
-    new Context({ test }).push({ test2 }).push({ test3 });
+    new Context(test).push(test2).push(test3);
 
     expect(test.tests).toEqual([test2, test3]);
     expect(test2.tests).toEqual([test3]);
@@ -328,7 +328,7 @@ describe('downstream collection', () => {
     const parent = new Parent();
     const child = new Child();
 
-    new Context({ parent }).push({ child }).push({ child });
+    new Context(parent).push(child).push(child);
 
     expect(gotChild).toBeCalledTimes(1);
   });
@@ -340,18 +340,18 @@ describe('downstream collection', () => {
     }
 
     const parent = new Parent();
-    const context = new Context({ parent });
+    const context = new Context(parent);
 
     expect(parent.children).toEqual([]);
 
     const child1 = new Child();
-    context.push({ child1 });
+    context.push(child1);
 
     await expect(parent).toHaveUpdated();
     expect(parent.children).toEqual([child1]);
 
     const child2 = new Child();
-    context.push({ child2 });
+    context.push(child2);
 
     await expect(parent).toHaveUpdated();
     expect(parent.children).toEqual([child1, child2]);
@@ -367,11 +367,11 @@ describe('downstream collection', () => {
     }
 
     const parent = new Parent();
-    const context = new Context({ parent });
+    const context = new Context(parent);
 
     expect(parent.children).toEqual([]);
 
-    context.push({ Wrapper });
+    context.push(Wrapper);
 
     await expect(parent).toHaveUpdated();
     expect(parent.children.length).toBe(1);
@@ -391,7 +391,7 @@ describe('downstream collection', () => {
     const foo = new Foo();
     const baz = new Baz();
 
-    new Context({ foo }).push({ baz });
+    new Context(foo).push(baz);
 
     expect(gotBaz).toBeCalledWith(baz, foo.bar);
   });
@@ -408,7 +408,7 @@ describe('downstream collection', () => {
     const foo = new Foo();
     const bar = new Bar();
 
-    new Context({ foo }).push({ bar });
+    new Context(foo).push(bar);
 
     expect(foo.baz).toEqual([bar.baz]);
   });
@@ -445,7 +445,7 @@ describe('lifecycle callbacks', () => {
     const parent = new Parent();
     const child = new Child();
 
-    new Context({ parent }).push({ child });
+    new Context(parent).push(child);
 
     expect(gotChild).toBeCalledWith(child, parent);
   });
@@ -465,7 +465,7 @@ describe('lifecycle callbacks', () => {
     const child1 = new Child();
     const child2 = new Child();
 
-    const context = new Context({ parent });
+    const context = new Context(parent);
     const context2 = context.push({ child1, child2 });
 
     expect(didAdd).toBeCalledTimes(2);
@@ -486,7 +486,7 @@ describe('lifecycle callbacks', () => {
 
     const hasChild = vi.fn(() => false);
     const parent = new Parent();
-    const context = new Context({ parent });
+    const context = new Context(parent);
 
     context.push({
       child: Child,
@@ -569,7 +569,7 @@ describe('lifecycle callbacks', () => {
 
     const context = new Context();
 
-    context.push({ Parent }).push({ Child });
+    context.push(Parent).push(Child);
 
     expect(didSet).toBeCalledWith('Hello', undefined);
   });
@@ -594,7 +594,7 @@ describe('lifecycle callbacks', () => {
 
     const context = new Context();
 
-    context.push({ Parent }).push({ Child });
+    context.push(Parent).push(Child);
 
     expect(didNotify).toBeCalledTimes(1);
     expect(didRemove).not.toBeCalled();
@@ -619,8 +619,8 @@ describe('lifecycle callbacks', () => {
     const didNotify = vi.fn();
     const didRemove = vi.fn();
 
-    const context = new Context({ Parent });
-    const inner = context.push({ Child });
+    const context = new Context(Parent);
+    const inner = context.push(Child);
 
     expect(didNotify).toBeCalledTimes(1);
     expect(didRemove).not.toBeCalled();
@@ -645,7 +645,7 @@ describe('upstream subscription', () => {
     const parent = new Parent();
     const child = new Child();
 
-    new Context({ parent }).push({ child });
+    new Context(parent).push(child);
 
     const effect = vi.fn();
     const first = parent.peer;
@@ -669,20 +669,21 @@ describe('upstream subscription', () => {
     }
 
     const child = new Child();
+    const ambient = new Ambient();
     const context = new Context();
     const effect = vi.fn();
 
-    context.push({ child });
+    context.push(child);
 
     expect(child.ambient).toBeUndefined();
 
     child.get((it) => effect(it.ambient));
-    context.set({ Ambient });
+    context.add(ambient);
     await expect(child).toHaveUpdated();
 
     expect(effect).toBeCalledTimes(2);
     expect(effect).nthCalledWith(1, undefined);
-    expect(effect).nthCalledWith(2, expect.any(Ambient));
+    expect(effect).nthCalledWith(2, ambient);
   });
 
   it('will run callback when upstream is replaced', async () => {
@@ -702,7 +703,7 @@ describe('upstream subscription', () => {
     const owner = new Owner();
     const consumer = new Consumer();
 
-    new Context({ owner }).push({ consumer });
+    new Context(owner).push(consumer);
 
     const first = consumer.remote;
     const effect = vi.fn();
