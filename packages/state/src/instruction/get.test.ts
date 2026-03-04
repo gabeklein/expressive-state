@@ -314,7 +314,7 @@ describe('downstream collection', () => {
 
     new Context({ test }).push({ test2 }).push({ test3 });
 
-    expect(test.tests).toEqual([test2]);
+    expect(test.tests).toEqual([test2, test3]);
     expect(test2.tests).toEqual([test3]);
   });
 

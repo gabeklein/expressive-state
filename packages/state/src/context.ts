@@ -30,8 +30,11 @@ function keys(state: State) {
 function subscribe(
   record: Record<symbol, Function[]>,
   K: symbol,
-  cb: Function
+  cb: Context.Expect<any>,
+  existing: State[]
 ) {
+  for (const state of existing) cb(state, true);
+
   const arr = record.hasOwnProperty(K) ? record[K] : (record[K] = []);
   arr.push(cb);
   return () => {
@@ -47,7 +50,8 @@ declare namespace Context {
     | Record<string | number, T | State.Type<T>>;
 
   type Expect<T extends State = State> = (
-    state: T
+    state: T,
+    existing?: true
   ) => (() => void) | false | void;
 }
 
@@ -127,8 +131,6 @@ class Context {
   ) {
     const K = key(Type);
 
-    if (typeof arg2 == 'function') return subscribe(this.downstream, K, arg2);
-
     let found: T | undefined;
     let priority = false;
 
@@ -146,6 +148,9 @@ class Context {
         );
     }
 
+    if (typeof arg2 == 'function')
+      return subscribe(this.downstream, K, arg2, found ? [found] : []);
+
     if (found) return found;
     if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
   }
@@ -162,8 +167,6 @@ class Context {
   public has<T extends State>(Type: State.Extends<T>, cb?: Context.Expect<T>) {
     const K = key(Type);
 
-    if (cb) return subscribe(this.upstream, K, cb);
-
     const out: T[] = [];
     const queue = new Set<Context>([this]);
 
@@ -172,6 +175,8 @@ class Context {
       if (registry.hasOwnProperty(K))
         for (const [state] of registry[K]) out.push(state as T);
     }
+
+    if (cb) return subscribe(this.upstream, K, cb, out);
 
     return out;
   }
@@ -274,9 +279,11 @@ class Context {
     const IK = keys(I);
     const expects = [] as Context.Expect<T>[];
 
-    for (const K of IK) {
-      const E = this.upstream[K];
-      if (E) expects.push(...E);
+    let obj = this.upstream;
+    while (obj && obj !== Object.prototype) {
+      for (const K of IK)
+        if (obj.hasOwnProperty(K)) expects.push(...obj[K]);
+      obj = Object.getPrototypeOf(obj);
     }
 
     const queue = new Set(this.children);
@@ -314,7 +321,16 @@ class Context {
 
     if (waiting instanceof Context) return reset;
 
-    if (waiting instanceof Array) waiting.forEach((cb) => cb(this));
+    if (waiting instanceof Array) {
+      waiting.forEach((cb) => cb(this));
+      for (const cb of new Set(expects)) {
+        const r = cb(I);
+        if (r) cleanup.set(r, r);
+      }
+      for (const [k, v] of I) {
+        if (v instanceof State) adopt(k, v);
+      }
+    }
 
     LOOKUP.set(I, this);
 

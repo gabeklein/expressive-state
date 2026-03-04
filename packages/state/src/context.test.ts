@@ -590,6 +590,49 @@ describe('has method', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]).toBeInstanceOf(DownstreamState);
   });
+
+  it('will call callback for already-registered downstream states', () => {
+    const context = new Context();
+    const child = context.push(DownstreamState);
+    const existing = child.get(DownstreamState);
+    const cb = vi.fn();
+
+    context.has(DownstreamState, cb);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalledWith(existing, true);
+  });
+
+  it('will flag existing vs new in callback', () => {
+    const context = new Context();
+    context.push(DownstreamState);
+    const cb = vi.fn();
+
+    context.has(DownstreamState, cb);
+
+    // existing gets true flag
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][1]).toBe(true);
+
+    // new addition has no flag
+    context.push(DownstreamState);
+
+    expect(cb).toBeCalledTimes(2);
+    expect(cb.mock.calls[1][1]).toBeUndefined();
+  });
+
+  it('will call callback for multiple existing downstream states', () => {
+    const context = new Context();
+    context.push(DownstreamState);
+    context.push(DownstreamState);
+    const cb = vi.fn();
+
+    context.has(DownstreamState, cb);
+
+    expect(cb).toBeCalledTimes(2);
+    expect(cb.mock.calls[0][1]).toBe(true);
+    expect(cb.mock.calls[1][1]).toBe(true);
+  });
 });
 
 describe('get callback (upstream subscription)', () => {
@@ -633,6 +676,34 @@ describe('get callback (upstream subscription)', () => {
     parent.pop();
 
     expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will call callback for already-registered upstream state', () => {
+    const parent = new Context(Upstream);
+    const child = parent.push();
+    const cb = vi.fn();
+
+    child.get(Upstream, cb);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][1]).toBe(true);
+  });
+
+  it('will flag existing vs new upstream in callback', () => {
+    const parent = new Context();
+    const child = parent.push();
+    const cb = vi.fn();
+
+    // subscribe before anything exists
+    child.get(Upstream, cb);
+
+    expect(cb).not.toBeCalled();
+
+    // new addition has no flag
+    parent.set(Upstream);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][1]).toBeUndefined();
   });
 });
 
