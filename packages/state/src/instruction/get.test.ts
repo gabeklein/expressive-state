@@ -652,7 +652,7 @@ describe('upstream subscription', () => {
 
     expect(child.peer).toBe(first);
 
-    child.get(it => effect(it.peer));
+    child.get((it) => effect(it.peer));
 
     parent.peer = new Peer();
     await expect(child).toHaveUpdated();
@@ -676,7 +676,7 @@ describe('upstream subscription', () => {
 
     expect(child.ambient).toBeUndefined();
 
-    child.get(it => effect(it.ambient));
+    child.get((it) => effect(it.ambient));
     context.set({ Ambient });
     await expect(child).toHaveUpdated();
 
@@ -704,12 +704,24 @@ describe('upstream subscription', () => {
 
     new Context({ owner }).push({ consumer });
 
+    const first = consumer.remote;
+    const effect = vi.fn();
+
     expect(callback).toBeCalledTimes(1);
+    expect(callback).toBeCalledWith(first, consumer);
 
-    owner.remote = new Remote();
-    await expect(owner).toHaveUpdated();
+    consumer.get((it) => {
+      effect(it.remote.value);
+    });
 
+    owner.remote = new Remote({ value: 'updated' });
+    await expect(consumer).toHaveUpdated();
+
+    expect(effect).toBeCalledTimes(2);
+    expect(effect).nthCalledWith(1, 'initial');
+    expect(effect).nthCalledWith(2, 'updated');
     expect(callback).toBeCalledTimes(2);
+    expect(callback).toBeCalledWith(consumer.remote, consumer);
   });
 });
 
