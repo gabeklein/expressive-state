@@ -333,6 +333,51 @@ describe('downstream collection', () => {
     expect(gotChild).toBeCalledTimes(1);
   });
 
+  it('will collect children added later', async () => {
+    class Child extends State {}
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = new Parent();
+    const context = new Context({ parent });
+
+    expect(parent.children).toEqual([]);
+
+    const child1 = new Child();
+    context.push({ child1 });
+
+    await expect(parent).toHaveUpdated();
+    expect(parent.children).toEqual([child1]);
+
+    const child2 = new Child();
+    context.push({ child2 });
+
+    await expect(parent).toHaveUpdated();
+    expect(parent.children).toEqual([child1, child2]);
+  });
+
+  it('will collect implicit child added later', async () => {
+    class Child extends State {}
+    class Wrapper extends State {
+      child = new Child();
+    }
+    class Parent extends State {
+      children = get(Child, true);
+    }
+
+    const parent = new Parent();
+    const context = new Context({ parent });
+
+    expect(parent.children).toEqual([]);
+
+    context.push({ Wrapper });
+
+    await expect(parent).toHaveUpdated();
+    expect(parent.children.length).toBe(1);
+    expect(parent.children[0]).toBeInstanceOf(Child);
+  });
+
   it('will register implicit', () => {
     class Baz extends State {}
     class Foo extends State {
