@@ -521,14 +521,15 @@ describe('suspense', () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = vi.fn(async function (this: Test) {
-      return this.greet + ' ' + this.name;
-    });
+    const didEvaluate = vi.fn();
 
     class Test extends State {
       greet = set(() => greet, true);
       name = set(() => name, true);
-      value = set(didEvaluate, true);
+      value = set(() => {
+        didEvaluate();
+        return this.greet + ' ' + this.name;
+      }, true);
     }
 
     const test = Test.new();
@@ -653,6 +654,7 @@ describe('suspense', () => {
       sum = set(this.getSum);
 
       getSum() {
+        didAttemptSum();
         const { a, b } = this;
 
         return `Answer is ${a + b}.`;
@@ -661,22 +663,34 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    const effect = vi.fn((state: Test) => void state.sum);
+    const didAttemptSum = vi.fn();
+    const didAttemptEffect = vi.fn();
+    const didCompleteEffect = vi.fn();
 
-    test.get(effect);
+    test.get((self) => {
+      didAttemptEffect();
+      didCompleteEffect(self.sum);
+    });
 
-    expect(effect).toBeCalled();
+    expect(didAttemptSum).toBeCalled();
+    expect(didAttemptEffect).toBeCalled();
 
     promise.resolve(10);
     await expect(test).toUpdate();
 
-    expect(effect).toBeCalledTimes(1);
+    expect(didAttemptSum).toBeCalledTimes(2);
+    expect(didAttemptEffect).toBeCalledTimes(1);
+    expect(didCompleteEffect).not.toBeCalled();
 
     promise2.resolve(20);
     await expect(test).toUpdate();
 
+    expect(didAttemptSum).toBeCalledTimes(3);
     expect(test.sum).toBe('Answer is 30.');
-    expect(effect).toBeCalledTimes(2);
+
+    await expect(test).toHaveUpdated();
+    expect(didAttemptEffect).toBeCalledTimes(2);
+    expect(didCompleteEffect).toBeCalledWith('Answer is 30.');
   });
 
   it('will refresh and throw if async rejects', async () => {
