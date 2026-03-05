@@ -204,7 +204,6 @@ class Context {
       if (E === V) continue;
 
       if (E) {
-        this.id = uid(); //TODO: remove this when able to remount context state independent of React tree.
         cleanup.get(K)?.();
         cleanup.delete(K);
       }
@@ -319,9 +318,7 @@ class Context {
 
     LOOKUP.set(I, this);
 
-    for (const { downstream } of implicit
-      ? [this, ...children(this)]
-      : children(this))
+    for (const { downstream } of [this, ...children(this)])
       for (const K of IK)
         if (downstream.hasOwnProperty(K))
           for (const cb of downstream[K]) {

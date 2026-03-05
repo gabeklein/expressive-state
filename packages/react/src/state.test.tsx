@@ -852,6 +852,300 @@ describe('State.get', () => {
     });
   });
 
+  describe('reactive context', () => {
+    class Test extends State {
+      value = 'foo';
+    }
+
+    it('will refresh when upstream instance is replaced', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: State | State.Type | Record<string, any> = test1;
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Test.get().value;
+      };
+
+      const element = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(element.container.textContent).toBe('first');
+
+      current = test2;
+
+      await act(async () => {
+        element.rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(element.container.textContent).toBe('second');
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will track new instance after replacement', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        const { value } = Test.get();
+        return value;
+      };
+
+      const element = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+      expect(element.container.textContent).toBe('first');
+
+      current = test2;
+
+      await act(async () => {
+        element.rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      // update new instance - should trigger render
+      await act(async () => {
+        test2.value = 'updated';
+      });
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(3);
+      });
+
+      expect(element.container.textContent).toBe('updated');
+    });
+
+    it('will not track old instance after replacement', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        const { value } = Test.get();
+        return value;
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      current = test2;
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      // update old instance - should NOT trigger render
+      test1.value = 'stale';
+      await expect(test1).toHaveUpdated();
+
+      expect(didRender).toBeCalledTimes(2);
+    });
+
+    it('will render null when instance is removed', async () => {
+      class Other extends State {
+        label = 'other';
+      }
+
+      const test = Test.new();
+      const other = Other.new();
+
+      let current: any = { test, other };
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Test.get(false)?.value ?? null;
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+
+      // remove Test from context, keep Other
+      current = { other };
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(2);
+      });
+    });
+
+    it('will refresh when implicit instance is replaced', async () => {
+      class Child extends State {
+        value = 'original';
+      }
+
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = new Parent();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Child.get().value;
+      };
+
+      render(
+        <Provider for={parent}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didRender).toBeCalledTimes(1);
+
+      await act(async () => {
+        parent.child = new Child({ value: 'replaced' });
+      });
+
+      expect(didRender).toBeCalledTimes(2);
+
+      parent.child.value = 'updated';
+
+      await waitFor(() => {
+        expect(didRender).toBeCalledTimes(3);
+      });
+    });
+
+    it('will track implicit replacement instance', async () => {
+      class Child extends State {
+        value = 'original';
+      }
+
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = new Parent();
+      const didRender = vi.fn();
+
+      const Inner = () => {
+        didRender();
+        return Child.get().value;
+      };
+
+      const element = render(
+        <Provider for={parent}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(element.container.textContent).toBe('original');
+      expect(didRender).toBeCalledTimes(1);
+
+      // replace child implicitly
+      await act(async () => {
+        parent.child = new Child({ value: 'replaced' });
+      });
+
+      expect(element.container.textContent).toBe('replaced');
+      expect(didRender).toBeCalledTimes(2);
+
+      // update the new child - should still trigger render
+      await act(async () => {
+        parent.child.value = 'updated';
+        await expect(parent.child).toHaveUpdated();
+      });
+
+      expect(element.container.textContent).toBe('updated');
+      expect(didRender).toBeCalledTimes(3);
+    });
+
+    it('will use factory with replaced instance', async () => {
+      const test1 = Test.new();
+      const test2 = Test.new();
+
+      test1.value = 'first';
+      test2.value = 'second';
+
+      let current: any = test1;
+      const didCompute = vi.fn();
+
+      const Inner = () => {
+        return Test.get(($) => {
+          didCompute();
+          return $.value;
+        });
+      };
+
+      const { rerender } = render(
+        <Provider for={current}>
+          <Inner />
+        </Provider>
+      );
+
+      expect(didCompute).toBeCalledTimes(1);
+
+      current = test2;
+
+      await act(async () => {
+        rerender(
+          <Provider for={current}>
+            <Inner />
+          </Provider>
+        );
+      });
+
+      expect(didCompute).toBeCalledTimes(2);
+    });
+  });
+
   describe('get instruction', () => {
     class Foo extends State {
       bar = get(Bar);

@@ -170,14 +170,10 @@ State.get = function <T extends State, R>(
   this: State.Extends<T>,
   argument?: boolean | GetFactory<T, unknown>
 ) {
-  const outer = Context.use();
+  const context = Context.use();
   const state = Pragma.useState(() => {
-    const instance = outer.get(this, argument !== false);
-
-    if (!instance)
-      if (argument === false) return () => undefined;
-      else throw new Error(`Could not find ${this} in context.`);
-
+    let instance: T | undefined;
+    let unwatch: (() => void) | undefined;
     let ready: boolean | undefined;
     let value: any;
 
@@ -193,26 +189,59 @@ State.get = function <T extends State, R>(
       if (action) return action.finally(render);
     }
 
-    const unwatch = watch(
-      instance,
-      (current) => {
-        if (typeof argument === 'function') {
-          const next = argument.call(current, current, refresh);
+    function bind(target: State) {
+      unwatch?.();
+      let first = ready;
+      unwatch = watch(
+        target as T,
+        (current) => {
+          if (typeof argument === 'function') {
+            const next = argument.call(current, current, refresh);
 
-          if (next === value) return;
+            if (next === value) return;
 
-          value = next;
-        } else value = current;
+            value = next;
+          } else value = current;
 
-        if (ready) render();
-      },
-      argument === true
-    );
+          if (first) first = false;
+          else if (ready) render();
+        },
+        argument === true
+      );
+    }
+
+    let pending = false;
+
+    const unsubscribe = context.get(this, (next) => {
+      bind((instance = next));
+
+      if (ready) {
+        pending = true;
+        queueMicrotask(() => {
+          if (pending) {
+            pending = false;
+            render();
+          }
+        });
+      }
+
+      return () => {
+        unwatch?.();
+        unwatch = undefined;
+        instance = undefined;
+      };
+    });
+
+    if (!instance) {
+      unsubscribe();
+      if (argument === false) return () => undefined;
+      else throw new Error(`Could not find ${this} in context.`);
+    }
 
     if (value instanceof Promise) {
       let error: Error | undefined;
 
-      unwatch();
+      unwatch?.();
 
       value
         .then(
@@ -230,18 +259,22 @@ State.get = function <T extends State, R>(
       };
     }
 
+    const done = () => {
+      unwatch?.();
+      unsubscribe();
+    };
+
     if (value === null) {
-      unwatch();
+      done();
       return () => null;
     }
 
-    function onMount() {
-      ready = true;
-      return unwatch;
-    }
-
     return () => {
-      Pragma.useEffect(onMount, []);
+      pending = false;
+      Pragma.useEffect(() => {
+        ready = true;
+        return done;
+      }, []);
       return value === undefined ? null : value;
     };
   });
