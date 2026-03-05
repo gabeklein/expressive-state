@@ -236,11 +236,10 @@ class Context {
   }
 
   add<T extends State>(I: T, implicit?: boolean) {
+    const context = this.registry;
     const cleanup = new Map<string | Function, () => void>();
 
-    const observe = (I: State, explicit: boolean, key = '') => {
-      const context = this.registry;
-
+    const observe = (I: State, explicit: boolean, key: string) => {
       for (const K of keys(I)) {
         if (!context.hasOwnProperty(K)) context[K] = [];
         context[K].push([I, explicit]);
@@ -271,7 +270,7 @@ class Context {
         }
     };
 
-    observe(I, !implicit);
+    observe(I, !implicit, '');
 
     const IK = keys(I);
     const expects = [] as Context.Expect<T>[];
