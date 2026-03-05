@@ -2,7 +2,6 @@ import { listener } from './observable';
 import { access, event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
-const KEYS = new Map<State.Extends, symbol>();
 
 /**
  * Get the context for a specified State. If a callback is provided, it will be run when
@@ -31,45 +30,39 @@ function context({ is }: State, arg?: ((got: Context) => void) | boolean) {
   }
 }
 
-function key(T: State.Extends) {
-  let K = KEYS.get(T);
-
-  if (!K) {
-    K = Symbol(String(T));
-    KEYS.set(T, K);
-  }
-
-  return K;
-}
-
-function keys(state: State) {
+function types(state: State) {
   let T = state.constructor as State.Extends;
-  const types = [] as symbol[];
-
+  const out: State.Extends[] = [];
   while (T !== State) {
-    types.push(key(T));
+    out.push(T);
     T = Object.getPrototypeOf(T);
   }
-
-  return types;
+  return out;
 }
 
-function children(from: Context) {
+function above(from: Context) {
+  const out: Context[] = [];
+  do out.push(from);
+  while ((from = from.parent!));
+  return out;
+}
+
+function below(from: Context) {
   const queue = new Set(from.children);
   for (const q of queue) for (const c of q.children) queue.add(c);
   return queue;
 }
 
 function subscribe(
-  record: Record<symbol, Set<Function>>,
-  K: symbol,
+  record: Map<State.Extends, Set<Function>>,
+  T: State.Extends,
   cb: Context.Expect<any>
 ) {
-  const set = record.hasOwnProperty(K) ? record[K] : (record[K] = new Set());
+  let set = record.get(T);
+  if (!set) record.set(T, (set = new Set()));
   set.add(cb);
   return () => {
     set.delete(cb);
-    if (!set.size) delete record[K];
   };
 }
 
@@ -95,19 +88,19 @@ declare namespace Context {
 
 class Context {
   public id = uid();
+  public parent?: Context;
   public children = new Set<Context>();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
-  protected cleanup = new Map<string | number, () => void>();
 
-  private registry: Record<symbol, [State, boolean][]> = {};
-  private upstream: Record<symbol, Set<Context.Expect>> = {};
-  private downstream: Record<symbol, Set<Context.Expect>> = {};
+  private cleanup = new Map<string | number, () => void>();
+  private registry = new Map<State.Extends, [State, boolean][]>();
+  private upstream = new Map<State.Extends, Set<Context.Expect>>();
+  private downstream = new Map<State.Extends, Set<Context.Expect>>();
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
-      this.registry = Object.create(arg.registry);
-      this.upstream = Object.create(arg.upstream);
+      this.parent = arg;
       arg.children.add(this);
     } else if (arg) {
       this.set(arg);
@@ -133,28 +126,31 @@ class Context {
     Type: State.Extends<T>,
     arg2?: boolean | Context.Expect<T>
   ) {
-    const K = key(Type);
-
     let found: T | undefined;
     let priority = false;
 
-    for (const [state, explicit] of this.registry[K] || []) {
-      if (found === state) continue;
-      if (!found || (!priority && explicit)) {
-        found = state as T;
-        priority = explicit;
-        continue;
+    for (const ctx of above(this)) {
+      const entries = ctx.registry.get(Type);
+      if (!entries) continue;
+      for (const [state, explicit] of entries) {
+        if (found === state) continue;
+        if (!found || (!priority && explicit)) {
+          found = state as T;
+          priority = explicit;
+          continue;
+        }
+        if (!priority) return null;
+        if (explicit)
+          throw new Error(
+            `Did find ${Type} in context, but multiple were defined.`
+          );
       }
-      if (!priority) return null;
-      if (explicit)
-        throw new Error(
-          `Did find ${Type} in context, but multiple were defined.`
-        );
+      break;
     }
 
     if (typeof arg2 == 'function') {
       if (found) arg2(found, true);
-      return subscribe(this.downstream, K, arg2);
+      return subscribe(this.downstream, Type, arg2);
     }
 
     if (found) return found;
@@ -171,17 +167,15 @@ class Context {
   ): () => void;
 
   public has<T extends State>(Type: State.Extends<T>, cb?: Context.Expect<T>) {
-    const K = key(Type);
-
     const out: T[] = [];
 
-    for (const { registry } of children(this))
-      if (registry.hasOwnProperty(K))
-        for (const [state] of registry[K]) out.push(state as T);
+    for (const { registry } of below(this))
+      if (registry.get(Type))
+        for (const [state] of registry.get(Type)!) out.push(state as T);
 
     if (cb) {
       for (const state of out) cb(state, true);
-      return subscribe(this.upstream, K, cb);
+      return subscribe(this.upstream, Type, cb);
     }
 
     return out;
@@ -244,22 +238,23 @@ class Context {
   }
 
   add<T extends State>(I: T, implicit?: boolean) {
-    const context = this.registry;
+    const { registry } = this;
     const cleanup = new Map<string | Function, () => void>();
 
     const observe = (I: State, explicit: boolean, key: string) => {
-      for (const K of keys(I)) {
-        if (!context.hasOwnProperty(K)) context[K] = [];
-        context[K].push([I, explicit]);
+      for (const T of types(I)) {
+        let arr = registry.get(T);
+        if (!arr) registry.set(T, (arr = []));
+        arr.push([I, explicit]);
       }
 
       cleanup.set(key, () => {
-        for (const K of keys(I)) {
-          const arr = context[K];
+        for (const T of types(I)) {
+          const arr = registry.get(T);
           if (arr) {
             const idx = arr.findIndex((e) => e[0] === I);
             if (idx >= 0) arr.splice(idx, 1);
-            if (!arr.length) delete context[K];
+            if (!arr.length) registry.delete(T);
           }
         }
       });
@@ -280,14 +275,14 @@ class Context {
 
     observe(I, !implicit, '');
 
-    const IK = keys(I);
+    const IT = types(I);
     const expects = [] as Context.Expect<T>[];
 
-    let obj = this.upstream;
-    while (obj && obj !== Object.prototype) {
-      for (const K of IK) if (obj.hasOwnProperty(K)) expects.push(...obj[K]);
-      obj = Object.getPrototypeOf(obj);
-    }
+    for (const ctx of above(this))
+      for (const T of IT) {
+        const set = ctx.upstream.get(T);
+        if (set) expects.push(...set);
+      }
 
     const unwatch = listener(I, (key) => {
       if (typeof key === 'string') adopt(key, access(I, key, false));
@@ -310,13 +305,15 @@ class Context {
 
     const release = assign(I, this);
 
-    for (const { downstream } of [this, ...children(this)])
-      for (const K of IK)
-        if (downstream.hasOwnProperty(K))
-          for (const cb of downstream[K]) {
+    for (const { downstream } of [this, ...below(this)])
+      for (const T of IT) {
+        const set = downstream.get(T);
+        if (set)
+          for (const cb of set) {
             const r = cb(I);
             if (typeof r == 'function') cleanup.set(r, r);
           }
+      }
 
     if (!release) return reset;
 
@@ -343,11 +340,12 @@ class Context {
    * Will also run any cleanup callbacks registered when States were added.
    */
   public pop() {
-    this.inputs = this.upstream = this.registry = this.downstream = {};
+    this.inputs = {};
     this.children.forEach((x) => x.pop());
     this.children.clear();
     this.cleanup.forEach((cb) => cb());
     this.cleanup.clear();
+    if (this.parent) this.parent.children.delete(this);
   }
 }
 
