@@ -61,15 +61,15 @@ function children(from: Context) {
 }
 
 function subscribe(
-  record: Record<symbol, Function[]>,
+  record: Record<symbol, Set<Function>>,
   K: symbol,
   cb: Context.Expect<any>
 ) {
-  const arr = record.hasOwnProperty(K) ? record[K] : (record[K] = []);
-  arr.push(cb);
+  const set = record.hasOwnProperty(K) ? record[K] : (record[K] = new Set());
+  set.add(cb);
   return () => {
-    arr.splice(arr.indexOf(cb), 1);
-    if (!arr.length) delete record[K];
+    set.delete(cb);
+    if (!set.size) delete record[K];
   };
 }
 
@@ -93,8 +93,8 @@ class Context {
   protected cleanup = new Map<string | number, () => void>();
 
   private registry: Record<symbol, [State, boolean][]> = {};
-  private upstream: Record<symbol, Context.Expect[]> = {};
-  private downstream: Record<symbol, Context.Expect[]> = {};
+  private upstream: Record<symbol, Set<Context.Expect>> = {};
+  private downstream: Record<symbol, Set<Context.Expect>> = {};
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
