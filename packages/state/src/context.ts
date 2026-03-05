@@ -95,7 +95,7 @@ class Context {
 
   protected inputs: Record<string | number, State | State.Extends> = {};
 
-  private cleanup = new Map<string | number, () => void>();
+  private cleanup = new Map<string | number | Function, () => void>();
   private registry = new Map<State.Extends, [State, boolean][]>();
   private upstream = new Map<State.Extends, Set<Context.Expect>>();
   private downstream = new Map<State.Extends, Set<Context.Expect>>();
@@ -105,7 +105,7 @@ class Context {
       this.parent = arg;
       arg.children.add(this);
     } else if (arg) {
-      this.cleanup.set(0, this.add(arg));
+      this.add(arg);
     }
   }
 
@@ -328,11 +328,16 @@ class Context {
 
     init(I);
 
-    return () => {
+    const remove = () => {
+      this.cleanup.delete(remove);
       reset();
       if (I !== input) event(I, null);
       if (release) release();
     };
+
+    this.cleanup.set(remove, remove);
+
+    return remove;
   }
 
   /**
@@ -342,7 +347,7 @@ class Context {
    */
   public push(inputs?: Context.Input) {
     const next = new Context(this);
-    if (inputs) next.cleanup.set(0, next.add(inputs));
+    if (inputs) next.add(inputs);
     return next;
   }
 

@@ -403,7 +403,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.set({ Upstream });
+    parent.add(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Upstream);
@@ -416,7 +416,7 @@ describe('get callback (upstream subscription)', () => {
 
     const cancel = child.get(Upstream, cb);
     cancel();
-    parent.set({ Upstream });
+    parent.add(Upstream);
 
     expect(cb).not.toBeCalled();
   });
@@ -428,7 +428,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
-    parent.set({ Upstream });
+    parent.add(Upstream);
 
     expect(cb).toBeCalledTimes(1);
 
@@ -681,7 +681,7 @@ describe('set method', () => {
 
     const test2 = Test2.new();
 
-    const context1 = new Context(Test1);
+    const context1 = new Context().set({ Test1 });
     const context2 = context1.push().set({ test2, Test3 });
 
     const test1 = context2.get(Test1)!;
