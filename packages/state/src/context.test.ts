@@ -373,6 +373,31 @@ describe('include', () => {
     expect(ctx.get(Foo)).toBe(foo2);
   });
 
+  it('will notify downstream subscriber when implicit child is replaced', () => {
+    const foo1 = new Foo();
+    const foo2 = new Foo();
+
+    class Parent extends State {
+      child: Foo = foo1;
+    }
+
+    const parent = new Parent();
+    const ctx = new Context(parent);
+    const cb = vi.fn();
+
+    ctx.get(Foo, cb);
+
+    // called immediately with existing instance
+    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalledWith(foo1, true);
+
+    parent.child = foo2;
+
+    // should be called again with replacement
+    expect(cb).toBeCalledTimes(2);
+    expect(cb.mock.calls[1][0]).toBe(foo2);
+  });
+
   it('will not add stale implicit if property changes before context attaches', () => {
     const foo1 = new Foo();
     const foo2 = new Foo();

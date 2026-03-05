@@ -283,14 +283,6 @@ class Context {
       obj = Object.getPrototypeOf(obj);
     }
 
-    for (const { downstream } of children(this))
-      for (const K of IK)
-        if (downstream.hasOwnProperty(K))
-          for (const cb of [...downstream[K]]) {
-            const r = cb(I);
-            if (typeof r == 'function') cleanup.set(r, r);
-          }
-
     const unwatch = listener(I, (key) => {
       if (typeof key === 'string') adopt(key, access(I, key, false));
       else if (key === true) {
@@ -326,6 +318,16 @@ class Context {
     }
 
     LOOKUP.set(I, this);
+
+    for (const { downstream } of implicit
+      ? [this, ...children(this)]
+      : children(this))
+      for (const K of IK)
+        if (downstream.hasOwnProperty(K))
+          for (const cb of downstream[K]) {
+            const r = cb(I);
+            if (typeof r == 'function') cleanup.set(r, r);
+          }
 
     return () => {
       reset();
