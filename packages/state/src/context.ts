@@ -73,6 +73,14 @@ function subscribe(
   };
 }
 
+function assign(state: State, context: Context) {
+  const waiting = LOOKUP.get(state);
+  if (waiting instanceof Context) return;
+  if (waiting instanceof Array) waiting.forEach((cb) => cb(context));
+  LOOKUP.set(state, context);
+  return () => LOOKUP.delete(state);
+}
+
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
@@ -300,13 +308,7 @@ class Context {
       cleanup.clear();
     };
 
-    const waiting = LOOKUP.get(I);
-
-    if (waiting instanceof Context) return reset;
-
-    if (waiting instanceof Array) waiting.forEach((cb) => cb(this));
-
-    LOOKUP.set(I, this);
+    const release = assign(I, this);
 
     for (const { downstream } of [this, ...children(this)])
       for (const K of IK)
@@ -316,9 +318,11 @@ class Context {
             if (typeof r == 'function') cleanup.set(r, r);
           }
 
+    if (!release) return reset;
+
     return () => {
       reset();
-      LOOKUP.delete(I);
+      release();
     };
   }
 

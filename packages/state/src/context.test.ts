@@ -437,6 +437,23 @@ describe('get callback (upstream subscription)', () => {
     expect(cleanup).toBeCalledTimes(1);
   });
 
+  it('will notify get-subscriber when state already has a context', () => {
+    const original = new Context();
+    const shared = Upstream.new();
+
+    original.add(shared);
+
+    const parent = new Context();
+    const child = parent.push();
+    const cb = vi.fn();
+
+    child.get(Upstream, cb);
+    parent.add(shared);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][0]).toBe(shared);
+  });
+
   it('will call callback for already-registered upstream state', () => {
     const parent = new Context(Upstream);
     const child = parent.push();
