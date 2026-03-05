@@ -53,30 +53,20 @@ it('will include children of State', () => {
   expect(context.get(Example)).toBeInstanceOf(Example);
 });
 
-//TODO: not sure if should remain this case.
-it.skip('will not include initialized child', () => {
-  class Test extends State {
-    // this will be initialized before parent is
-    example = Example.new();
-  }
-
-  const context = new Context(Test);
-
-  expect(context.get(Example, false)).toBeUndefined();
-});
-
 it('will access upstream controller', () => {
   const example = Example.new();
 
-  const context = new Context(example);
-  const context2 = context.push();
+  const context = new Context();
+  context.add(example);
 
-  expect(context2.get(Example)).toBe(example);
+  expect(context.push().get(Example)).toBe(example);
 });
 
 it('will register all subtypes', () => {
   const example2 = new Example2();
-  const context = new Context(example2);
+  const context = new Context();
+
+  context.add(example2);
 
   expect(context.get(Example2)).toBe(example2);
   expect(context.get(Example)).toBe(example2);
@@ -595,7 +585,8 @@ describe('context helper', () => {
 
     expect(context(test, false)).toBeUndefined();
 
-    const ctx = new Context(test);
+    const ctx = new Context();
+    ctx.add(test);
 
     expect(context(test)).toBe(ctx);
   });
@@ -612,7 +603,8 @@ describe('context helper', () => {
 
     expect(context(test, false)).toBeUndefined();
 
-    const ctx = new Context(test);
+    const ctx = new Context();
+    ctx.add(test);
 
     expect(context(test)).toBe(ctx);
   });
@@ -625,14 +617,18 @@ describe('context helper', () => {
 
     expect(mock).not.toBeCalled();
 
-    const ctx = new Context(test);
+    const ctx = new Context();
+    ctx.add(test);
 
     expect(mock).toBeCalledWith(ctx);
   });
 
   it('will callback immediately if context already exists', () => {
     const test = new Test();
-    const ctx = new Context(test);
+    const ctx = new Context();
+
+    ctx.add(test);
+
     const mock = vi.fn();
 
     context(test, mock);
