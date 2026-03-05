@@ -9,7 +9,7 @@ it('will add instance to context', () => {
   const example = Example.new();
   const context = new Context();
 
-  context.set(example);
+  context.add(example);
 
   expect(context.get(Example)).toBe(example);
 });
@@ -129,52 +129,6 @@ it('will remove implicit children on pop', () => {
   expect(context(child, false)).toBeUndefined();
 });
 
-it('will remove implicit children when parent removed via set', () => {
-  class Parent extends State {
-    child = new Example();
-  }
-
-  const ctx = new Context(Parent);
-  const { child } = ctx.get(Parent);
-
-  ctx.set({});
-
-  expect(context(child, false)).toBeUndefined();
-  expect(ctx.get(Example, false)).toBeUndefined();
-});
-
-it('will remove implicit downstream on removal', () => {
-  class Parent extends State {
-    child = new Example();
-  }
-
-  const ctx = new Context(Parent);
-  const parent = ctx.get(Parent);
-  expect(ctx.get(Example)).toBe(parent.child);
-
-  ctx.set({});
-
-  expect(ctx.get(Example, false)).toBeUndefined();
-});
-
-it('will remove multiple implicit children when parent is removed', () => {
-  class Parent extends State {
-    a = new Example();
-    b = new Example2();
-  }
-
-  const ctx = new Context(Parent);
-  // Example2 extends Example, so both a and b register under Example key
-  // This creates an implicit collision on Example — returns null
-  expect(ctx.get(Example)).toBeNull();
-  expect(ctx.get(Example2)).toBeInstanceOf(Example2);
-
-  ctx.set({});
-
-  expect(ctx.get(Example, false)).toBeUndefined();
-  expect(ctx.get(Example2, false)).toBeUndefined();
-});
-
 it('child pop is safe to call before parent pop', () => {
   const destroyed = vi.fn();
 
@@ -241,110 +195,6 @@ describe('include', () => {
 
     expect(context.get(Foo)).toBe(foo);
     expect(context.get(Bar)).toBe(bar);
-  });
-
-  it('will callback once per unique added', () => {
-    const foo = Foo.new();
-    const bar = Bar.new();
-    const cb = vi.fn();
-
-    const context = new Context();
-
-    context.set({ foo, bar }, cb);
-
-    expect(cb).toBeCalledWith(foo);
-    expect(cb).toBeCalledWith(bar);
-    expect(cb).toBeCalledTimes(2);
-
-    context.set({ foo, bar }, cb);
-
-    expect(cb).toBeCalledTimes(2);
-
-    const foo2 = Foo.new();
-
-    context.set({ foo, bar, foo2 }, cb);
-
-    expect(cb).toBeCalledWith(foo2);
-    expect(cb).toBeCalledTimes(3);
-  });
-
-  it('will ignore subsequent if callback', () => {
-    const cb = vi.fn();
-    const context = new Context();
-
-    context.set(Foo, cb);
-    context.set(Foo, cb);
-
-    expect(context.get(Foo)).toBeInstanceOf(Foo);
-
-    expect(cb).toBeCalledTimes(1);
-  });
-
-  it('will remove and delete state of type absent', () => {
-    class Bar extends State {
-      didDie = vi.fn();
-
-      protected new() {
-        return this.didDie;
-      }
-    }
-
-    const context = new Context(Bar);
-    const bar = context.get(Bar);
-
-    context.set({});
-
-    expect(bar.didDie).toBeCalled();
-    expect(context.get(Bar, false)).toBeUndefined();
-  });
-
-  it('will replace owned instance when key changes', () => {
-    class Baz extends State {
-      didDie = vi.fn();
-
-      protected new() {
-        return this.didDie;
-      }
-    }
-
-    class Baz2 extends State {}
-
-    const context = new Context(Baz);
-    const baz = context.get(Baz);
-
-    context.set({ Baz: Baz2 });
-
-    expect(baz.didDie).toBeCalled();
-    expect(context.get(Baz, false)).toBeUndefined();
-    expect(context.get(Baz2)).toBeInstanceOf(Baz2);
-  });
-
-  it('will remove non-owned instance without destroying it', () => {
-    const bar = Bar.new();
-    const context = new Context(bar);
-
-    expect(context.get(Bar)).toBe(bar);
-
-    context.set({});
-
-    expect(context.get(Bar, false)).toBeUndefined();
-    // bar should still be alive (not owned by context)
-    expect(bar.is).not.toBeNull();
-  });
-
-  it('will clean up subtype keys on delete', () => {
-    class Base extends State {}
-    class Child extends Base {}
-
-    const context = new Context(Child);
-
-    expect(context.get(Child)).toBeInstanceOf(Child);
-    expect(context.get(Base)).toBeInstanceOf(Child);
-
-    context.set({});
-
-    expect(context.get(Child, false)).toBeUndefined();
-    expect(context.get(Base, false)).toBeUndefined();
   });
 
   it('will register children implicitly', () => {
@@ -505,42 +355,6 @@ it('will pop child context', () => {
   expect(didDestroy).toBeCalledWith(1, 'Test3');
   expect(didDestroy).toBeCalledWith(2, 'Test2');
   expect(didDestroy).toBeCalledWith(3, 'Test');
-});
-
-it('will throw on bad include', () => {
-  const Thing = { toString: () => 'Foobar' };
-  const context = new Context();
-
-  // TODO: check for specific error
-  // @ts-ignore
-  expect(() => context.set(Thing)).toThrow();
-});
-
-it('will throw on base State include', () => {
-  const context = new Context();
-
-  // @ts-ignore
-  expect(() => context.set({ State })).toThrow('Cannot create base State.');
-});
-
-it('will throw on bad include property', () => {
-  const Thing = { toString: () => 'Foobar' };
-  const context = new Context();
-
-  // @ts-ignore
-  expect(() => context.set({ Thing })).toThrow(
-    "Context can only include an instance or class of State but got Foobar (as 'Thing')."
-  );
-});
-
-it('will throw on bad include property (no alias)', () => {
-  const Thing = { toString: () => 'Thing' };
-  const context = new Context();
-
-  // @ts-ignore
-  expect(() => context.set({ [0]: Thing })).toThrow(
-    'Context can only include an instance or class of State but got Thing.'
-  );
 });
 
 describe('has method', () => {
@@ -740,7 +554,7 @@ describe('with existing context', () => {
     const original = new Context(foo);
     const other = new Context();
 
-    other.set(foo);
+    other.add(foo);
 
     expect(other.get(Foo)).toBe(foo);
     expect(context(foo)).toBe(original);
@@ -751,7 +565,7 @@ describe('with existing context', () => {
     const original = new Context(foo);
     const other = new Context();
 
-    other.set(foo);
+    other.add(foo);
     other.pop();
 
     expect(context(foo)).toBe(original);
@@ -767,7 +581,7 @@ describe('with existing context', () => {
     expect(mock).toBeCalledWith(first);
 
     const second = new Context();
-    second.set(foo);
+    second.add(foo);
 
     expect(mock).toBeCalledTimes(1);
   });
@@ -824,5 +638,200 @@ describe('context helper', () => {
     context(test, mock);
 
     expect(mock).toBeCalledWith(ctx);
+  });
+});
+
+describe('set method', () => {
+  it('will throw on bad include', () => {
+    const Thing = { toString: () => 'Foobar' };
+    const context = new Context();
+
+    // TODO: check for specific error
+    // @ts-ignore
+    expect(() => context.set(Thing)).toThrow();
+  });
+
+  it('will throw on base State include', () => {
+    const context = new Context();
+
+    // @ts-ignore
+    expect(() => context.set({ State })).toThrow('Cannot create base State.');
+  });
+
+  it('will throw on bad include property', () => {
+    const Thing = { toString: () => 'Foobar' };
+    const context = new Context();
+
+    // @ts-ignore
+    expect(() => context.set({ Thing })).toThrow(
+      "Context can only include an instance or class of State but got Foobar (as 'Thing')."
+    );
+  });
+
+  it('will throw on bad include property (no alias)', () => {
+    const Thing = { toString: () => 'Thing' };
+    const context = new Context();
+
+    // @ts-ignore
+    expect(() => context.set({ [0]: Thing })).toThrow(
+      'Context can only include an instance or class of State but got Thing.'
+    );
+  });
+
+  it('will remove implicit children when parent removed via set', () => {
+    class Parent extends State {
+      child = new Example();
+    }
+
+    const ctx = new Context(Parent);
+    const { child } = ctx.get(Parent);
+
+    ctx.set({});
+
+    expect(context(child, false)).toBeUndefined();
+    expect(ctx.get(Example, false)).toBeUndefined();
+  });
+
+  it('will remove implicit downstream on removal', () => {
+    class Parent extends State {
+      child = new Example();
+    }
+
+    const context = new Context(Parent);
+    const parent = context.get(Parent);
+    expect(context.get(Example)).toBe(parent.child);
+
+    context.set({});
+
+    expect(context.get(Example, false)).toBeUndefined();
+  });
+
+  it('will remove multiple implicit children when parent is removed', () => {
+    class Parent extends State {
+      a = new Example();
+      b = new Example2();
+    }
+
+    const context = new Context(Parent);
+    // Example2 extends Example, so both a and b register under Example key
+    // This creates an implicit collision on Example — returns null
+    expect(context.get(Example)).toBeNull();
+    expect(context.get(Example2)).toBeInstanceOf(Example2);
+
+    context.set({});
+
+    expect(context.get(Example, false)).toBeUndefined();
+    expect(context.get(Example2, false)).toBeUndefined();
+  });
+
+  it('will callback once per unique added', () => {
+    class Foo extends State {}
+    class Bar extends State {}
+
+    const foo = Foo.new();
+    const bar = Bar.new();
+    const cb = vi.fn();
+
+    const context = new Context();
+
+    context.set({ foo, bar }, cb);
+
+    expect(cb).toBeCalledWith(foo);
+    expect(cb).toBeCalledWith(bar);
+    expect(cb).toBeCalledTimes(2);
+
+    context.set({ foo, bar }, cb);
+
+    expect(cb).toBeCalledTimes(2);
+
+    const foo2 = Foo.new();
+
+    context.set({ foo, bar, foo2 }, cb);
+
+    expect(cb).toBeCalledWith(foo2);
+    expect(cb).toBeCalledTimes(3);
+  });
+
+  it('will ignore subsequent if callback', () => {
+    class Foo extends State {}
+
+    const cb = vi.fn();
+    const context = new Context();
+
+    context.set(Foo, cb);
+    context.set(Foo, cb);
+
+    expect(context.get(Foo)).toBeInstanceOf(Foo);
+
+    expect(cb).toBeCalledTimes(1);
+  });
+
+  it('will remove and delete state of type absent', () => {
+    class Bar extends State {
+      didDie = vi.fn();
+
+      protected new() {
+        return this.didDie;
+      }
+    }
+
+    const context = new Context(Bar);
+    const bar = context.get(Bar);
+
+    context.set({});
+
+    expect(bar.didDie).toBeCalled();
+    expect(context.get(Bar, false)).toBeUndefined();
+  });
+
+  it('will replace owned instance when key changes', () => {
+    class Baz extends State {
+      didDie = vi.fn();
+
+      protected new() {
+        return this.didDie;
+      }
+    }
+
+    class Baz2 extends State {}
+
+    const context = new Context(Baz);
+    const baz = context.get(Baz);
+
+    context.set({ Baz: Baz2 });
+
+    expect(baz.didDie).toBeCalled();
+    expect(context.get(Baz, false)).toBeUndefined();
+    expect(context.get(Baz2)).toBeInstanceOf(Baz2);
+  });
+
+  it('will remove non-owned instance without destroying it', () => {
+    class Bar extends State {}
+
+    const bar = Bar.new();
+    const context = new Context(bar);
+
+    expect(context.get(Bar)).toBe(bar);
+
+    context.set({});
+
+    expect(context.get(Bar, false)).toBeUndefined();
+    // bar should still be alive (not owned by context)
+    expect(bar.is).not.toBeNull();
+  });
+
+  it('will clean up subtype keys on delete', () => {
+    class Base extends State {}
+    class Child extends Base {}
+
+    const context = new Context(Child);
+
+    expect(context.get(Child)).toBeInstanceOf(Child);
+    expect(context.get(Base)).toBeInstanceOf(Child);
+
+    context.set({});
+
+    expect(context.get(Child, false)).toBeUndefined();
+    expect(context.get(Base, false)).toBeUndefined();
   });
 });
