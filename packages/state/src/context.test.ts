@@ -403,7 +403,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.set({ Upstream });
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Upstream);
@@ -416,7 +416,7 @@ describe('get callback (upstream subscription)', () => {
 
     const cancel = child.get(Upstream, cb);
     cancel();
-    parent.set(Upstream);
+    parent.set({ Upstream });
 
     expect(cb).not.toBeCalled();
   });
@@ -428,7 +428,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.set({ Upstream });
 
     expect(cb).toBeCalledTimes(1);
 
@@ -476,7 +476,7 @@ describe('get callback (upstream subscription)', () => {
     expect(cb).not.toBeCalled();
 
     // new addition has no flag
-    parent.set(Upstream);
+    parent.set({ Upstream });
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][1]).toBeUndefined();
@@ -592,14 +592,14 @@ describe('set method', () => {
     const foo = Foo.new();
     const bar = Bar.new();
 
-    const context = new Context({ foo, bar });
+    const context = new Context().set({ foo, bar });
 
     expect(context.get(Foo)).toBe(foo);
     expect(context.get(Bar)).toBe(bar);
   });
 
   it('will complain if multiple of same type', () => {
-    const context = new Context({
+    const context = new Context().set({
       e1: Example,
       e2: Example
     });
@@ -613,7 +613,7 @@ describe('set method', () => {
 
   it('will ignore if multiple of same instance', () => {
     const example = Example.new();
-    const context = new Context({
+    const context = new Context().set({
       e1: example,
       e2: example
     });
@@ -653,7 +653,7 @@ describe('set method', () => {
       child: Foo | undefined = shared;
     }
 
-    const ctx = new Context({ ParentA, ParentB });
+    const ctx = new Context().set({ ParentA, ParentB });
 
     expect(ctx.get(Foo)).toBe(shared);
 
@@ -682,7 +682,7 @@ describe('set method', () => {
     const test2 = Test2.new();
 
     const context1 = new Context(Test1);
-    const context2 = context1.push({ test2, Test3 });
+    const context2 = context1.push().set({ test2, Test3 });
 
     const test1 = context2.get(Test1)!;
     const test3 = context2.get(Test3)!;
@@ -699,7 +699,7 @@ describe('set method', () => {
     const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set(Thing)).toThrow(
+    expect(() => context.set({ Thing })).toThrow(
       'Context can only include an instance or class of State but got'
     );
   });
@@ -736,7 +736,7 @@ describe('set method', () => {
       child = new Example();
     }
 
-    const ctx = new Context(Parent);
+    const ctx = new Context().set({ Parent });
     const { child } = ctx.get(Parent);
 
     ctx.set({});
@@ -750,7 +750,7 @@ describe('set method', () => {
       child = new Example();
     }
 
-    const context = new Context(Parent);
+    const context = new Context().set({ Parent });
     const parent = context.get(Parent);
     expect(context.get(Example)).toBe(parent.child);
 
@@ -765,7 +765,7 @@ describe('set method', () => {
       b = new Example2();
     }
 
-    const context = new Context(Parent);
+    const context = new Context().set({ Parent });
     // Example2 extends Example, so both a and b register under Example key
     // This creates an implicit collision on Example — returns null
     expect(context.get(Example)).toBeNull();
@@ -828,7 +828,7 @@ describe('set method', () => {
       }
     }
 
-    const context = new Context(Bar);
+    const context = new Context().set({ Bar });
     const bar = context.get(Bar);
 
     context.set({});
@@ -848,7 +848,7 @@ describe('set method', () => {
 
     class Baz2 extends State {}
 
-    const context = new Context(Baz);
+    const context = new Context().set({ Baz });
     const baz = context.get(Baz);
 
     context.set({ Baz: Baz2 });
@@ -862,7 +862,7 @@ describe('set method', () => {
     class Bar extends State {}
 
     const bar = Bar.new();
-    const context = new Context(bar);
+    const context = new Context().set({ bar });
 
     expect(context.get(Bar)).toBe(bar);
 
@@ -877,7 +877,7 @@ describe('set method', () => {
     class Base extends State {}
     class Child extends Base {}
 
-    const context = new Context(Child);
+    const context = new Context().set({ Child });
 
     expect(context.get(Child)).toBeInstanceOf(Child);
     expect(context.get(Base)).toBeInstanceOf(Child);

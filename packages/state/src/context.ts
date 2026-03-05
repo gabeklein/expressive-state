@@ -84,6 +84,8 @@ declare namespace Context {
     state: T,
     existing?: true
   ) => (() => void) | false | void;
+
+  type Input = State | State.Type | (State | State.Type)[];
 }
 
 class Context {
@@ -98,12 +100,12 @@ class Context {
   private upstream = new Map<State.Extends, Set<Context.Expect>>();
   private downstream = new Map<State.Extends, Set<Context.Expect>>();
 
-  constructor(arg?: Context | Context.Accept) {
+  constructor(arg?: Context | Context.Input) {
     if (arg instanceof Context) {
       this.parent = arg;
       arg.children.add(this);
     } else if (arg) {
-      this.set(arg);
+      this.cleanup.set(0, this.add(arg));
     }
   }
 
@@ -219,14 +221,10 @@ class Context {
           }.`
         );
 
-      const I = V instanceof State ? V : new (V as State.Type<T>)();
-
-      const clear = this.add(I);
-      cleanup.set(K, () => {
-        clear();
-        if (I !== V) event(I, null);
-      });
-      init.push(I);
+      cleanup.set(
+        K,
+        this.add(V, false, (I) => init.push(I))
+      );
     }
 
     for (const state of init) {
@@ -235,11 +233,24 @@ class Context {
     }
 
     this.inputs = inputs;
+
+    return this;
   }
 
-  add<T extends State>(I: T, implicit?: boolean) {
+  add(
+    input: Context.Input,
+    implicit?: boolean,
+    init: (I: State) => void = event
+  ) {
+    if (Array.isArray(input)) {
+      const clean = input.map((i) => this.add(i, implicit, init));
+      return () => void clean.forEach((c) => c());
+    }
+
     const { registry } = this;
     const cleanup = new Map<string | Function, () => void>();
+
+    const I = input instanceof State ? input : new (input as State.Type)();
 
     const observe = (I: State, explicit: boolean, key: string) => {
       for (const T of types(I)) {
@@ -276,7 +287,7 @@ class Context {
     observe(I, !implicit, '');
 
     const IT = types(I);
-    const expects = [] as Context.Expect<T>[];
+    const expects = [] as Context.Expect[];
 
     for (const ctx of above(this))
       for (const T of IT) {
@@ -315,11 +326,12 @@ class Context {
           }
       }
 
-    if (!release) return reset;
+    init(I);
 
     return () => {
       reset();
-      release();
+      if (I !== input) event(I, null);
+      if (release) release();
     };
   }
 
@@ -328,9 +340,9 @@ class Context {
    *
    * @param inputs State, State class, or map of States / State classes to register.
    */
-  public push(inputs?: Context.Accept) {
+  public push(inputs?: Context.Input) {
     const next = new Context(this);
-    if (inputs) next.set(inputs);
+    if (inputs) next.cleanup.set(0, next.add(inputs));
     return next;
   }
 
