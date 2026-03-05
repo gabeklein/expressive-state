@@ -373,6 +373,25 @@ describe('has method', () => {
     expect(cb.mock.calls[0][1]).toBe(true);
     expect(cb.mock.calls[1][1]).toBe(true);
   });
+
+  it('will notify has-subscriber for state created before context', () => {
+    const parent = new Context();
+    const cb = vi.fn();
+
+    parent.has(DownstreamState, cb);
+
+    const child = parent.push();
+    const state = DownstreamState.new();
+
+    // state created before context, queues a waiting callback
+    context(state, () => {});
+
+    // adding to context should still notify parent's has-subscriber
+    child.add(state);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb.mock.calls[0][0]).toBe(state);
+  });
 });
 
 describe('get callback (upstream subscription)', () => {

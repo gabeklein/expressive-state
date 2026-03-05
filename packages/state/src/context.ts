@@ -304,16 +304,7 @@ class Context {
 
     if (waiting instanceof Context) return reset;
 
-    if (waiting instanceof Array) {
-      waiting.forEach((cb) => cb(this));
-      for (const cb of new Set(expects)) {
-        const r = cb(I);
-        if (r) cleanup.set(r, r);
-      }
-      for (const [k, v] of I) {
-        if (v instanceof State) adopt(k, v);
-      }
-    }
+    if (waiting instanceof Array) waiting.forEach((cb) => cb(this));
 
     LOOKUP.set(I, this);
 
