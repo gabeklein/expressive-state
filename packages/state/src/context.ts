@@ -5,6 +5,18 @@ const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
 const REGISTRY = new WeakMap<Context, Map<State.Extends, [State, boolean][]>>();
 const UPSTREAM = new WeakMap<Context, Map<State.Extends, Set<Expect>>>();
 const DOWNSTREAM = new WeakMap<Context, Map<State.Extends, Set<Expect>>>();
+const PARENT = new WeakMap<Context, Context>();
+const CHILDREN = new WeakMap<Context, Set<Context>>();
+
+function parent(ctx: Context) {
+  return PARENT.get(ctx);
+}
+
+function children(ctx: Context) {
+  let set = CHILDREN.get(ctx);
+  if (!set) CHILDREN.set(ctx, (set = new Set()));
+  return set;
+}
 
 function registry(ctx: Context) {
   let map = REGISTRY.get(ctx);
@@ -64,13 +76,13 @@ function types(state: State) {
 function above(from: Context) {
   const out: Context[] = [];
   do out.push(from);
-  while ((from = from.parent!));
+  while ((from = parent(from)!));
   return out;
 }
 
 function below(from: Context) {
-  const queue = new Set(from.children);
-  for (const q of queue) for (const c of q.children) queue.add(c);
+  const queue = new Set(children(from));
+  for (const q of queue) for (const c of children(q)) queue.add(c);
   return queue;
 }
 
@@ -107,21 +119,181 @@ type Expect<T extends State = State> = (
 
 type Input = State | State.Type | (State | State.Type)[];
 
+function lookup<T extends State>(
+  from: Context,
+  Type: State.Extends<T>,
+  arg2?: boolean | Expect<T>
+) {
+  let found: T | undefined;
+  let priority = false;
+
+  for (const ctx of above(from)) {
+    const entries = registry(ctx).get(Type);
+    if (!entries) continue;
+    for (const [state, explicit] of entries) {
+      if (found === state) continue;
+      if (!found || (!priority && explicit)) {
+        found = state as T;
+        priority = explicit;
+        continue;
+      }
+      if (!priority) return null;
+      if (explicit)
+        throw new Error(
+          `Did find ${Type} in context, but multiple were defined.`
+        );
+    }
+    break;
+  }
+
+  if (typeof arg2 == 'function') {
+    if (found) arg2(found, true);
+    return subscribe(downstream(from), Type, arg2);
+  }
+
+  if (found) return found;
+  if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
+}
+
+function collect<T extends State>(
+  from: Context,
+  Type: State.Extends<T>,
+  cb?: Expect<T>
+) {
+  const out: T[] = [];
+
+  for (const ctx of below(from)) {
+    const reg = registry(ctx);
+    if (reg.get(Type))
+      for (const [state] of reg.get(Type)!) out.push(state as T);
+  }
+
+  if (cb) {
+    for (const state of out) cb(state, true);
+    return subscribe(upstream(from), Type, cb);
+  }
+
+  return out;
+}
+
+function add(
+  self: Context,
+  input: Input,
+  implicit?: boolean,
+  init: (I: State) => void = event
+): () => void {
+  if (Array.isArray(input)) {
+    const clean = input.map((i) => add(self, i, implicit, init));
+    return () => void clean.forEach((c) => c());
+  }
+
+  const reg = registry(self);
+  const local = new Map<string | Function, () => void>();
+
+  const I = input instanceof State ? input : new (input as State.Type)();
+
+  const observe = (I: State, explicit: boolean, key: string) => {
+    for (const T of types(I)) {
+      let arr = reg.get(T);
+      if (!arr) reg.set(T, (arr = []));
+      arr.push([I, explicit]);
+    }
+
+    /* v8 ignore next 9 -- @preserve */
+    local.set(key, () => {
+      for (const T of types(I)) {
+        const arr = reg.get(T);
+        if (arr) {
+          const idx = arr.findIndex((e) => e[0] === I);
+          if (idx >= 0) arr.splice(idx, 1);
+          if (!arr.length) reg.delete(T);
+        }
+      }
+    });
+  };
+
+  const adopt = (k: string, v: unknown) => {
+    local.get(k)?.();
+    local.delete(k);
+
+    if (v instanceof State)
+      if (LOOKUP.get(v) instanceof Context) {
+        observe(v, false, k);
+      } else {
+        local.set(k, add(self, v, true));
+        event(v);
+      }
+  };
+
+  observe(I, !implicit, '');
+
+  const IT = types(I);
+  const expects = [] as Expect[];
+
+  for (const ctx of above(self))
+    for (const T of IT) {
+      const set = upstream(ctx).get(T);
+      if (set) expects.push(...set);
+    }
+
+  const unwatch = listener(I, (key) => {
+    if (typeof key === 'string') adopt(key, access(I, key, false));
+    else if (key === true) {
+      for (const cb of new Set(expects)) {
+        const r = cb(I);
+        if (r) local.set(r, r);
+      }
+      for (const [k, v] of I) {
+        if (v instanceof State) adopt(k, v);
+      }
+    }
+  });
+
+  const reset = () => {
+    unwatch();
+    local.forEach((cb) => cb());
+    local.clear();
+  };
+
+  const release = assign(I, self);
+
+  for (const ctx of [self, ...below(self)])
+    for (const T of IT) {
+      const set = downstream(ctx).get(T);
+      if (set)
+        for (const cb of set) {
+          const r = cb(I);
+          if (typeof r == 'function') local.set(r, r);
+        }
+    }
+
+  init(I);
+
+  const remove = () => {
+    self.cleanup.delete(remove);
+    reset();
+    if (I !== input) event(I, null);
+    if (release) release();
+  };
+
+  self.cleanup.set(remove, remove);
+
+  return remove;
+}
+
 class Context {
   public id = uid();
-  public parent?: Context;
-  public children = new Set<Context>();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
 
-  private cleanup = new Map<string | number | Function, () => void>();
+  cleanup = new Map<string | number | Function, () => void>();
 
   constructor(arg?: Context | Input) {
     if (arg instanceof Context) {
-      this.parent = arg;
-      arg.children.add(this);
+      PARENT.set(this, arg);
+      children(arg).add(this);
     } else if (arg) {
-      this.add(arg);
+      add(this, arg);
     }
   }
 
@@ -144,35 +316,7 @@ class Context {
     Type: State.Extends<T>,
     arg2?: boolean | Expect<T>
   ) {
-    let found: T | undefined;
-    let priority = false;
-
-    for (const ctx of above(this)) {
-      const entries = registry(ctx).get(Type);
-      if (!entries) continue;
-      for (const [state, explicit] of entries) {
-        if (found === state) continue;
-        if (!found || (!priority && explicit)) {
-          found = state as T;
-          priority = explicit;
-          continue;
-        }
-        if (!priority) return null;
-        if (explicit)
-          throw new Error(
-            `Did find ${Type} in context, but multiple were defined.`
-          );
-      }
-      break;
-    }
-
-    if (typeof arg2 == 'function') {
-      if (found) arg2(found, true);
-      return subscribe(downstream(this), Type, arg2);
-    }
-
-    if (found) return found;
-    if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
+    return lookup(this, Type, arg2);
   }
 
   /** Get all entries of a type registered downstream. */
@@ -185,20 +329,7 @@ class Context {
   ): () => void;
 
   public has<T extends State>(Type: State.Extends<T>, cb?: Expect<T>) {
-    const out: T[] = [];
-
-    for (const ctx of below(this)) {
-      const reg = registry(ctx);
-      if (reg.get(Type))
-        for (const [state] of reg.get(Type)!) out.push(state as T);
-    }
-
-    if (cb) {
-      for (const state of out) cb(state, true);
-      return subscribe(upstream(this), Type, cb);
-    }
-
-    return out;
+    return collect(this, Type, cb);
   }
 
   /**
@@ -238,7 +369,7 @@ class Context {
 
       cleanup.set(
         K,
-        this.add(V, false, (I) => init.push(I))
+        add(this, V, false, (I) => init.push(I))
       );
     }
 
@@ -252,129 +383,24 @@ class Context {
     return this;
   }
 
-  add(input: Input, implicit?: boolean, init: (I: State) => void = event) {
-    if (Array.isArray(input)) {
-      const clean = input.map((i) => this.add(i, implicit, init));
-      return () => void clean.forEach((c) => c());
-    }
-
-    const reg = registry(this);
-    const cleanup = new Map<string | Function, () => void>();
-
-    const I = input instanceof State ? input : new (input as State.Type)();
-
-    const observe = (I: State, explicit: boolean, key: string) => {
-      for (const T of types(I)) {
-        let arr = reg.get(T);
-        if (!arr) reg.set(T, (arr = []));
-        arr.push([I, explicit]);
-      }
-
-      /* v8 ignore next 9 -- @preserve */
-      cleanup.set(key, () => {
-        for (const T of types(I)) {
-          const arr = reg.get(T);
-          if (arr) {
-            const idx = arr.findIndex((e) => e[0] === I);
-            if (idx >= 0) arr.splice(idx, 1);
-            if (!arr.length) reg.delete(T);
-          }
-        }
-      });
-    };
-
-    const adopt = (k: string, v: unknown) => {
-      cleanup.get(k)?.();
-      cleanup.delete(k);
-
-      if (v instanceof State)
-        if (LOOKUP.get(v) instanceof Context) {
-          observe(v, false, k);
-        } else {
-          cleanup.set(k, this.add(v, true));
-          event(v);
-        }
-    };
-
-    observe(I, !implicit, '');
-
-    const IT = types(I);
-    const expects = [] as Expect[];
-
-    for (const ctx of above(this))
-      for (const T of IT) {
-        const set = upstream(ctx).get(T);
-        if (set) expects.push(...set);
-      }
-
-    const unwatch = listener(I, (key) => {
-      if (typeof key === 'string') adopt(key, access(I, key, false));
-      else if (key === true) {
-        for (const cb of new Set(expects)) {
-          const r = cb(I);
-          if (r) cleanup.set(r, r);
-        }
-        for (const [k, v] of I) {
-          if (v instanceof State) adopt(k, v);
-        }
-      }
-    });
-
-    const reset = () => {
-      unwatch();
-      cleanup.forEach((cb) => cb());
-      cleanup.clear();
-    };
-
-    const release = assign(I, this);
-
-    for (const ctx of [this, ...below(this)])
-      for (const T of IT) {
-        const set = downstream(ctx).get(T);
-        if (set)
-          for (const cb of set) {
-            const r = cb(I);
-            if (typeof r == 'function') cleanup.set(r, r);
-          }
-      }
-
-    init(I);
-
-    const remove = () => {
-      this.cleanup.delete(remove);
-      reset();
-      if (I !== input) event(I, null);
-      if (release) release();
-    };
-
-    this.cleanup.set(remove, remove);
-
-    return remove;
+  add(input: Input, implicit?: boolean, init?: (I: State) => void) {
+    return add(this, input, implicit, init);
   }
 
-  /**
-   * Create a child context, optionally registering one or more States to it.
-   *
-   * @param inputs State, State class, or map of States / State classes to register.
-   */
   public push(inputs?: Input) {
     const next = new Context(this);
-    if (inputs) next.add(inputs);
+    if (inputs) add(next, inputs);
     return next;
   }
 
-  /**
-   * Remove all States from this context.
-   *
-   * Will also run any cleanup callbacks registered when States were added.
-   */
   public pop() {
     this.inputs = {};
-    this.children.forEach((x) => x.pop());
-    this.children.clear();
+    children(this).forEach((x) => x.pop());
+    children(this).clear();
     this.cleanup.forEach((cb) => cb());
     this.cleanup.clear();
-    if (this.parent) this.parent.children.delete(this);
+    const p = parent(this);
+    if (p) children(p).delete(this);
   }
 }
 
