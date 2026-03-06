@@ -288,12 +288,12 @@ class Context {
 
   cleanup = new Map<string | number | Function, () => void>();
 
-  constructor(arg?: Context | Input) {
+  constructor(arg?: Context | Accept) {
     if (arg instanceof Context) {
       PARENT.set(this, arg);
       children(arg).add(this);
     } else if (arg) {
-      add(this, arg);
+      this.set(arg);
     }
   }
 
@@ -387,9 +387,9 @@ class Context {
     return add(this, input, implicit, init);
   }
 
-  public push(inputs?: Input) {
+  public push(inputs?: Accept) {
     const next = new Context(this);
-    if (inputs) add(next, inputs);
+    if (inputs) next.set(inputs);
     return next;
   }
 
