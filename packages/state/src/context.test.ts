@@ -401,7 +401,7 @@ describe('has method', () => {
     getContext(state, () => {});
 
     // adding to context should still notify parent's has-subscriber
-    child.add(state);
+    child.set(state);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBe(state);
@@ -417,7 +417,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.add(Upstream);
+    parent.set(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBeInstanceOf(Upstream);
@@ -430,7 +430,7 @@ describe('get callback (upstream subscription)', () => {
 
     const cancel = child.get(Upstream, cb);
     cancel();
-    parent.add(Upstream);
+    parent.set(Upstream);
 
     expect(cb).not.toBeCalled();
   });
@@ -442,7 +442,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
-    parent.add(Upstream);
+    parent.set(Upstream);
 
     expect(cb).toBeCalledTimes(1);
 
@@ -460,7 +460,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.add(shared);
+    parent.set(shared);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][0]).toBe(shared);
@@ -488,7 +488,7 @@ describe('get callback (upstream subscription)', () => {
     expect(cb).not.toBeCalled();
 
     // new addition has no flag
-    parent.add(Upstream);
+    parent.set(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][1]).toBeUndefined();
@@ -875,33 +875,31 @@ describe('set method', () => {
     expect(bar.is).not.toBeNull();
   });
 
-  it('will add array of inputs and cleanup all', () => {
+  it('will set multiple types and cleanup all', () => {
     class A extends State {}
     class B extends State {}
 
-    const context = new Context();
-    const cleanup = context.add([A, B]);
+    const ctx = new Context({ A, B });
 
-    expect(context.get(A)).toBeInstanceOf(A);
-    expect(context.get(B)).toBeInstanceOf(B);
+    expect(ctx.get(A)).toBeInstanceOf(A);
+    expect(ctx.get(B)).toBeInstanceOf(B);
 
-    cleanup();
+    ctx.pop();
 
-    expect(context.get(A, false)).toBeUndefined();
-    expect(context.get(B, false)).toBeUndefined();
+    expect(ctx.get(A, false)).toBeUndefined();
+    expect(ctx.get(B, false)).toBeUndefined();
   });
 
   it('will remove state from registry when add cleanup is called', () => {
     class Foo extends State {}
 
-    const context = new Context();
-    const remove = context.add(Foo);
+    const ctx = new Context(Foo);
 
-    expect(context.get(Foo)).toBeInstanceOf(Foo);
+    expect(ctx.get(Foo)).toBeInstanceOf(Foo);
 
-    remove();
+    ctx.pop();
 
-    expect(context.get(Foo, false)).toBeUndefined();
+    expect(ctx.get(Foo, false)).toBeUndefined();
   });
 
   it('will clean up subtype keys on delete', () => {

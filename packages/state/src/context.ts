@@ -84,8 +84,6 @@ declare namespace Context {
     state: T,
     existing?: true
   ) => (() => void) | false | void;
-
-  type Input = State | State.Type | (State | State.Type)[];
 }
 
 class Context {
@@ -223,9 +221,17 @@ class Context {
           }.`
         );
 
+      const state = State.is(V) ? new (V as State.Type)() : V;
+      const remove = this.add(state, false, (I) => init.push(I));
+
       cleanup.set(
         K,
-        this.add(V, false, (I) => init.push(I))
+        state === V
+          ? remove
+          : () => {
+              remove();
+              event(state, null);
+            }
       );
     }
 
@@ -239,20 +245,9 @@ class Context {
     return this;
   }
 
-  add(
-    input: Context.Input,
-    implicit?: boolean,
-    init: (I: State) => void = event
-  ) {
-    if (Array.isArray(input)) {
-      const clean = input.map((i) => this.add(i, implicit, init));
-      return () => void clean.forEach((c) => c());
-    }
-
+  add(I: State, implicit?: boolean, init: (I: State) => void = event) {
     const { registry } = this;
     const cleanup = new Map<string | Function, () => void>();
-
-    const I = input instanceof State ? input : new (input as State.Type)();
 
     const observe = (I: State, explicit: boolean, key?: string) => {
       const TT = types(I);
@@ -333,7 +328,6 @@ class Context {
     const remove = () => {
       this.cleanup.delete(remove);
       reset();
-      if (I !== input) event(I, null);
       if (release) release();
     };
 
