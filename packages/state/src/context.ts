@@ -254,16 +254,18 @@ class Context {
 
     const I = input instanceof State ? input : new (input as State.Type)();
 
-    const observe = (I: State, explicit: boolean, key: string) => {
-      for (const T of types(I)) {
+    const observe = (I: State, explicit: boolean, key?: string) => {
+      const TT = types(I);
+
+      for (const T of TT) {
         let arr = registry.get(T);
         if (!arr) registry.set(T, (arr = []));
         arr.push([I, explicit]);
       }
 
       /* v8 ignore next 9 -- @preserve */
-      cleanup.set(key, () => {
-        for (const T of types(I)) {
+      cleanup.set(key || '', () => {
+        for (const T of TT) {
           const arr = registry.get(T);
           if (arr) {
             const idx = arr.findIndex((e) => e[0] === I);
@@ -287,7 +289,7 @@ class Context {
         }
     };
 
-    observe(I, !implicit, '');
+    observe(I, !implicit);
 
     const IT = types(I);
     const expects = [] as Context.Expect[];
@@ -305,8 +307,9 @@ class Context {
       }
 
     const unwatch = listener(I, (key) => {
-      if (typeof key === 'string') adopt(key, access(I, key, false));
-      else if (key === true) {
+      if (typeof key === 'string') {
+        adopt(key, access(I, key, false));
+      } else if (key === true) {
         for (const cb of new Set(expects)) {
           const r = cb(I);
           if (r) cleanup.set(r, r);
