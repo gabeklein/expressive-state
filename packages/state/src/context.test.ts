@@ -331,6 +331,26 @@ describe('has method', () => {
     expect(entries[0]).toBeInstanceOf(DownstreamState);
   });
 
+  it('will return entries from deeply nested children', () => {
+    const root = new Context();
+
+    root.push().push(DownstreamState);
+
+    const entries = root.has(DownstreamState);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toBeInstanceOf(DownstreamState);
+  });
+
+  it('will skip contexts without matching type', () => {
+    class Unrelated extends State {}
+    const root = new Context();
+
+    root.push(Unrelated);
+
+    expect(root.has(DownstreamState)).toHaveLength(0);
+  });
+
   it('will call callback for already-registered downstream states', () => {
     const context = new Context();
     const child = context.push(DownstreamState);
@@ -476,7 +496,7 @@ describe('get callback (upstream subscription)', () => {
     expect(cb).not.toBeCalled();
 
     // new addition has no flag
-    parent.set({ Upstream });
+    parent.add(Upstream);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb.mock.calls[0][1]).toBeUndefined();
@@ -871,6 +891,35 @@ describe('set method', () => {
     expect(context.get(Bar, false)).toBeUndefined();
     // bar should still be alive (not owned by context)
     expect(bar.is).not.toBeNull();
+  });
+
+  it('will add array of inputs and cleanup all', () => {
+    class A extends State {}
+    class B extends State {}
+
+    const context = new Context();
+    const cleanup = context.add([A, B]);
+
+    expect(context.get(A)).toBeInstanceOf(A);
+    expect(context.get(B)).toBeInstanceOf(B);
+
+    cleanup();
+
+    expect(context.get(A, false)).toBeUndefined();
+    expect(context.get(B, false)).toBeUndefined();
+  });
+
+  it('will remove state from registry when add cleanup is called', () => {
+    class Foo extends State {}
+
+    const context = new Context();
+    const remove = context.add(Foo);
+
+    expect(context.get(Foo)).toBeInstanceOf(Foo);
+
+    remove();
+
+    expect(context.get(Foo, false)).toBeUndefined();
   });
 
   it('will clean up subtype keys on delete', () => {

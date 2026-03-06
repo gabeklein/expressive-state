@@ -259,6 +259,7 @@ class Context {
         arr.push([I, explicit]);
       }
 
+      /* v8 ignore next 9 -- @preserve */
       cleanup.set(key, () => {
         for (const T of types(I)) {
           const arr = registry.get(T);

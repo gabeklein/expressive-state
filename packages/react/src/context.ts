@@ -18,15 +18,7 @@ declare module '@expressive/state' {
   }
 }
 
-Context.use = (required?: boolean) => {
-  const context = useContext(Layers);
-
-  if (context || !required) return context;
-
-  throw new Error(
-    'No context found. Make sure to render a Provider above this component.'
-  );
-};
+Context.use = () => useContext(Layers);
 
 declare namespace Consumer {
   type Props<T extends State> = {

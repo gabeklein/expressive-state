@@ -98,6 +98,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       let from = subject;
       let getter: set.Compute<T, any>;
 
+      /* v8 ignore next 7 -- @preserve */
       if (value instanceof State) {
         from = value;
         getter = argument as set.Compute<T, any>;
