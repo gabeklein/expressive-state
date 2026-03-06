@@ -133,21 +133,22 @@ class Context {
 
     for (const ctx of above(this)) {
       const entries = ctx.registry.get(Type);
-      if (!entries) continue;
-      for (const [state, explicit] of entries) {
-        if (found === state) continue;
-        if (!found || (!priority && explicit)) {
-          found = state as T;
-          priority = explicit;
-          continue;
+      if (entries) {
+        for (const [state, explicit] of entries) {
+          if (found === state) continue;
+          if (!found || explicit > priority) {
+            found = state as T;
+            priority = explicit;
+            continue;
+          }
+          if (!priority) return null;
+          if (explicit)
+            throw new Error(
+              `Did find ${Type} in context, but multiple were defined.`
+            );
         }
-        if (!priority) return null;
-        if (explicit)
-          throw new Error(
-            `Did find ${Type} in context, but multiple were defined.`
-          );
+        break;
       }
-      break;
     }
 
     if (typeof arg2 == 'function') {
@@ -171,9 +172,10 @@ class Context {
   public has<T extends State>(Type: State.Extends<T>, cb?: Context.Expect<T>) {
     const out: T[] = [];
 
-    for (const { registry } of below(this))
-      if (registry.get(Type))
-        for (const [state] of registry.get(Type)!) out.push(state as T);
+    for (const ctx of below(this)) {
+      const entries = ctx.registry.get(Type);
+      if (entries) for (const [state] of entries) out.push(state as T);
+    }
 
     if (cb) {
       for (const state of out) cb(state, true);
