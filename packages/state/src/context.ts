@@ -296,6 +296,12 @@ class Context {
         if (set) expects.push(...set);
       }
 
+    for (const ctx of [this, ...below(this)])
+      for (const T of IT) {
+        const set = ctx.downstream.get(T);
+        if (set) expects.push(...set);
+      }
+
     const unwatch = listener(I, (key) => {
       if (typeof key === 'string') adopt(key, access(I, key, false));
       else if (key === true) {
@@ -316,16 +322,6 @@ class Context {
     };
 
     const release = assign(I, this);
-
-    for (const { downstream } of [this, ...below(this)])
-      for (const T of IT) {
-        const set = downstream.get(T);
-        if (set)
-          for (const cb of set) {
-            const r = cb(I);
-            if (typeof r == 'function') cleanup.set(r, r);
-          }
-      }
 
     init(I);
 
