@@ -416,7 +416,7 @@ describe('suspense', () => {
     expect(didEvaluate).toBeCalledTimes(1);
 
     promise.resolve('hello');
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(didEvaluate).toBeCalledTimes(2);
     expect(test.greet).toBe('hello world!');
@@ -431,7 +431,7 @@ describe('suspense', () => {
 
     expect(() => test.value).toThrow(expect.any(Promise));
 
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(test.value).toBe('foobar');
   });
@@ -483,7 +483,7 @@ describe('suspense', () => {
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve('foobar');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(mock).toBeCalledWith('foobar');
   });
@@ -508,10 +508,10 @@ describe('suspense', () => {
     test.get(($) => void $.value);
 
     salute.resolve('Hello');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     name.resolve('World');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe('Hello World');
@@ -537,10 +537,10 @@ describe('suspense', () => {
     test.get(($) => void $.value);
 
     greet.resolve('Hello');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     name.resolve('World');
-    await expect(test).toUpdate(0);
+    await expect(test).toHaveUpdated();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe('Hello World');
@@ -592,7 +592,7 @@ describe('suspense', () => {
     expect(test.value).toBeUndefined();
 
     promise.resolve('World');
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(test.value).toBe('Hello World');
   });
@@ -676,14 +676,14 @@ describe('suspense', () => {
     expect(didAttemptEffect).toBeCalled();
 
     promise.resolve(10);
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(didAttemptSum).toBeCalledTimes(2);
     expect(didAttemptEffect).toBeCalledTimes(1);
     expect(didCompleteEffect).not.toBeCalled();
 
     promise2.resolve(20);
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(didAttemptSum).toBeCalledTimes(3);
     expect(test.sum).toBe('Answer is 30.');

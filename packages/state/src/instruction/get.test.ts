@@ -495,7 +495,7 @@ describe('lifecycle callbacks', () => {
 
     context.push([Child]);
 
-    await expect(parent).not.toUpdate();
+    await expect(parent).not.toHaveUpdated();
     expect(hasChild).toBeCalledTimes(3);
     expect(parent.children.length).toBe(0);
   });

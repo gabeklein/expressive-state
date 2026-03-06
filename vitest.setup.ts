@@ -1,14 +1,9 @@
 import { expect, afterEach, afterAll, vi } from 'vitest';
 import { State } from './packages/state/src';
-
-// Add @testing-library matchers for React tests
-// expect.extend(matchers);
+import { listener } from './packages/state/src/observable';
 
 interface CustomMatchers<R = unknown> {
-  /** Assert state does have one or more updates pending. */
-  toUpdate(timeout?: number): Promise<R>;
-
-  /** Assert state did update with keys specified. */
+  /** Flush pending updates, optionally asserting specific keys were updated. */
   toHaveUpdated(...keys: (string | symbol | number)[]): Promise<R>;
 }
 
@@ -17,41 +12,9 @@ declare module 'vitest' {
   interface AsymmetricMatchersContaining extends CustomMatchers {}
 }
 
-expect.extend({
-  toUpdate,
-  toHaveUpdated
-});
+expect.extend({ toHaveUpdated });
 
 export { mockError, mockPromise, mockWarn, MockPromise };
-
-async function toUpdate(received: State, timeout = 0): Promise<any> {
-  if (!(received instanceof State))
-    return {
-      pass: false,
-      message: () => `Expected State but got ${received}.`
-    };
-
-  return new Promise((resolve) => {
-    const remove = received.set(() => {
-      clearTimeout(timer);
-      return () => {
-        remove();
-        resolve({
-          pass: true,
-          message: () => `Expected ${received} not to update.`
-        });
-      };
-    });
-
-    const timer = setTimeout(() => {
-      remove();
-      resolve({
-        pass: false,
-        message: () => `Expected ${received} to update within ${timeout}ms.`
-      });
-    }, timeout);
-  });
-}
 
 async function toHaveUpdated(received: State, ...keys: string[]) {
   if (!(received instanceof State))
@@ -60,7 +23,28 @@ async function toHaveUpdated(received: State, ...keys: string[]) {
       message: () => `Expected State but got ${received}.`
     };
 
-  const didUpdate = await received.set();
+  // Eagerly collect keys and detect flush, before any await.
+  const updated: string[] = [];
+  let didFlush = false;
+
+  const remove = listener(received.is, (key) => {
+    if (typeof key == 'string' || typeof key == 'number' || typeof key == 'symbol')
+      updated.push(key as string);
+    else if (key === false)
+      didFlush = true;
+  });
+
+  // Check if already pending.
+  let didUpdate = await received.set();
+
+  // If nothing was pending, wait for microtask queue to drain fully.
+  if (!didUpdate.length && !didFlush)
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+  remove();
+
+  if (!didUpdate.length)
+    didUpdate = updated;
 
   if (!didUpdate.length)
     return {
