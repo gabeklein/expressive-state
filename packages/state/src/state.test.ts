@@ -539,7 +539,7 @@ describe('get method', () => {
       const foo = new Foo();
       const bar = new Bar();
 
-      new Context([foo, bar]);
+      new Context({ foo, bar });
 
       expect(foo.get(Bar)).toBe(bar);
     });

@@ -15,7 +15,7 @@ describe('fetch mode', () => {
       sibling = get(Sibling);
     }
 
-    const context = new Context([Sibling, Test]);
+    const context = new Context({ Sibling, Test });
 
     const test = context.get(Test);
     const sibling = context.get(Sibling);
@@ -170,7 +170,7 @@ describe('fetch mode', () => {
       foo = get(Foo);
     }
 
-    const context = new Context([Foo, Bar]);
+    const context = new Context({ Foo, Bar });
     const bar = context.get(Bar);
 
     expect(bar.baz.foo).toBeInstanceOf(Foo);
@@ -185,7 +185,7 @@ describe('fetch mode', () => {
     const test = new Test();
     const ambient = new Ambient();
 
-    new Context([ambient, test]);
+    new Context({ ambient, test });
 
     expect(test.ambient).toBe(ambient);
     expect(Object.keys(test)).toMatchObject(['foo']);
@@ -217,7 +217,7 @@ describe('downstream collection', () => {
     const child1 = new Child();
     const child2 = new Child();
 
-    new Context(parent).push([child1, child2]);
+    new Context(parent).push({ child1, child2 });
 
     expect(parent.children).toEqual([child1, child2]);
   });
@@ -293,7 +293,7 @@ describe('downstream collection', () => {
     const child2 = new Child();
 
     const context = new Context(parent);
-    const context2 = context.push([child1, child2]);
+    const context2 = context.push({ child1, child2 });
 
     expect(parent.children).toEqual([child1, child2]);
 
@@ -429,7 +429,7 @@ describe('lifecycle callbacks', () => {
     const remote = new Remote();
     const test = new Test();
 
-    new Context([remote, test]);
+    new Context({ remote, test });
 
     expect(remoteCallback).toBeCalledTimes(1);
     expect(remoteCallback).toBeCalledWith(remote, test);
@@ -466,7 +466,7 @@ describe('lifecycle callbacks', () => {
     const child2 = new Child();
 
     const context = new Context(parent);
-    const context2 = context.push([child1, child2]);
+    const context2 = context.push({ child1, child2 });
 
     expect(didAdd).toBeCalledTimes(2);
     expect(parent.children).toEqual([child1, child2]);
@@ -488,12 +488,12 @@ describe('lifecycle callbacks', () => {
     const parent = new Parent();
     const context = new Context(parent);
 
-    context.push([Child, Child]);
+    context.push({ 1: Child, 2: Child });
 
     expect(hasChild).toBeCalledTimes(2);
     expect(parent.children.length).toBe(0);
 
-    context.push([Child]);
+    context.push({ Child });
 
     await expect(parent).not.toHaveUpdated();
     expect(hasChild).toBeCalledTimes(3);
@@ -517,7 +517,7 @@ describe('lifecycle callbacks', () => {
     const remote = new Remote();
     const test = new Test();
 
-    new Context([remote, test]);
+    new Context({ remote, test });
 
     expect(remoteCallback).toBeCalledTimes(1);
 
@@ -541,7 +541,7 @@ describe('lifecycle callbacks', () => {
     const remote = new Remote();
     const test = new Test();
 
-    new Context([remote, test]);
+    new Context({ remote, test });
 
     expect(remoteCallback).toBeCalledTimes(1);
     expect(cleanup).not.toBeCalled();
@@ -736,7 +736,7 @@ describe('async', () => {
     const bar = Bar.new();
     let caught: unknown;
 
-    setTimeout(() => new Context([Foo, bar]));
+    setTimeout(() => new Context({ Foo, bar }));
 
     try {
       void bar.foo;

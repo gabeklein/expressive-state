@@ -100,12 +100,12 @@ class Context {
   private upstream = new Map<State.Extends, Set<Context.Expect>>();
   private downstream = new Map<State.Extends, Set<Context.Expect>>();
 
-  constructor(arg?: Context | Context.Input) {
+  constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
       this.parent = arg;
       arg.children.add(this);
     } else if (arg) {
-      this.add(arg);
+      this.set(arg);
     }
   }
 
@@ -346,9 +346,9 @@ class Context {
    *
    * @param inputs State, State class, or map of States / State classes to register.
    */
-  public push(inputs?: Context.Input) {
+  public push(inputs?: Context.Accept) {
     const next = new Context(this);
-    if (inputs) next.add(inputs);
+    if (inputs) next.set(inputs);
     return next;
   }
 
