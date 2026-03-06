@@ -61,6 +61,13 @@ const DISPATCH = new Set<() => void>();
 
 const OBSERVER = new WeakMap<object, Observer>();
 
+/**
+ * Check if an object is observable and return its status.
+ * - `true` if ready
+ * - `false` if pending
+ * - `null` if expired
+ * - `undefined` if not observable.
+ */
 function observable(state: object): boolean | null | undefined {
   if (Observable in state) {
     const status = READY.get(state as Observable);
