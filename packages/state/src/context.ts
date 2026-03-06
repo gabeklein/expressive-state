@@ -2,6 +2,27 @@ import { listener } from './observable';
 import { access, event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
+const REGISTRY = new WeakMap<Context, Map<State.Extends, [State, boolean][]>>();
+const UPSTREAM = new WeakMap<Context, Map<State.Extends, Set<Expect>>>();
+const DOWNSTREAM = new WeakMap<Context, Map<State.Extends, Set<Expect>>>();
+
+function registry(ctx: Context) {
+  let map = REGISTRY.get(ctx);
+  if (!map) REGISTRY.set(ctx, (map = new Map()));
+  return map;
+}
+
+function upstream(ctx: Context) {
+  let map = UPSTREAM.get(ctx);
+  if (!map) UPSTREAM.set(ctx, (map = new Map()));
+  return map;
+}
+
+function downstream(ctx: Context) {
+  let map = DOWNSTREAM.get(ctx);
+  if (!map) DOWNSTREAM.set(ctx, (map = new Map()));
+  return map;
+}
 
 /**
  * Get the context for a specified State. If a callback is provided, it will be run when
@@ -56,7 +77,7 @@ function below(from: Context) {
 function subscribe(
   record: Map<State.Extends, Set<Function>>,
   T: State.Extends,
-  cb: Context.Expect<any>
+  cb: Expect<any>
 ) {
   let set = record.get(T);
   if (!set) record.set(T, (set = new Set()));
@@ -74,19 +95,17 @@ function assign(state: State, context: Context) {
   return () => LOOKUP.delete(state);
 }
 
-declare namespace Context {
-  type Accept<T extends State = State> =
-    | T
-    | State.Type<T>
-    | Record<string | number, T | State.Type<T>>;
+type Accept<T extends State = State> =
+  | T
+  | State.Type<T>
+  | Record<string | number, T | State.Type<T>>;
 
-  type Expect<T extends State = State> = (
-    state: T,
-    existing?: true
-  ) => (() => void) | false | void;
+type Expect<T extends State = State> = (
+  state: T,
+  existing?: true
+) => (() => void) | false | void;
 
-  type Input = State | State.Type | (State | State.Type)[];
-}
+type Input = State | State.Type | (State | State.Type)[];
 
 class Context {
   public id = uid();
@@ -96,11 +115,8 @@ class Context {
   protected inputs: Record<string | number, State | State.Extends> = {};
 
   private cleanup = new Map<string | number | Function, () => void>();
-  private registry = new Map<State.Extends, [State, boolean][]>();
-  private upstream = new Map<State.Extends, Set<Context.Expect>>();
-  private downstream = new Map<State.Extends, Set<Context.Expect>>();
 
-  constructor(arg?: Context | Context.Input) {
+  constructor(arg?: Context | Input) {
     if (arg instanceof Context) {
       this.parent = arg;
       arg.children.add(this);
@@ -121,18 +137,18 @@ class Context {
   /** Subscribe to a type becoming available upstream. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    callback: Context.Expect<T>
+    callback: Expect<T>
   ): () => void;
 
   public get<T extends State>(
     Type: State.Extends<T>,
-    arg2?: boolean | Context.Expect<T>
+    arg2?: boolean | Expect<T>
   ) {
     let found: T | undefined;
     let priority = false;
 
     for (const ctx of above(this)) {
-      const entries = ctx.registry.get(Type);
+      const entries = registry(ctx).get(Type);
       if (!entries) continue;
       for (const [state, explicit] of entries) {
         if (found === state) continue;
@@ -152,7 +168,7 @@ class Context {
 
     if (typeof arg2 == 'function') {
       if (found) arg2(found, true);
-      return subscribe(this.downstream, Type, arg2);
+      return subscribe(downstream(this), Type, arg2);
     }
 
     if (found) return found;
@@ -165,19 +181,21 @@ class Context {
   /** Subscribe to a type being registered downstream. */
   public has<T extends State>(
     Type: State.Extends<T>,
-    callback: Context.Expect<T>
+    callback: Expect<T>
   ): () => void;
 
-  public has<T extends State>(Type: State.Extends<T>, cb?: Context.Expect<T>) {
+  public has<T extends State>(Type: State.Extends<T>, cb?: Expect<T>) {
     const out: T[] = [];
 
-    for (const { registry } of below(this))
-      if (registry.get(Type))
-        for (const [state] of registry.get(Type)!) out.push(state as T);
+    for (const ctx of below(this)) {
+      const reg = registry(ctx);
+      if (reg.get(Type))
+        for (const [state] of reg.get(Type)!) out.push(state as T);
+    }
 
     if (cb) {
       for (const state of out) cb(state, true);
-      return subscribe(this.upstream, Type, cb);
+      return subscribe(upstream(this), Type, cb);
     }
 
     return out;
@@ -191,10 +209,7 @@ class Context {
    * @param inputs State, State class, or map of States / State classes to register.
    * @param forEach Optional callback to run for each State registered.
    */
-  public set<T extends State>(
-    inputs: Context.Accept<T>,
-    forEach?: Context.Expect<T>
-  ) {
+  public set<T extends State>(inputs: Accept<T>, forEach?: Expect<T>) {
     const { cleanup } = this;
     const init: State[] = [];
 
@@ -237,36 +252,32 @@ class Context {
     return this;
   }
 
-  add(
-    input: Context.Input,
-    implicit?: boolean,
-    init: (I: State) => void = event
-  ) {
+  add(input: Input, implicit?: boolean, init: (I: State) => void = event) {
     if (Array.isArray(input)) {
       const clean = input.map((i) => this.add(i, implicit, init));
       return () => void clean.forEach((c) => c());
     }
 
-    const { registry } = this;
+    const reg = registry(this);
     const cleanup = new Map<string | Function, () => void>();
 
     const I = input instanceof State ? input : new (input as State.Type)();
 
     const observe = (I: State, explicit: boolean, key: string) => {
       for (const T of types(I)) {
-        let arr = registry.get(T);
-        if (!arr) registry.set(T, (arr = []));
+        let arr = reg.get(T);
+        if (!arr) reg.set(T, (arr = []));
         arr.push([I, explicit]);
       }
 
       /* v8 ignore next 9 -- @preserve */
       cleanup.set(key, () => {
         for (const T of types(I)) {
-          const arr = registry.get(T);
+          const arr = reg.get(T);
           if (arr) {
             const idx = arr.findIndex((e) => e[0] === I);
             if (idx >= 0) arr.splice(idx, 1);
-            if (!arr.length) registry.delete(T);
+            if (!arr.length) reg.delete(T);
           }
         }
       });
@@ -288,11 +299,11 @@ class Context {
     observe(I, !implicit, '');
 
     const IT = types(I);
-    const expects = [] as Context.Expect[];
+    const expects = [] as Expect[];
 
     for (const ctx of above(this))
       for (const T of IT) {
-        const set = ctx.upstream.get(T);
+        const set = upstream(ctx).get(T);
         if (set) expects.push(...set);
       }
 
@@ -317,9 +328,9 @@ class Context {
 
     const release = assign(I, this);
 
-    for (const { downstream } of [this, ...below(this)])
+    for (const ctx of [this, ...below(this)])
       for (const T of IT) {
-        const set = downstream.get(T);
+        const set = downstream(ctx).get(T);
         if (set)
           for (const cb of set) {
             const r = cb(I);
@@ -346,7 +357,7 @@ class Context {
    *
    * @param inputs State, State class, or map of States / State classes to register.
    */
-  public push(inputs?: Context.Input) {
+  public push(inputs?: Input) {
     const next = new Context(this);
     if (inputs) next.add(inputs);
     return next;
