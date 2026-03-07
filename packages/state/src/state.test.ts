@@ -611,31 +611,6 @@ describe('get method', () => {
     class Foo extends State {}
     class Bar extends State {}
 
-    it('will get peer state from context', () => {
-      const foo = new Foo();
-      const bar = new Bar();
-
-      new Context({ foo, bar });
-
-      expect(foo.get(Bar)).toBe(bar);
-    });
-
-    it('will return undefined if not found', () => {
-      const foo = new Foo();
-
-      new Context(foo);
-
-      expect(foo.get(Bar, false)).toBeUndefined();
-    });
-
-    it('will throw if required and not found', () => {
-      const foo = new Foo();
-
-      new Context(foo);
-
-      expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
-    });
-
     it('will get from parent context', () => {
       const bar = new Bar();
       const foo = new Foo();
@@ -643,6 +618,105 @@ describe('get method', () => {
       new Context(bar).push(foo);
 
       expect(foo.get(Bar)).toBe(bar);
+    });
+
+    it('will get peer state', () => {
+      const foo = Foo.new();
+      const bar = Bar.new();
+
+      new Context({ foo, bar });
+
+      expect(foo.get(Bar)).toBe(bar);
+    });
+
+    it('will return undefined if not found', () => {
+      const foo = Foo.new();
+
+      new Context(foo);
+
+      expect(foo.get(Bar, false)).toBeUndefined();
+    });
+
+    it('will throw if required and not found', () => {
+      const foo = Foo.new();
+
+      new Context(foo);
+
+      expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
+    });
+
+    it('will throw if upstream not found', () => {
+      const context = new Context();
+      const child = Bar.new();
+
+      context.push(child);
+
+      expect(() => child.get(Foo)).toThrow();
+    });
+
+    it('will return undefined if upstream optional', () => {
+      const context = new Context();
+      const child = Bar.new();
+
+      context.push(child);
+
+      expect(child.get(Foo, false)).toBeUndefined();
+    });
+
+    it('will collect downstream state', () => {
+      const parent = Foo.new();
+      const context = new Context(parent);
+
+      const a = Bar.new();
+      const b = Bar.new();
+
+      context.push(a);
+      context.push(b);
+
+      const result = parent.get(Bar, true);
+
+      expect(result).toEqual([a, b]);
+    });
+
+    it('will fetch single downstream required', () => {
+      const parent = Foo.new();
+      const context = new Context(parent);
+
+      const child = Bar.new();
+      context.push(child);
+
+      expect(parent.get(Bar, true, true)).toBe(child);
+    });
+
+    it('will throw if single downstream required not found', () => {
+      const parent = Foo.new();
+      new Context(parent);
+
+      expect(() => parent.get(Bar, true, true)).toThrow();
+    });
+
+    it('will return undefined if single downstream optional', () => {
+      const parent = Foo.new();
+      new Context(parent);
+
+      expect(parent.get(Bar, true, false)).toBeUndefined();
+    });
+
+    it('will subscribe with callback', () => {
+      const parent = Foo.new();
+      const context = new Context(parent);
+
+      const callback = vi.fn();
+      const unsub = parent.get(Bar, callback);
+
+      const child = Bar.new();
+      const sub = context.push(child);
+
+      expect(callback).toHaveBeenCalledWith(child, true, false);
+      expect(typeof unsub).toBe('function');
+
+      unsub();
+      sub.pop();
     });
   });
 
