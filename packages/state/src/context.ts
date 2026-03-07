@@ -1,5 +1,5 @@
 import { listener } from './observable';
-import { access, event, State, uid } from './state';
+import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
 
@@ -196,7 +196,7 @@ class Context {
     forEach?: Context.Expect<T>
   ) {
     const { cleanup } = this;
-    const init: State[] = [];
+    const init = new Set<State>();
 
     if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
@@ -222,8 +222,9 @@ class Context {
         );
 
       const state = State.is(V) ? new (V as State.Type)() : V;
-      const remove = this.add(state, false, (I) => init.push(I));
+      const remove = this.add(state, false);
 
+      init.add(state);
       cleanup.set(
         K,
         state === V
@@ -236,7 +237,7 @@ class Context {
     }
 
     for (const state of init) {
-      state.set();
+      event(state);
       if (forEach) forEach(state as T);
     }
 
@@ -245,46 +246,29 @@ class Context {
     return this;
   }
 
-  add(I: State, implicit?: boolean, init: (I: State) => void = event) {
+  add(I: State, implicit?: boolean) {
     const { registry } = this;
     const cleanup = new Map<string | Function, () => void>();
 
-    const observe = (I: State, explicit: boolean, key?: string) => {
-      const TT = types(I);
+    const TT = types(I);
 
+    for (const T of TT) {
+      let arr = registry.get(T);
+      if (!arr) registry.set(T, (arr = []));
+      arr.push([I, !implicit]);
+    }
+
+    /* v8 ignore next 9 -- @preserve */
+    cleanup.set('', () => {
       for (const T of TT) {
-        let arr = registry.get(T);
-        if (!arr) registry.set(T, (arr = []));
-        arr.push([I, explicit]);
+        const arr = registry.get(T);
+        if (arr) {
+          const idx = arr.findIndex((e) => e[0] === I);
+          if (idx >= 0) arr.splice(idx, 1);
+          if (!arr.length) registry.delete(T);
+        }
       }
-
-      /* v8 ignore next 9 -- @preserve */
-      cleanup.set(key || '', () => {
-        for (const T of TT) {
-          const arr = registry.get(T);
-          if (arr) {
-            const idx = arr.findIndex((e) => e[0] === I);
-            if (idx >= 0) arr.splice(idx, 1);
-            if (!arr.length) registry.delete(T);
-          }
-        }
-      });
-    };
-
-    const adopt = (k: string, v: unknown) => {
-      cleanup.get(k)?.();
-      cleanup.delete(k);
-
-      if (v instanceof State)
-        if (LOOKUP.get(v) instanceof Context) {
-          observe(v, false, k);
-        } else {
-          cleanup.set(k, this.add(v, true));
-          event(v);
-        }
-    };
-
-    observe(I, !implicit);
+    });
 
     const IT = types(I);
     const expects = [] as Context.Expect[];
@@ -302,17 +286,11 @@ class Context {
       }
 
     const unwatch = listener(I, (key) => {
-      if (typeof key === 'string') {
-        adopt(key, access(I, key, false));
-      } else if (key === true) {
+      if (key === true)
         for (const cb of new Set(expects)) {
           const r = cb(I);
           if (r) cleanup.set(r, r);
         }
-        for (const [k, v] of I) {
-          if (v instanceof State) adopt(k, v);
-        }
-      }
     });
 
     const reset = () => {
@@ -322,8 +300,6 @@ class Context {
     };
 
     const release = assign(I, this);
-
-    init(I);
 
     const remove = () => {
       this.cleanup.delete(remove);

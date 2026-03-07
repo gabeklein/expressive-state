@@ -537,16 +537,6 @@ function init(state: State, ...args: State.Args) {
       else if (typeof use == 'object') assign(state, use, true);
     }
 
-    listener(
-      state,
-      () => {
-        for (const [_, value] of state)
-          if (value instanceof State && PARENT.get(value) === state)
-            value.set(null);
-      },
-      null
-    );
-
     return null;
   });
 }
@@ -558,17 +548,62 @@ function manage(
   silent?: boolean
 ) {
   const store = STATE.get(state)!;
+  const set =
+    value instanceof State ? child(state, key) : update.bind(null, state, key);
 
   define(state, key, {
     get(this: State) {
       return observing(this, key, store[key]);
     },
-    set(value: unknown, silent?: boolean) {
-      update(state, key, value, silent);
-    }
+    set
   });
 
-  update(state, key, value, silent);
+  set(value, silent);
+}
+
+function child(state: State, key: string | number) {
+  let reset: (() => void) | undefined;
+  // TODO: ctx should not be optional; resolve race condition first.
+  const ctx = context(state, false);
+
+  // Clears child on parent destruction.
+  // TODO: merge with per-child listener (line below) once ctx is non-optional.
+  listener(
+    state,
+    () => {
+      if (reset) reset();
+      reset = undefined;
+    },
+    null
+  );
+
+  return (value: unknown, silent?: boolean) => {
+    if (update(state, key, value, silent)) {
+      if (reset) reset();
+      reset = undefined;
+
+      if (value instanceof State) {
+        if (ctx) {
+          const remove = ctx.add(value, true);
+
+          if (observable(value)) reset = remove;
+          else {
+            // event(value);
+            reset = () => {
+              remove();
+              event(value, null);
+            };
+          }
+        }
+
+        if (!PARENT.has(value)) {
+          PARENT.set(value, state);
+          listener(state, () => event(value, null), null);
+        }
+        event(value);
+      }
+    }
+  };
 }
 
 function values<T extends State>(state: T): State.Values<T> {
@@ -660,11 +695,6 @@ function update<T>(
   store[key] = value;
 
   if (arg !== true) event(state, key);
-
-  if (value instanceof State) {
-    if (!PARENT.has(value)) PARENT.set(value, state);
-    event(value);
-  }
 
   return true;
 }

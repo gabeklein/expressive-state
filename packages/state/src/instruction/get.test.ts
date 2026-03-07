@@ -665,8 +665,8 @@ describe('upstream subscription', () => {
       ambient = get(Ambient, false);
     }
 
-    const child = new Child();
-    const ambient = new Ambient();
+    const child = Child.new();
+    const ambient = Ambient.new();
     const context = new Context();
     const effect = vi.fn();
 

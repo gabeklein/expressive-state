@@ -140,6 +140,22 @@ it('will destroy children before self', () => {
   expect(destroyed).toBeCalled();
 });
 
+it('will mark children as dead when parent is destroyed', () => {
+  class Child extends State {}
+  class Parent extends State {
+    child = new Child();
+  }
+
+  const parent = Parent.new();
+  const { child } = parent;
+
+  expect(child.get(null)).toBe(false);
+
+  parent.set(null);
+
+  expect(child.get(null)).toBe(true);
+});
+
 describe('methods', () => {
   it('will auto bind', async () => {
     class FooBar extends State {
@@ -818,7 +834,7 @@ describe('get method', () => {
 
       state.get(mock);
 
-      state.child = new Child();
+      state.child = Child.new();
       await expect(state).toHaveUpdated();
       expect(mock).toBeCalledTimes(2);
 
@@ -834,7 +850,7 @@ describe('get method', () => {
       expect(mock).toBeCalledTimes(4);
 
       // Will refresh on repalcement.
-      state.child = new Child();
+      state.child = Child.new();
       await expect(state).toHaveUpdated();
       expect(mock).toBeCalledTimes(5);
 
