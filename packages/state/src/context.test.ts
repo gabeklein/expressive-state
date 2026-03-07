@@ -545,11 +545,11 @@ describe('context helper', () => {
     expect(getContext(test)).toBe(context);
   });
 
-  it('will throw if context not found by default', () => {
+  it('will fallback to root context if none assigned', () => {
     const test = new Test();
 
-    expect(() => getContext(test)).toThrow();
-    expect(() => getContext(test, true)).toThrow();
+    expect(getContext(test)).toBe(Context.root);
+    expect(getContext(test, true)).toBe(Context.root);
   });
 
   it('will return undefined if required is false', () => {

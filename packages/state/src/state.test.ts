@@ -156,6 +156,66 @@ it('will mark children as dead when parent is destroyed', () => {
   expect(child.get(null)).toBe(true);
 });
 
+it('will destroy owned child when replaced', () => {
+  class Child extends State {
+    value = 1;
+  }
+
+  class Parent extends State {
+    child = new Child();
+  }
+
+  const parent = Parent.new();
+  const first = parent.child;
+
+  expect(first.get(null)).toBe(false);
+
+  parent.child = new Child();
+
+  expect(first.get(null)).toBe(true);
+  expect(parent.child.get(null)).toBe(false);
+});
+
+it('will not destroy non-owned child when replaced', () => {
+  class Child extends State {
+    value = 1;
+  }
+
+  class Parent extends State {
+    child = new Child();
+  }
+
+  const parent = Parent.new();
+  const external = Child.new();
+
+  parent.child = external;
+
+  const owned = parent.child;
+  expect(owned).toBe(external);
+
+  parent.child = new Child();
+
+  // External child was not owned, so it survives replacement.
+  expect(external.get(null)).toBe(false);
+});
+
+it('will destroy owned child when property set to non-state', () => {
+  class Child extends State {}
+
+  class Parent extends State {
+    child: Child | null = new Child();
+  }
+
+  const parent = Parent.new();
+  const child = parent.child!;
+
+  expect(child.get(null)).toBe(false);
+
+  parent.child = null;
+
+  expect(child.get(null)).toBe(true);
+});
+
 describe('methods', () => {
   it('will auto bind', async () => {
     class FooBar extends State {
@@ -889,11 +949,8 @@ describe('get method', () => {
       // Updates because nested property is new.
       expect(effect).toBeCalledTimes(3);
 
-      old.value++;
-      await expect(old).toHaveUpdated();
-
-      // Should not update on new event from previous.
-      expect(effect).toBeCalledTimes(3);
+      // Old child was owned, so it is destroyed on replacement.
+      expect(old.get(null)).toBe(true);
     });
 
     it('will call immediately', async () => {

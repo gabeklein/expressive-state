@@ -563,45 +563,33 @@ function manage(
 
 function child(state: State, key: string | number) {
   let reset: (() => void) | undefined;
-  // TODO: ctx should not be optional; resolve race condition first.
-  const ctx = context(state, false);
+  const ctx = context(state);
 
-  // Clears child on parent destruction.
-  // TODO: merge with per-child listener (line below) once ctx is non-optional.
-  listener(
-    state,
-    () => {
-      if (reset) reset();
-      reset = undefined;
-    },
-    null
-  );
+  listener(state, () => {
+    if (reset) reset();
+    reset = undefined;
+  }, null);
 
   return (value: unknown, silent?: boolean) => {
     if (update(state, key, value, silent)) {
-      if (reset) reset();
-      reset = undefined;
+      const prev = reset;
+
+      if (prev) reset = undefined;
 
       if (value instanceof State) {
-        if (ctx) {
-          const remove = ctx.add(value, true);
-
-          if (observable(value)) reset = remove;
-          else {
-            // event(value);
-            reset = () => {
-              remove();
-              event(value, null);
-            };
-          }
-        }
+        const remove = ctx.add(value, true);
 
         if (!PARENT.has(value)) {
           PARENT.set(value, state);
           listener(state, () => event(value, null), null);
+          reset = () => { remove(); event(value, null); };
         }
+        else reset = remove;
+
         event(value);
       }
+
+      if (prev) prev();
     }
   };
 }

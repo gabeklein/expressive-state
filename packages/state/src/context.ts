@@ -26,7 +26,8 @@ function context({ is }: State, arg?: ((got: Context) => void) | boolean) {
     if (found) found.push(arg);
     else LOOKUP.set(is, [arg]);
   else if (arg !== false) {
-    throw new Error(`Could not find context for ${is}.`);
+    assign(is, Context.root);
+    return Context.root;
   }
 }
 
@@ -87,6 +88,8 @@ declare namespace Context {
 }
 
 class Context {
+  static root = new Context();
+
   public id = uid();
   public parent?: Context;
   public children = new Set<Context>();
