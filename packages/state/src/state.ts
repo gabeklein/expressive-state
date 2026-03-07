@@ -1,4 +1,4 @@
-import { context } from './context';
+import { context, Context } from './context';
 import {
   listener,
   watch,
@@ -176,10 +176,6 @@ abstract class State implements Observable {
    **/
   get(): State.Values<this>;
 
-  get<T extends State>(type: State.Type<T>, arg?: true): T;
-
-  get<T extends State>(type: State.Type<T>, arg: boolean): T | undefined;
-
   /**
    * Run a function which will run automatically when accessed values change.
    *
@@ -214,6 +210,31 @@ abstract class State implements Observable {
     callback: State.OnUpdate<this, T>
   ): () => void;
 
+  /** Fetch upstream State from context. Throws if not found. */
+  get<T extends State>(type: State.Type<T>): T;
+
+  /** Fetch a State from context. Returns undefined if not found. */
+  get<T extends State>(type: State.Type<T>, required: false): T | undefined;
+
+  /** Collect all State of type which belong to children in context. */
+  get<T extends State>(type: State.Type<T>, children: true): T[];
+
+  /** Fetch a single state of type amongst children in context. Throws if not found. */
+  get<T extends State>(type: State.Type<T>, children: true, single: true): T;
+
+  /** Fetch a single state of type amongst children in context. Returns undefined if not found. */
+  get<T extends State>(
+    type: State.Type<T>,
+    downstream: true,
+    required: false
+  ): T | undefined;
+
+  /** Subscribe to a type becoming available in context. */
+  get<T extends State>(
+    type: State.Type<T>,
+    callback: Context.Expect<T>
+  ): () => void;
+
   /**
    * Check if state is expired.
    *
@@ -232,15 +253,15 @@ abstract class State implements Observable {
 
   get(
     arg1?: State.Effect<this> | State.Type | string | null,
-    arg2?: boolean | State.OnUpdate<this, any>
+    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
+    arg3?: boolean
   ) {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1))
-      return context(self).get(arg1, arg2 === false ? false : undefined);
+    if (State.is(arg1)) return lookup(self, arg1, arg2 as any, arg3);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
-    if (typeof arg2 == 'function') return listener(self, arg2, arg1);
+    if (typeof arg2 == 'function') return listener(self, arg2 as any, arg1);
     if (arg1 === null) return observable(self) === null;
     return access(self, arg1, arg2);
   }
@@ -623,6 +644,19 @@ function values<T extends State>(state: T): State.Values<T> {
   if (isNotRecursive) EXPORT = undefined;
 
   return Object.freeze(values);
+}
+
+function lookup(
+  self: State,
+  Type: State.Type,
+  arg2?: Context.Expect | boolean,
+  arg3?: boolean
+) {
+  const ctx = context(self);
+  if (arg3 === undefined) return ctx.get(Type, arg2 as any);
+  const found = ctx.get(Type, true)[0];
+  if (found || arg3 !== true) return found;
+  throw new Error(`Required ${Type} not found downstream of ${self}.`);
 }
 
 function access(state: State, property: string, required?: boolean) {

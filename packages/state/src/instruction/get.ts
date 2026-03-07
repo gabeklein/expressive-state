@@ -56,15 +56,31 @@ function get<T extends State>(
 /**
  * Fetches a single downstream State of specified type.
  * Updates when a matching child appears or is removed.
+ * Throws if not found.
  *
  * @param Type - Type of State to fetch.
  * @param downstream - Must be true to enable downstream mode.
- * @param single - Must be true to enable single-child mode.
+ * @param required - Throw if no match found.
  */
 function get<T extends State>(
   Type: State.Extends<T>,
   downstream: true,
   single: true
+): T;
+
+/**
+ * Fetches a single downstream State of specified type.
+ * Updates when a matching child appears or is removed.
+ * Returns undefined if not found.
+ *
+ * @param Type - Type of State to fetch.
+ * @param downstream - Must be true to enable downstream mode.
+ * @param required - If false, returns undefined if no match found.
+ */
+function get<T extends State>(
+  Type: State.Extends<T>,
+  downstream: true,
+  required: false
 ): T | undefined;
 
 function get<T extends State>(
@@ -73,15 +89,14 @@ function get<T extends State>(
   arg2?: get.Callback<T> | boolean
 ) {
   if (arg1 === true)
-    return arg2 === true
-      ? getOneDownstream(Type)
+    return typeof arg2 === 'boolean'
+      ? getOneDownstream(Type, arg2)
       : getDownstream(Type, arg2 as get.Callback<T>);
-
-  const callback =
-    typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
 
   return use<T>((key, subject) => {
     const hasParent = PARENT.get(subject) as T;
+    const callback =
+      typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
 
     function assign(value: T) {
       if (callback) {
@@ -176,7 +191,7 @@ function getDownstream<T extends State>(
   });
 }
 
-function getOneDownstream<T extends State>(Type: Type<T>) {
+function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
   return use<T | undefined>((key, subject) => {
     context(subject, (ctx) => {
       ctx.get(Type, (state, child) => {
@@ -191,6 +206,7 @@ function getOneDownstream<T extends State>(Type: Type<T>) {
     });
 
     return {
+      get: required,
       value: undefined,
       enumerable: false
     };
