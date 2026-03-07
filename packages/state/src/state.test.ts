@@ -741,7 +741,7 @@ describe('get method', () => {
       const child = Bar.new();
       const sub = context.push(child);
 
-      expect(callback).toHaveBeenCalledWith(child, true);
+      expect(callback).toHaveBeenCalledWith(child, true, false);
       expect(typeof unsub).toBe('function');
 
       unsub();

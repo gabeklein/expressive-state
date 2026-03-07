@@ -366,15 +366,13 @@ describe('has method', () => {
 
     // existing gets child=true, existing=true
     expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][1]).toBe(true);
-    expect(cb.mock.calls[0][2]).toBe(true);
+    expect(cb).toBeCalledWith(expect.any(DownstreamState), true, true);
 
     // new addition has child=true, no existing flag
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(2);
-    expect(cb.mock.calls[1][1]).toBe(true);
-    expect(cb.mock.calls[1][2]).toBeUndefined();
+    expect(cb).toBeCalledWith(expect.any(DownstreamState), true, false);
   });
 
   it('will call callback for multiple existing downstream states', () => {
@@ -465,7 +463,7 @@ describe('get callback (upstream subscription)', () => {
     parent.set(shared);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][0]).toBe(shared);
+    expect(cb).toBeCalledWith(shared, false, false);
   });
 
   it('will call callback for already-registered upstream state', () => {
@@ -476,8 +474,8 @@ describe('get callback (upstream subscription)', () => {
     child.get(Upstream, cb);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][1]).toBe(false);
-    expect(cb.mock.calls[0][2]).toBe(true);
+
+    expect(cb).toBeCalledWith(expect.any(Upstream), false, true);
   });
 
   it('will flag existing vs new upstream in callback', () => {
@@ -494,8 +492,7 @@ describe('get callback (upstream subscription)', () => {
     parent.set(Upstream);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][1]).toBe(false);
-    expect(cb.mock.calls[0][2]).toBeUndefined();
+    expect(cb).toBeCalledWith(expect.any(Upstream), false, false);
   });
 });
 
@@ -795,8 +792,8 @@ describe('set method', () => {
 
     context.set({ foo, bar }, cb);
 
-    expect(cb).toBeCalledWith(foo, false);
-    expect(cb).toBeCalledWith(bar, false);
+    expect(cb).toBeCalledWith(foo, false, false);
+    expect(cb).toBeCalledWith(bar, false, false);
     expect(cb).toBeCalledTimes(2);
 
     context.set({ foo, bar }, cb);
@@ -807,7 +804,7 @@ describe('set method', () => {
 
     context.set({ foo, bar, foo2 }, cb);
 
-    expect(cb).toBeCalledWith(foo2, false);
+    expect(cb).toBeCalledWith(foo2, false, false);
     expect(cb).toBeCalledTimes(3);
   });
 
