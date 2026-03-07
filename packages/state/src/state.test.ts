@@ -201,7 +201,6 @@ it('will not destroy non-owned child when replaced', () => {
 
 it('will destroy owned child when property set to non-state', () => {
   class Child extends State {}
-
   class Parent extends State {
     child: Child | null = new Child();
   }
@@ -214,6 +213,36 @@ it('will destroy owned child when property set to non-state', () => {
   parent.child = null;
 
   expect(child.get(null)).toBe(true);
+});
+
+it('will not update when assigning same child instance', () => {
+  class Child extends State {}
+  class Parent extends State {
+    child: Child = new Child();
+  }
+
+  const parent = Parent.new();
+  const child = parent.child;
+  const cb = vi.fn();
+
+  parent.set(cb);
+  parent.child = child;
+
+  expect(cb).not.toBeCalled();
+});
+
+it('will destroy parent after child property cleared', () => {
+  class Child extends State {}
+  class Parent extends State {
+    child: Child | null = new Child();
+  }
+
+  const parent = Parent.new();
+
+  parent.child = null;
+  parent.set(null);
+
+  expect(parent.get(null)).toBe(true);
 });
 
 describe('methods', () => {
@@ -712,7 +741,7 @@ describe('get method', () => {
       const child = Bar.new();
       const sub = context.push(child);
 
-      expect(callback).toHaveBeenCalledWith(child, true, false);
+      expect(callback).toHaveBeenCalledWith(child, true);
       expect(typeof unsub).toBe('function');
 
       unsub();

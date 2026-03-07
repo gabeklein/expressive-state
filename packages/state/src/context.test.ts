@@ -921,3 +921,186 @@ describe('set method', () => {
     expect(context.get(Base, false)).toBeUndefined();
   });
 });
+
+describe('ambiguous implicit entries', () => {
+  it('will not call callback when two implicit entries of same type exist', () => {
+    class Base extends State {}
+    class ChildA extends Base {}
+    class ChildB extends Base {}
+
+    const parent = new Context();
+    const ctx = parent.push();
+
+    // Add two implicit children of same base type
+    ctx.add(ChildA.new(), true);
+    ctx.add(ChildB.new(), true);
+
+    const cb = vi.fn();
+
+    // Subscribe on a child context looking upstream
+    const child = ctx.push();
+    child.get(Base, cb);
+
+    // Should not fire because two implicit entries are ambiguous
+    expect(cb).not.toBeCalled();
+  });
+
+  it('will throw on multiple explicit entries of same type in callback get', () => {
+    class Base extends State {}
+
+    const ctx = new Context();
+    const a = Base.new();
+    const b = Base.new();
+
+    // Add two explicit entries of the same type
+    ctx.add(a);
+    ctx.add(b);
+
+    const cb = vi.fn();
+
+    expect(() => ctx.get(Base, cb)).toThrow(
+      'Did find Base in context, but multiple were defined.'
+    );
+  });
+
+  it('will ignore implicit when explicit already found in callback get', () => {
+    class Base extends State {}
+
+    const ctx = new Context();
+    const explicit = Base.new();
+    const implicit = Base.new();
+
+    // Add one explicit, one implicit
+    ctx.add(explicit);
+    ctx.add(implicit, true);
+
+    const cb = vi.fn();
+    ctx.get(Base, cb);
+
+    // Should only get the explicit one
+    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalledWith(explicit, false, true);
+  });
+
+  it('will deduplicate same state in callback get entries', () => {
+    class Base extends State {}
+
+    const ctx = new Context();
+    const a = Base.new();
+
+    // Add the same instance twice (e.g. via inheritance)
+    ctx.add(a);
+    ctx.add(a);
+
+    const cb = vi.fn();
+    ctx.get(Base, cb);
+
+    expect(cb).toBeCalledTimes(1);
+    expect(cb).toBeCalledWith(a, false, true);
+  });
+});
+
+describe('add method listener lookup', () => {
+  it('will notify listeners on child context when state added to parent', () => {
+    class Foo extends State {}
+
+    const parent = new Context();
+    const child = parent.push();
+    const cb = vi.fn();
+
+    // Subscribe on child for downstream
+    child.get(Foo, cb);
+
+    // Set state on parent — this is upstream from child
+    parent.set(Foo);
+
+    // Callback fires from parent (upstream), child=false
+    expect(cb).toBeCalledTimes(1);
+  });
+
+  it('will notify listeners on parent when state added to child', () => {
+    class Foo extends State {}
+
+    const parent = new Context();
+    const cb = vi.fn();
+
+    parent.get(Foo, cb);
+
+    // Push child with Foo — this is downstream
+    parent.push(Foo);
+
+    expect(cb).toBeCalledTimes(1);
+  });
+
+  it('will deduplicate callbacks across context hierarchy in add', () => {
+    class Foo extends State {}
+    class Bar extends Foo {}
+
+    const parent = new Context();
+    const cb = vi.fn();
+
+    // Subscribe for both Foo and Bar — but cb is same ref
+    parent.get(Foo, cb);
+
+    // Push child with Bar — parent listener for Foo should match
+    parent.push(Bar);
+
+    // cb should only be called once even though Bar matches Foo too
+    expect(cb).toBeCalledTimes(1);
+  });
+
+  it('will deduplicate callback in above path during add', () => {
+    class Foo extends State {}
+
+    const grandparent = new Context();
+    const parent = grandparent.push();
+    const child = parent.push();
+    const cb = vi.fn();
+
+    // Register same cb on both grandparent and parent (above path)
+    grandparent.get(Foo, cb);
+    parent.get(Foo, cb);
+
+    // Add to child — above includes parent and grandparent, both have cb
+    child.set(Foo);
+
+    // Should only call cb once due to dedup in above path
+    expect(cb).toBeCalledTimes(1);
+  });
+
+  it('will skip child context without matching listener type in below path', () => {
+    class Foo extends State {}
+    class Bar extends State {}
+
+    const parent = new Context();
+    const child = parent.push();
+
+    // Subscribe child for Bar only
+    child.get(Bar, vi.fn());
+
+    // Add Foo to parent — below path visits child but finds no Foo listener
+    parent.set(Foo);
+
+    // No error, just works
+    expect(parent.get(Foo)).toBeInstanceOf(Foo);
+  });
+
+  it('will deduplicate callback found in both above and below during add', () => {
+    class Foo extends State {}
+
+    const parent = new Context();
+    const middle = parent.push();
+    const child = middle.push();
+    const cb = vi.fn();
+
+    // Register the same callback on both parent and child
+    parent.get(Foo, cb);
+    child.get(Foo, cb);
+
+    // Set on middle — above has parent listener, below has child listener (same cb)
+    middle.set(Foo);
+
+    // Should only call cb once due to dedup
+    expect(cb).toBeCalledTimes(1);
+  });
+});

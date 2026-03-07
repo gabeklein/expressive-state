@@ -750,3 +750,72 @@ describe('async', () => {
     expect(bar.foo).toBeInstanceOf(Foo);
   });
 });
+
+describe('single downstream get', () => {
+  it('will get single downstream child', async () => {
+    class Child extends State {}
+    class Parent extends State {
+      child = get(Child, true, false);
+    }
+
+    const parent = Parent.new();
+    const child = Child.new();
+    const ctx = new Context(parent);
+
+    expect(parent.child).toBeUndefined();
+
+    ctx.push(child);
+
+    expect(parent.child).toBe(child);
+  });
+
+  it('will clear when downstream child is destroyed', () => {
+    class Child extends State {}
+    class Parent extends State {
+      child = get(Child, true, false);
+    }
+
+    const parent = Parent.new();
+    const child = Child.new();
+
+    new Context(parent).push(child);
+
+    expect(parent.child).toBe(child);
+
+    child.set(null);
+
+    expect(parent.child).toBeUndefined();
+  });
+
+  it('will ignore upstream matches in single downstream get', () => {
+    class Foo extends State {}
+    class Bar extends State {
+      child = get(Foo, true, false);
+    }
+
+    const parent = Bar.new();
+    const upstream = Foo.new();
+    const ctx = new Context(upstream).push(parent);
+
+    // Upstream Foo should be ignored
+    expect(parent.child).toBeUndefined();
+
+    // Downstream child should work
+    const downstream = Foo.new();
+    ctx.push(downstream);
+
+    expect(parent.child).toBe(downstream);
+  });
+
+  it('will return undefined when not required and not found', () => {
+    class Child extends State {}
+    class Parent extends State {
+      child = get(Child, true, false);
+    }
+
+    const parent = Parent.new();
+    new Context(parent);
+
+    expect(parent.child).toBeUndefined();
+  });
+});
