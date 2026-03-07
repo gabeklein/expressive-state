@@ -81,7 +81,7 @@ declare namespace Context {
   type Expect<T extends State = State> = (
     state: T,
     child: boolean,
-    existing?: true
+    existing: boolean
   ) => (() => void) | false | void;
 }
 
@@ -258,7 +258,7 @@ class Context {
 
     for (const state of init) {
       event(state);
-      if (forEach) forEach(state as T, false);
+      if (forEach) forEach(state as T, false, false);
     }
 
     this.inputs = inputs;
@@ -319,7 +319,7 @@ class Context {
     const unwatch = listener(I, (key) => {
       if (key === true)
         for (const [cb, child] of expects) {
-          const r = cb(I, child);
+          const r = cb(I, child, false);
           if (r) cleanup.set(r, r);
         }
     });
