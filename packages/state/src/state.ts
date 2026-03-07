@@ -237,7 +237,8 @@ abstract class State implements Observable {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return context(self).get(arg1, arg2 !== false);
+    if (State.is(arg1))
+      return context(self).get(arg1, arg2 === false ? false : undefined);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return listener(self, arg2, arg1);
     if (arg1 === null) return observable(self) === null;
@@ -565,10 +566,14 @@ function child(state: State, key: string | number) {
   let reset: (() => void) | undefined;
   const ctx = context(state);
 
-  listener(state, () => {
-    if (reset) reset();
-    reset = undefined;
-  }, null);
+  listener(
+    state,
+    () => {
+      if (reset) reset();
+      reset = undefined;
+    },
+    null
+  );
 
   return (value: unknown, silent?: boolean) => {
     if (update(state, key, value, silent)) {
@@ -582,9 +587,8 @@ function child(state: State, key: string | number) {
         if (!PARENT.has(value)) {
           PARENT.set(value, state);
           listener(state, () => event(value, null), null);
-          reset = () => { remove(); event(value, null); };
-        }
-        else reset = remove;
+          reset = () => (remove(), event(value, null));
+        } else reset = remove;
 
         event(value);
       }

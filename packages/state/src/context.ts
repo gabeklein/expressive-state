@@ -54,13 +54,10 @@ function below(from: Context) {
   return queue;
 }
 
-function subscribe(
-  record: Map<State.Extends, Set<Function>>,
-  T: State.Extends,
-  cb: Context.Expect<any>
-) {
-  let set = record.get(T);
-  if (!set) record.set(T, (set = new Set()));
+function subscribe(ctx: Context, T: State.Extends, cb: Context.Expect<any>) {
+  const map = ctx.listeners;
+  let set = map.get(T);
+  if (!set) map.set(T, (set = new Set()));
   set.add(cb);
   return () => {
     set.delete(cb);
@@ -83,6 +80,7 @@ declare namespace Context {
 
   type Expect<T extends State = State> = (
     state: T,
+    child: boolean,
     existing?: true
   ) => (() => void) | false | void;
 }
@@ -93,13 +91,12 @@ class Context {
   public id = uid();
   public parent?: Context;
   public children = new Set<Context>();
+  public listeners = new Map<State.Extends, Set<Context.Expect>>();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
 
   private cleanup = new Map<string | number | Function, () => void>();
   private registry = new Map<State.Extends, [State, boolean][]>();
-  private upstream = new Map<State.Extends, Set<Context.Expect>>();
-  private downstream = new Map<State.Extends, Set<Context.Expect>>();
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
@@ -110,16 +107,19 @@ class Context {
     }
   }
 
-  /** Find specified type registered to a parent context. Throws if none are found. */
-  public get<T extends State>(Type: State.Extends<T>, require?: true): T;
+  /** Find specified type upstream. Throws if not found. */
+  public get<T extends State>(Type: State.Extends<T>): T;
 
-  /** Find specified type registered to a parent context. Returns undefined if none are found. */
+  /** Find specified type upstream. Returns undefined if not found. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    require: boolean
+    required: false | undefined
   ): T | undefined;
 
-  /** Subscribe to a type becoming available upstream. */
+  /** Get all entries of a type registered downstream. */
+  public get<T extends State>(Type: State.Extends<T>, below: true): T[];
+
+  /** Subscribe to a type becoming available in either direction. */
   public get<T extends State>(
     Type: State.Extends<T>,
     callback: Context.Expect<T>
@@ -129,6 +129,53 @@ class Context {
     Type: State.Extends<T>,
     arg2?: boolean | Context.Expect<T>
   ) {
+    if (typeof arg2 == 'function') {
+      for (const ctx of above(this)) {
+        const entries = ctx.registry.get(Type);
+        if (entries) {
+          let found: T | undefined;
+          let priority = false;
+
+          for (const [state, explicit] of entries) {
+            if (found === state) continue;
+            if (!found || explicit > priority) {
+              found = state as T;
+              priority = explicit;
+              continue;
+            }
+            if (!priority && !explicit) {
+              found = undefined;
+              break;
+            }
+            if (explicit)
+              throw new Error(
+                `Did find ${Type} in context, but multiple were defined.`
+              );
+          }
+
+          if (found) arg2(found, false, true);
+          break;
+        }
+      }
+
+      for (const ctx of below(this)) {
+        const entries = ctx.registry.get(Type);
+        if (entries)
+          for (const [state] of entries) arg2(state as T, true, true);
+      }
+
+      return subscribe(this, Type, arg2);
+    }
+
+    if (arg2 === true) {
+      const out: T[] = [];
+      for (const ctx of below(this)) {
+        const entries = ctx.registry.get(Type);
+        if (entries) for (const [state] of entries) out.push(state as T);
+      }
+      return out;
+    }
+
     let found: T | undefined;
     let priority = false;
 
@@ -152,38 +199,8 @@ class Context {
       }
     }
 
-    if (typeof arg2 == 'function') {
-      if (found) arg2(found, true);
-      return subscribe(this.downstream, Type, arg2);
-    }
-
     if (found) return found;
     if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
-  }
-
-  /** Get all entries of a type registered downstream. */
-  public has<T extends State>(Type: State.Extends<T>): T[];
-
-  /** Subscribe to a type being registered downstream. */
-  public has<T extends State>(
-    Type: State.Extends<T>,
-    callback: Context.Expect<T>
-  ): () => void;
-
-  public has<T extends State>(Type: State.Extends<T>, cb?: Context.Expect<T>) {
-    const out: T[] = [];
-
-    for (const ctx of below(this)) {
-      const entries = ctx.registry.get(Type);
-      if (entries) for (const [state] of entries) out.push(state as T);
-    }
-
-    if (cb) {
-      for (const state of out) cb(state, true);
-      return subscribe(this.upstream, Type, cb);
-    }
-
-    return out;
   }
 
   /**
@@ -241,7 +258,7 @@ class Context {
 
     for (const state of init) {
       event(state);
-      if (forEach) forEach(state as T);
+      if (forEach) forEach(state as T, false);
     }
 
     this.inputs = inputs;
@@ -274,24 +291,35 @@ class Context {
     });
 
     const IT = types(I);
-    const expects = [] as Context.Expect[];
+    const expects = [] as [Context.Expect, boolean][];
+    const seen = new Set<Context.Expect>();
 
     for (const ctx of above(this))
       for (const T of IT) {
-        const set = ctx.upstream.get(T);
-        if (set) expects.push(...set);
+        const set = ctx.listeners.get(T);
+        if (set)
+          for (const cb of set)
+            if (!seen.has(cb)) {
+              seen.add(cb);
+              expects.push([cb, ctx !== this]);
+            }
       }
 
-    for (const ctx of [this, ...below(this)])
+    for (const ctx of below(this))
       for (const T of IT) {
-        const set = ctx.downstream.get(T);
-        if (set) expects.push(...set);
+        const set = ctx.listeners.get(T);
+        if (set)
+          for (const cb of set)
+            if (!seen.has(cb)) {
+              seen.add(cb);
+              expects.push([cb, false]);
+            }
       }
 
     const unwatch = listener(I, (key) => {
       if (key === true)
-        for (const cb of new Set(expects)) {
-          const r = cb(I);
+        for (const [cb, child] of expects) {
+          const r = cb(I, child);
           if (r) cleanup.set(r, r);
         }
     });

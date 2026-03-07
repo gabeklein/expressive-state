@@ -88,11 +88,10 @@ function get<R, T extends State>(
     context(subject, (ctx) => {
       let found = false;
 
-      ctx.get(Type, (state) => {
-        if (state !== subject) {
-          found = true;
-          assign(state);
-        }
+      ctx.get(Type, (state, child) => {
+        if (child || state === subject) return;
+        found = true;
+        assign(state);
       });
 
       if (!found && arg1 !== false)
@@ -119,7 +118,9 @@ function getDownstream<T extends State>(
     };
 
     context(subject, (ctx) => {
-      ctx.has(Type, (state) => {
+      ctx.get(Type, (state, child) => {
+        if (!child) return;
+
         let remove: (() => void) | undefined;
         let flush: (() => void) | undefined;
 
