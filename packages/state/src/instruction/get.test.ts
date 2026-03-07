@@ -190,227 +190,392 @@ describe('fetch mode', () => {
     expect(test.ambient).toBe(ambient);
     expect(Object.keys(test)).toMatchObject(['foo']);
   });
-});
 
-describe('downstream collection', () => {
-  it('will collect children', () => {
-    class Child extends State {}
-    class Parent extends State {
-      children = get(Child, true);
-    }
+  describe('subscription', () => {
+    it('will update when implicit upstream is replaced', async () => {
+      class Peer extends State {}
+      class Parent extends State {
+        peer = new Peer();
+      }
+      class Child extends State {
+        peer = get(Peer);
+      }
 
-    const parent = new Parent();
-    const child = new Child();
+      const parent = new Parent();
+      const child = new Child();
 
-    new Context(parent).push(child);
+      new Context(parent).push(child);
 
-    expect(parent.children).toEqual([child]);
+      const effect = vi.fn();
+      const first = parent.peer;
+
+      expect(child.peer).toBe(first);
+
+      child.get((it) => effect(it.peer));
+
+      parent.peer = new Peer();
+      await expect(child).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).nthCalledWith(1, first);
+      expect(effect).nthCalledWith(2, parent.peer);
+    });
+
+    it('will update when upstream is added to ancestor context', async () => {
+      class Ambient extends State {}
+      class Child extends State {
+        ambient = get(Ambient, false);
+      }
+
+      const child = Child.new();
+      const ambient = Ambient.new();
+      const context = new Context();
+      const effect = vi.fn();
+
+      context.push(child);
+
+      expect(child.ambient).toBeUndefined();
+
+      child.get((it) => effect(it.ambient));
+      context.add(ambient);
+      await expect(child).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).nthCalledWith(1, undefined);
+      expect(effect).nthCalledWith(2, ambient);
+    });
+
+    it('will run callback when upstream is replaced', async () => {
+      class Remote extends State {
+        value = 'initial';
+      }
+
+      const callback = vi.fn();
+
+      class Owner extends State {
+        remote = new Remote();
+      }
+      class Consumer extends State {
+        remote = get(Remote, callback);
+      }
+
+      const owner = new Owner();
+      const consumer = new Consumer();
+
+      new Context(owner).push(consumer);
+
+      const first = consumer.remote;
+      const effect = vi.fn();
+
+      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalledWith(first, consumer);
+
+      consumer.get((it) => {
+        effect(it.remote.value);
+      });
+
+      owner.remote = new Remote({ value: 'updated' });
+      await expect(consumer).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).nthCalledWith(1, 'initial');
+      expect(effect).nthCalledWith(2, 'updated');
+      expect(callback).toBeCalledTimes(2);
+      expect(callback).toBeCalledWith(consumer.remote, consumer);
+    });
   });
 
-  it('will collect multiple children', () => {
-    class Child extends State {}
-    class Parent extends State {
-      children = get(Child, true);
-    }
+  describe('downstream', () => {
+    describe('multiple', () => {
+      it('will collect children', () => {
+        class Child extends State {}
+        class Parent extends State {
+          children = get(Child, true);
+        }
 
-    const parent = new Parent();
-    const child1 = new Child();
-    const child2 = new Child();
+        const parent = new Parent();
+        const child = new Child();
 
-    new Context(parent).push({ child1, child2 });
+        new Context(parent).push(child);
 
-    expect(parent.children).toEqual([child1, child2]);
-  });
+        expect(parent.children).toEqual([child]);
+      });
 
-  it('will not be enumerable', () => {
-    class Child extends State {}
-    class Parent extends State {
-      children = get(Child, true);
-    }
+      it('will collect multiple children', () => {
+        class Child extends State {}
+        class Parent extends State {
+          children = get(Child, true);
+        }
 
-    const parent = new Parent();
+        const parent = new Parent();
+        const child1 = new Child();
+        const child2 = new Child();
 
-    new Context(parent).push(Child);
+        new Context(parent).push({ child1, child2 });
 
-    expect(Object.keys(parent)).not.toContain('children');
-    expect(parent.children).toEqual([expect.any(Child)]);
-  });
+        expect(parent.children).toEqual([child1, child2]);
+      });
 
-  it('will collect a subclass', () => {
-    abstract class Child extends State {}
+      it('will not be enumerable', () => {
+        class Child extends State {}
+        class Parent extends State {
+          children = get(Child, true);
+        }
 
-    class Child2 extends Child {}
-    class Parent extends State {
-      children = get(Child, true);
-    }
+        const parent = new Parent();
 
-    const parent = new Parent();
-    const child = new Child2();
+        new Context(parent).push(Child);
 
-    new Context(parent).push(child);
+        expect(Object.keys(parent)).not.toContain('children');
+        expect(parent.children).toEqual([expect.any(Child)]);
+      });
 
-    expect(parent.children).toEqual([child]);
-  });
+      it('will collect a subclass', () => {
+        abstract class Child extends State {}
 
-  it('will not register superclass', () => {
-    class Child extends State {}
-    class Child2 extends Child {}
-    class Parent extends State {
-      children = get(Child2, true);
-    }
+        class Child2 extends Child {}
+        class Parent extends State {
+          children = get(Child, true);
+        }
 
-    const parent = new Parent();
+        const parent = new Parent();
+        const child = new Child2();
 
-    new Context(parent).push(Child);
+        new Context(parent).push(child);
 
-    expect(parent.children.length).toBe(0);
-  });
+        expect(parent.children).toEqual([child]);
+      });
 
-  it('will regsiter for superclass', () => {
-    class Child extends State {}
-    class Parent extends State {
-      children = get(Child, true);
-    }
-    class Parent2 extends Parent {}
+      it('will not register superclass', () => {
+        class Child extends State {}
+        class Child2 extends Child {}
+        class Parent extends State {
+          children = get(Child2, true);
+        }
 
-    const parent = new Parent2();
+        const parent = new Parent();
 
-    new Context(parent).push(Child);
+        new Context(parent).push(Child);
 
-    expect(parent.children.length).toBe(1);
-  });
+        expect(parent.children.length).toBe(0);
+      });
 
-  it('will remove children which unmount', async () => {
-    class Child extends State {
-      value = 0;
-    }
-    class Parent extends State {
-      children = get(Child, true);
-    }
+      it('will regsiter for superclass', () => {
+        class Child extends State {}
+        class Parent extends State {
+          children = get(Child, true);
+        }
+        class Parent2 extends Parent {}
 
-    const parent = new Parent();
-    const child1 = new Child();
-    const child2 = new Child();
+        const parent = new Parent2();
 
-    const context = new Context(parent);
-    const context2 = context.push({ child1, child2 });
+        new Context(parent).push(Child);
 
-    expect(parent.children).toEqual([child1, child2]);
+        expect(parent.children.length).toBe(1);
+      });
 
-    context2.pop();
+      it('will remove children which unmount', async () => {
+        class Child extends State {
+          value = 0;
+        }
+        class Parent extends State {
+          children = get(Child, true);
+        }
 
-    await expect(parent).toHaveUpdated();
-    expect(parent.children.length).toBe(0);
-  });
+        const parent = new Parent();
+        const child1 = new Child();
+        const child2 = new Child();
 
-  it('will collect own type', async () => {
-    class Test extends State {
-      tests = get(Test, true);
-    }
+        const context = new Context(parent);
+        const context2 = context.push({ child1, child2 });
 
-    const test = Test.new('1');
-    const test2 = Test.new('2');
-    const test3 = Test.new('3');
+        expect(parent.children).toEqual([child1, child2]);
 
-    new Context(test).push(test2).push(test3);
+        context2.pop();
 
-    expect(test.tests).toEqual([test2, test3]);
-    expect(test2.tests).toEqual([test3]);
-  });
+        await expect(parent).toHaveUpdated();
+        expect(parent.children.length).toBe(0);
+      });
 
-  it('will ignore redundant child', async () => {
-    class Child extends State {}
-    class Parent extends State {
-      children = get(Child, true, gotChild);
-    }
+      it('will collect own type', async () => {
+        class Test extends State {
+          tests = get(Test, true);
+        }
 
-    const gotChild = vi.fn();
-    const parent = new Parent();
-    const child = new Child();
+        const test = Test.new('1');
+        const test2 = Test.new('2');
+        const test3 = Test.new('3');
 
-    new Context(parent).push(child).push(child);
+        new Context(test).push(test2).push(test3);
 
-    expect(gotChild).toBeCalledTimes(1);
-  });
+        expect(test.tests).toEqual([test2, test3]);
+        expect(test2.tests).toEqual([test3]);
+      });
 
-  it('will collect children added later', async () => {
-    class Child extends State {}
-    class Parent extends State {
-      children = get(Child, true);
-    }
+      it('will ignore redundant child', async () => {
+        class Child extends State {}
+        class Parent extends State {
+          children = get(Child, true, gotChild);
+        }
 
-    const parent = new Parent();
-    const context = new Context(parent);
+        const gotChild = vi.fn();
+        const parent = new Parent();
+        const child = new Child();
 
-    expect(parent.children).toEqual([]);
+        new Context(parent).push(child).push(child);
 
-    const child1 = new Child();
-    context.push(child1);
+        expect(gotChild).toBeCalledTimes(1);
+      });
 
-    await expect(parent).toHaveUpdated();
-    expect(parent.children).toEqual([child1]);
+      it('will collect children added later', async () => {
+        class Child extends State {}
+        class Parent extends State {
+          children = get(Child, true);
+        }
 
-    const child2 = new Child();
-    context.push(child2);
+        const parent = new Parent();
+        const context = new Context(parent);
 
-    await expect(parent).toHaveUpdated();
-    expect(parent.children).toEqual([child1, child2]);
-  });
+        expect(parent.children).toEqual([]);
 
-  it('will collect implicit child added later', async () => {
-    class Child extends State {}
-    class Wrapper extends State {
-      child = new Child();
-    }
-    class Parent extends State {
-      children = get(Child, true);
-    }
+        const child1 = new Child();
+        context.push(child1);
 
-    const parent = new Parent();
-    const context = new Context(parent);
+        await expect(parent).toHaveUpdated();
+        expect(parent.children).toEqual([child1]);
 
-    expect(parent.children).toEqual([]);
+        const child2 = new Child();
+        context.push(child2);
 
-    context.push(Wrapper);
+        await expect(parent).toHaveUpdated();
+        expect(parent.children).toEqual([child1, child2]);
+      });
 
-    await expect(parent).toHaveUpdated();
-    expect(parent.children.length).toBe(1);
-    expect(parent.children[0]).toBeInstanceOf(Child);
-  });
+      it('will collect implicit child added later', async () => {
+        class Child extends State {}
+        class Wrapper extends State {
+          child = new Child();
+        }
+        class Parent extends State {
+          children = get(Child, true);
+        }
 
-  it('will register implicit', () => {
-    class Baz extends State {}
-    class Foo extends State {
-      bar = new Bar();
-    }
-    class Bar extends State {
-      baz = get(Baz, true, gotBaz);
-    }
+        const parent = new Parent();
+        const context = new Context(parent);
 
-    const gotBaz = vi.fn();
-    const foo = new Foo();
-    const baz = new Baz();
+        expect(parent.children).toEqual([]);
 
-    new Context(foo).push(baz);
+        context.push(Wrapper);
 
-    expect(gotBaz).toBeCalledWith(baz, foo.bar);
-  });
+        await expect(parent).toHaveUpdated();
+        expect(parent.children.length).toBe(1);
+        expect(parent.children[0]).toBeInstanceOf(Child);
+      });
 
-  it('will register for implicit', () => {
-    class Baz extends State {}
-    class Foo extends State {
-      baz = get(Baz, true);
-    }
-    class Bar extends State {
-      baz = new Baz();
-    }
+      it('will register implicit', () => {
+        class Baz extends State {}
+        class Foo extends State {
+          bar = new Bar();
+        }
+        class Bar extends State {
+          baz = get(Baz, true, gotBaz);
+        }
 
-    const foo = new Foo();
-    const bar = new Bar();
+        const gotBaz = vi.fn();
+        const foo = new Foo();
+        const baz = new Baz();
 
-    new Context(foo).push(bar);
+        new Context(foo).push(baz);
 
-    expect(foo.baz).toEqual([bar.baz]);
+        expect(gotBaz).toBeCalledWith(baz, foo.bar);
+      });
+
+      it('will register for implicit', () => {
+        class Baz extends State {}
+        class Foo extends State {
+          baz = get(Baz, true);
+        }
+        class Bar extends State {
+          baz = new Baz();
+        }
+
+        const foo = new Foo();
+        const bar = new Bar();
+
+        new Context(foo).push(bar);
+
+        expect(foo.baz).toEqual([bar.baz]);
+      });
+    });
+
+    describe('single', () => {
+      it('will get single downstream child', async () => {
+        class Child extends State {}
+        class Parent extends State {
+          child = get(Child, true, false);
+        }
+
+        const parent = Parent.new();
+        const child = Child.new();
+        const ctx = new Context(parent);
+
+        expect(parent.child).toBeUndefined();
+
+        ctx.push(child);
+
+        expect(parent.child).toBe(child);
+      });
+
+      it('will clear when downstream child is destroyed', () => {
+        class Child extends State {}
+        class Parent extends State {
+          child = get(Child, true, false);
+        }
+
+        const parent = Parent.new();
+        const child = Child.new();
+
+        new Context(parent).push(child);
+
+        expect(parent.child).toBe(child);
+
+        child.set(null);
+
+        expect(parent.child).toBeUndefined();
+      });
+
+      it('will ignore upstream matches in single downstream get', () => {
+        class Foo extends State {}
+        class Bar extends State {
+          child = get(Foo, true, false);
+        }
+
+        const parent = Bar.new();
+        const upstream = Foo.new();
+        const ctx = new Context(upstream).push(parent);
+
+        // Upstream Foo should be ignored
+        expect(parent.child).toBeUndefined();
+
+        // Downstream child should work
+        const downstream = Foo.new();
+        ctx.push(downstream);
+
+        expect(parent.child).toBe(downstream);
+      });
+
+      it('will return undefined when not required and not found', () => {
+        class Child extends State {}
+        class Parent extends State {
+          child = get(Child, true, false);
+        }
+
+        const parent = Parent.new();
+        new Context(parent);
+
+        expect(parent.child).toBeUndefined();
+      });
+    });
   });
 });
 
@@ -629,100 +794,6 @@ describe('lifecycle callbacks', () => {
   });
 });
 
-describe('upstream subscription', () => {
-  it('will update when implicit upstream is replaced', async () => {
-    class Peer extends State {}
-    class Parent extends State {
-      peer = new Peer();
-    }
-    class Child extends State {
-      peer = get(Peer);
-    }
-
-    const parent = new Parent();
-    const child = new Child();
-
-    new Context(parent).push(child);
-
-    const effect = vi.fn();
-    const first = parent.peer;
-
-    expect(child.peer).toBe(first);
-
-    child.get((it) => effect(it.peer));
-
-    parent.peer = new Peer();
-    await expect(child).toHaveUpdated();
-
-    expect(effect).toBeCalledTimes(2);
-    expect(effect).nthCalledWith(1, first);
-    expect(effect).nthCalledWith(2, parent.peer);
-  });
-
-  it('will update when upstream is added to ancestor context', async () => {
-    class Ambient extends State {}
-    class Child extends State {
-      ambient = get(Ambient, false);
-    }
-
-    const child = Child.new();
-    const ambient = Ambient.new();
-    const context = new Context();
-    const effect = vi.fn();
-
-    context.push(child);
-
-    expect(child.ambient).toBeUndefined();
-
-    child.get((it) => effect(it.ambient));
-    context.add(ambient);
-    await expect(child).toHaveUpdated();
-
-    expect(effect).toBeCalledTimes(2);
-    expect(effect).nthCalledWith(1, undefined);
-    expect(effect).nthCalledWith(2, ambient);
-  });
-
-  it('will run callback when upstream is replaced', async () => {
-    class Remote extends State {
-      value = 'initial';
-    }
-
-    const callback = vi.fn();
-
-    class Owner extends State {
-      remote = new Remote();
-    }
-    class Consumer extends State {
-      remote = get(Remote, callback);
-    }
-
-    const owner = new Owner();
-    const consumer = new Consumer();
-
-    new Context(owner).push(consumer);
-
-    const first = consumer.remote;
-    const effect = vi.fn();
-
-    expect(callback).toBeCalledTimes(1);
-    expect(callback).toBeCalledWith(first, consumer);
-
-    consumer.get((it) => {
-      effect(it.remote.value);
-    });
-
-    owner.remote = new Remote({ value: 'updated' });
-    await expect(consumer).toHaveUpdated();
-
-    expect(effect).toBeCalledTimes(2);
-    expect(effect).nthCalledWith(1, 'initial');
-    expect(effect).nthCalledWith(2, 'updated');
-    expect(callback).toBeCalledTimes(2);
-    expect(callback).toBeCalledWith(consumer.remote, consumer);
-  });
-});
-
 describe('async', () => {
   class Foo extends State {
     value = 'foobar';
@@ -748,74 +819,5 @@ describe('async', () => {
 
     await expect(caught).resolves.toBeInstanceOf(Foo);
     expect(bar.foo).toBeInstanceOf(Foo);
-  });
-});
-
-describe('single downstream get', () => {
-  it('will get single downstream child', async () => {
-    class Child extends State {}
-    class Parent extends State {
-      child = get(Child, true, false);
-    }
-
-    const parent = Parent.new();
-    const child = Child.new();
-    const ctx = new Context(parent);
-
-    expect(parent.child).toBeUndefined();
-
-    ctx.push(child);
-
-    expect(parent.child).toBe(child);
-  });
-
-  it('will clear when downstream child is destroyed', () => {
-    class Child extends State {}
-    class Parent extends State {
-      child = get(Child, true, false);
-    }
-
-    const parent = Parent.new();
-    const child = Child.new();
-
-    new Context(parent).push(child);
-
-    expect(parent.child).toBe(child);
-
-    child.set(null);
-
-    expect(parent.child).toBeUndefined();
-  });
-
-  it('will ignore upstream matches in single downstream get', () => {
-    class Foo extends State {}
-    class Bar extends State {
-      child = get(Foo, true, false);
-    }
-
-    const parent = Bar.new();
-    const upstream = Foo.new();
-    const ctx = new Context(upstream).push(parent);
-
-    // Upstream Foo should be ignored
-    expect(parent.child).toBeUndefined();
-
-    // Downstream child should work
-    const downstream = Foo.new();
-    ctx.push(downstream);
-
-    expect(parent.child).toBe(downstream);
-  });
-
-  it('will return undefined when not required and not found', () => {
-    class Child extends State {}
-    class Parent extends State {
-      child = get(Child, true, false);
-    }
-
-    const parent = Parent.new();
-    new Context(parent);
-
-    expect(parent.child).toBeUndefined();
   });
 });
