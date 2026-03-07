@@ -30,7 +30,7 @@ function get<T extends State>(
  * will be made available to child upon this request.
  *
  * @param Type - Type of controller compatible with this class.
- * @param required - If false, property may be undefined. Otherwise will throw suspense.
+ * @param required - If false, property may be undefined. Otherwise will throw.
  */
 function get<T extends State>(
   Type: State.Extends<T>,
@@ -38,9 +38,10 @@ function get<T extends State>(
 ): T | undefined;
 
 /**
- * Collects downstream States, this will accumulate all instances of specified type for which this is an ancestor.
- * Returns a frozen array that updates as States are added or removed.
- * Callback runs on each State registration and can return cleanup or false to prevent registration.
+ * Collects downstream States, accumulating all instances of specified type
+ * for which this is an ancestor. Returns an array that updates as States
+ * are added or removed. Callback runs on each registration and can return
+ * cleanup or false to prevent registration.
  *
  * @param Type - Type of State to collect.
  * @param downstream - Must be true to enable downstream mode.
@@ -50,41 +51,51 @@ function get<T extends State>(
   Type: State.Extends<T>,
   downstream: true,
   callback?: get.Callback<T>
-): readonly T[];
+): T[];
 
-function get<R, T extends State>(
+/**
+ * Fetches a single downstream State of specified type.
+ * Updates when a matching child appears or is removed.
+ *
+ * @param Type - Type of State to fetch.
+ * @param downstream - Must be true to enable downstream mode.
+ * @param single - Must be true to enable single-child mode.
+ */
+function get<T extends State>(
+  Type: State.Extends<T>,
+  downstream: true,
+  single: true
+): T | undefined;
+
+function get<T extends State>(
   Type: Type<T>,
   arg1?: get.Callback<T> | boolean,
-  arg2?: get.Callback<T>
+  arg2?: get.Callback<T> | boolean
 ) {
-  if (arg1 === true) return getDownstream(Type, arg2);
+  if (arg1 === true)
+    return arg2 === true
+      ? getOneDownstream(Type)
+      : getDownstream(Type, arg2 as get.Callback<T>);
+
+  const callback =
+    typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
 
   return use<T>((key, subject) => {
-    // Upstream mode
     const hasParent = PARENT.get(subject) as T;
 
     function assign(value: T) {
-      // If callback provided, run it as lifecycle hook
-      if (typeof arg1 === 'function') {
-        const callback = arg1 as get.Callback<T>;
+      if (callback) {
         const result = callback(value, subject);
-
-        // Register cleanup if returned
-        if (typeof result === 'function') {
-          subject.set(result, null);
-        }
+        if (typeof result === 'function') subject.set(result, null);
       }
-
       update(subject, key, value);
     }
 
-    // Check parent
     if (hasParent && hasParent instanceof Type) {
       assign(hasParent);
       return {};
     }
 
-    // Subscribe to context
     context(subject, (ctx) => {
       let found = false;
 
@@ -114,7 +125,7 @@ function getDownstream<T extends State>(
   return use<T[]>((key, subject) => {
     const applied = new Set<State>();
     const reset = () => {
-      update(subject, key, Object.freeze(Array.from(applied)));
+      update(subject, key, Array.from(applied));
     };
 
     context(subject, (ctx) => {
@@ -150,8 +161,6 @@ function getDownstream<T extends State>(
           reset();
 
           if (typeof remove == 'function') remove();
-
-          remove = undefined;
         };
 
         const ignore = state.set(done, null);
@@ -162,6 +171,27 @@ function getDownstream<T extends State>(
 
     return {
       value: [],
+      enumerable: false
+    };
+  });
+}
+
+function getOneDownstream<T extends State>(Type: Type<T>) {
+  return use<T | undefined>((key, subject) => {
+    context(subject, (ctx) => {
+      ctx.get(Type, (state, child) => {
+        if (!child) return;
+        update(subject, key, state);
+        const ignore = state.set(() => {
+          ignore();
+          update(subject, key, undefined);
+        }, null);
+        return ignore;
+      });
+    });
+
+    return {
+      value: undefined,
       enumerable: false
     };
   });
