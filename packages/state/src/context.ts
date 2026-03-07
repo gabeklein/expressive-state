@@ -143,11 +143,8 @@ class Context {
               priority = explicit;
               continue;
             }
-            if (!priority && !explicit) {
-              found = undefined;
-              break;
-            }
-            if (explicit)
+            if (!priority && !explicit) found = undefined;
+            else if (explicit)
               throw new Error(
                 `Did find ${Type} in context, but multiple were defined.`
               );
@@ -170,8 +167,8 @@ class Context {
     if (arg2 === true) {
       const out: T[] = [];
       for (const ctx of below(this)) {
-        const entries = ctx.registry.get(Type);
-        if (entries) for (const [state] of entries) out.push(state as T);
+        const entries = ctx.registry.get(Type) || [];
+        for (const [state] of entries) out.push(state as T);
       }
       return out;
     }

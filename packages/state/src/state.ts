@@ -652,9 +652,9 @@ function lookup(
   arg2?: Context.Expect | boolean,
   arg3?: boolean
 ) {
-  const ctx = context(self);
-  if (arg3 === undefined) return ctx.get(Type, arg2 as any);
-  const found = ctx.get(Type, true)[0];
+  const result = context(self).get(Type, arg2 as any);
+  if (arg3 === undefined) return result;
+  const [found] = result;
   if (found || arg3 !== true) return found;
   throw new Error(`Required ${Type} not found downstream of ${self}.`);
 }
