@@ -76,3 +76,7 @@ Per-package: `tsc --noEmit && vitest run --coverage`
 - `new()` lifecycle hook is optional; don't add it unnecessarily.
 - Event dispatch is batched via `setTimeout(0)` — not synchronous.
 - `State.new()` constructs + activates; plain `new State()` doesn't dispatch ready.
+
+## Implementation details
+
+- State.is is a loopback.
