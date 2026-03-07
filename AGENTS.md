@@ -58,6 +58,7 @@ Per-package: `tsc --noEmit && vitest run --coverage`
 - Runner: **Vitest** with `vitest.setup.ts` and root `vitest.config.ts`
 - Package configs extend root; helpers in `packages/{state,react,preact}/vitest.ts`
 - Coverage: **100% thresholds** (branches/functions/lines/statements)
+- Always create tests for new features and bug fixes; update existing tests for behavioral/type changes.
 
 ## Conventions
 
