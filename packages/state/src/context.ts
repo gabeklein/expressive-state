@@ -4,22 +4,21 @@ import { event, State, uid } from './state';
 const LOOKUP = new WeakMap<State, Context>();
 
 /** Get the context for a specified State. Falls back to Context.root. */
-function context(on: State): Context;
+function context(on: State, assign?: Context): Context;
 
-/** Assign a context to a State. Ignored if already assigned. */
-function context(on: State, set: Context): void;
+/**
+ * Assign a context to a State. Ignored if already assigned.
+ *
+ * @returns The context assigned to the State, either existing or new.
+ */
+function context(on: State, set: Context): Context;
 
-function context({ is }: State, set?: Context): Context | void {
-  let found = LOOKUP.get(is);
-
-  if (set) {
-    if (!found) LOOKUP.set(is, set);
-    return;
-  }
-
-  if (!found) LOOKUP.set(is, (found = Context.root));
-
-  return found;
+function context({ is }: State, set?: Context) {
+  const found = LOOKUP.get(is);
+  if (found) return found;
+  const ctx = set || Context.root;
+  LOOKUP.set(is, ctx);
+  return ctx;
 }
 
 function types(state: State) {
