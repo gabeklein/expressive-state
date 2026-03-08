@@ -227,7 +227,7 @@ describe('fetch mode', () => {
         ambient = get(Ambient, false);
       }
 
-      const child = Child.new();
+      const child = new Child();
       const ambient = Ambient.new();
       const context = new Context();
       const effect = vi.fn();
@@ -402,9 +402,9 @@ describe('fetch mode', () => {
           tests = get(Test, true);
         }
 
-        const test = Test.new('1');
-        const test2 = Test.new('2');
-        const test3 = Test.new('3');
+        const test = new Test();
+        const test2 = new Test();
+        const test3 = new Test();
 
         new Context(test).push(test2).push(test3);
 
@@ -515,8 +515,8 @@ describe('fetch mode', () => {
           child = get(Child, true, false);
         }
 
-        const parent = Parent.new();
-        const child = Child.new();
+        const parent = new Parent();
+        const child = new Child();
         const ctx = new Context(parent);
 
         expect(parent.child).toBeUndefined();
@@ -532,8 +532,8 @@ describe('fetch mode', () => {
           child = get(Child, true, false);
         }
 
-        const parent = Parent.new();
-        const child = Child.new();
+        const parent = new Parent();
+        const child = new Child();
 
         new Context(parent).push(child);
 
@@ -550,15 +550,15 @@ describe('fetch mode', () => {
           child = get(Foo, true, false);
         }
 
-        const parent = Bar.new();
-        const upstream = Foo.new();
+        const parent = new Bar();
+        const upstream = new Foo();
         const ctx = new Context(upstream).push(parent);
 
         // Upstream Foo should be ignored
         expect(parent.child).toBeUndefined();
 
         // Downstream child should work
-        const downstream = Foo.new();
+        const downstream = new Foo();
         ctx.push(downstream);
 
         expect(parent.child).toBe(downstream);
@@ -794,30 +794,3 @@ describe('lifecycle callbacks', () => {
   });
 });
 
-describe('async', () => {
-  class Foo extends State {
-    value = 'foobar';
-  }
-
-  it('will suspend if not ready', async () => {
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-    let caught: unknown;
-
-    setTimeout(() => new Context({ Foo, bar }));
-
-    try {
-      void bar.foo;
-      throw false;
-    } catch (err) {
-      expect(err).toBeInstanceOf(Promise);
-      caught = err;
-    }
-
-    await expect(caught).resolves.toBeInstanceOf(Foo);
-    expect(bar.foo).toBeInstanceOf(Foo);
-  });
-});

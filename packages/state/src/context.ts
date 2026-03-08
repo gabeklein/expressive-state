@@ -1,34 +1,25 @@
 import { listener } from './observable';
 import { event, State, uid } from './state';
 
-const LOOKUP = new WeakMap<State, Context | ((got: Context) => void)[]>();
+const LOOKUP = new WeakMap<State, Context>();
 
-/**
- * Get the context for a specified State. If a callback is provided, it will be run when
- * the context becomes available.
- */
-function context(on: State, callback: (got: Context) => void): void;
+/** Get the context for a specified State. Falls back to Context.root. */
+function context(on: State): Context;
 
-/** Get the context for a specified State. Returns undefined if none are found. */
-function context(on: State, required?: true): Context;
+/** Assign a context to a State. Ignored if already assigned. */
+function context(on: State, set: Context): void;
 
-function context(on: State, required: boolean): Context | undefined;
+function context({ is }: State, set?: Context): Context | void {
+  let found = LOOKUP.get(is);
 
-function context({ is }: State, arg?: ((got: Context) => void) | boolean) {
-  const found = LOOKUP.get(is);
-
-  if (found instanceof Context) {
-    if (typeof arg == 'function') arg(found);
-    return found;
+  if (set) {
+    if (!found) LOOKUP.set(is, set);
+    return;
   }
 
-  if (typeof arg == 'function')
-    if (found) found.push(arg);
-    else LOOKUP.set(is, [arg]);
-  else if (arg !== false) {
-    assign(is, Context.root);
-    return Context.root;
-  }
+  if (!found) LOOKUP.set(is, (found = Context.root));
+
+  return found;
 }
 
 function types(state: State) {
@@ -62,14 +53,6 @@ function subscribe(ctx: Context, T: State.Extends, cb: Context.Expect<any>) {
   return () => {
     set.delete(cb);
   };
-}
-
-function assign(state: State, context: Context) {
-  const waiting = LOOKUP.get(state);
-  if (waiting instanceof Context) return;
-  if (waiting instanceof Array) waiting.forEach((cb) => cb(context));
-  LOOKUP.set(state, context);
-  return () => LOOKUP.delete(state);
 }
 
 declare namespace Context {
@@ -327,12 +310,11 @@ class Context {
       cleanup.clear();
     };
 
-    const release = assign(I, this);
+    context(I, this);
 
     const remove = () => {
       this.cleanup.delete(remove);
       reset();
-      if (release) release();
     };
 
     this.cleanup.set(remove, remove);

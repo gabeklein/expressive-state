@@ -516,74 +516,6 @@ describe('get instruction', () => {
     );
   });
 
-  it('will throw if not resolved', () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-
-    expect(() => bar.foo).toThrow(expect.any(Promise));
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    expect(bar.foo).toBeInstanceOf(Foo);
-  });
-
-  it('will resolve when assigned to', async () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-    let pending!: Promise<any>;
-
-    try {
-      void bar.foo;
-    } catch (err: unknown) {
-      if (err instanceof Promise) pending = err;
-    }
-
-    expect(pending).toBeInstanceOf(Promise);
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    await expect(pending).resolves.toBeInstanceOf(Foo);
-  });
-
-  it('will resolve multiple', async () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo, false);
-      bar = get(Foo, false);
-    }
-
-    const foo = Foo.new();
-    const bar = Bar.new();
-
-    expect(bar.foo).toBeUndefined();
-    expect(bar.bar).toBeUndefined();
-
-    render(
-      <Provider for={foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    expect(bar.foo).toBe(foo);
-    expect(bar.bar).toBe(foo);
-  });
-
   it('will not resolve as own parent', () => {
     class MaybeSelf extends State {
       parent = get(MaybeSelf, false);
@@ -595,53 +527,6 @@ describe('get instruction', () => {
 
     expect(test.parent).not.toBe(test);
     expect(test.parent).toBeUndefined();
-  });
-
-  it('will refresh an effect when assigned to', async () => {
-    class Foo extends State {}
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-    const effect = vi.fn((bar) => void bar.foo);
-
-    bar.get(effect);
-
-    expect(effect).toBeCalled();
-    expect(effect).not.toHaveReturned();
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    await expect(bar).toHaveUpdated();
-
-    expect(effect).toBeCalledTimes(2);
-    expect(effect).toHaveReturnedTimes(1);
-  });
-
-  it('will prevent compute if not yet resolved', () => {
-    class Foo extends State {
-      value = 'foobar';
-    }
-    class Bar extends State {
-      foo = get(Foo);
-    }
-
-    const bar = Bar.new();
-
-    expect(() => bar.foo.value).toThrow(expect.any(Promise));
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={bar} />
-      </Provider>
-    );
-
-    expect(bar.foo.value).toBe('foobar');
   });
 
   it('will compute immediately in context', () => {
