@@ -40,9 +40,11 @@ function Consumer<T extends State>(props: Consumer.Props<T>) {
 }
 
 declare namespace Provider {
+  type ForEach<T> = (state: T) => void | (() => void);
+
   interface Props<T extends State> {
     for: Context.Accept<T>;
-    forEach?: Context.Expect<T>;
+    forEach?: ForEach<T>;
     children?: ComponentChildren;
   }
 }

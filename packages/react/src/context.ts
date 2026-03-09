@@ -41,6 +41,8 @@ function Consumer<T extends State>(props: Consumer.Props<T>) {
 }
 
 declare namespace Provider {
+  type ForEach<T> = (state: T) => void | (() => void);
+
   interface Props<T extends State> {
     /** State or group of States to provide to descendant Consumers. */
     for: Context.Accept<T>;
@@ -48,7 +50,7 @@ declare namespace Provider {
     /**
      * Callback to run for each provided State.
      */
-    forEach?: Context.Expect<T>;
+    forEach?: ForEach<T>;
 
     /**
      * Children to render within this Provider.
