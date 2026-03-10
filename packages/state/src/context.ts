@@ -72,14 +72,21 @@ class Context {
     }
   }
 
-  private touch(type: State.Extends, asConsumer?: boolean) {
+  private register(type: State.Extends, value: any, asConsumer?: boolean) {
+    const map = asConsumer ? this.consume : this.provide;
+    let set = map.get(type) as Set<any>;
+    if (!set) map.set(type, (set = new Set()));
+    set.add(value);
+
     let ctx = this.parent;
     while (ctx) {
-      const map = asConsumer ? ctx.consume : ctx.provide;
-      if (map.has(type)) break;
-      map.set(type, null);
+      const pmap = asConsumer ? ctx.consume : ctx.provide;
+      if (pmap.has(type)) break;
+      pmap.set(type, null);
       ctx = ctx.parent;
     }
+
+    return () => set.delete(value);
   }
 
   private traverse(accept: (ctx: Context) => boolean | void) {
@@ -153,11 +160,7 @@ class Context {
     if (arg2) {
       if (parent) arg2(parent, false, true);
       for (const child of children) arg2(child, true, true);
-      let set = this.consume.get(Type) as Set<any>;
-      if (!set) this.consume.set(Type, (set = new Set()));
-      set.add(arg2);
-      this.touch(Type, true);
-      return () => set.delete(arg2);
+      return this.register(Type, arg2, true);
     }
 
     if (parent) return parent;
@@ -229,7 +232,7 @@ class Context {
   }
 
   add(I: State, implicit?: boolean) {
-    const { provide, cleanup } = this;
+    const { cleanup } = this;
 
     const TT = types(I);
     const expects = new Map<Context.Expect, () => void>();
@@ -249,14 +252,7 @@ class Context {
       return found;
     }
 
-    for (const T of TT) {
-      const tup = [I, !implicit] as [State, boolean];
-      let reg = provide.get(T);
-      if (!reg) provide.set(T, (reg = new Set()));
-      reg.add(tup);
-      onDone.add(() => reg.delete(tup));
-      this.touch(T);
-    }
+    for (const T of TT) onDone.add(this.register(T, [I, !implicit]));
 
     queue(this, false);
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
