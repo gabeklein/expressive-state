@@ -44,10 +44,21 @@ function above(from: Context) {
   return out;
 }
 
-function below(from: Context) {
+function below(from: Context, predicate: (ctx: Context) => boolean) {
   const queue = [...from.children];
-  for (const q of queue) for (const c of q.children) queue.push(c);
+  for (const q of queue)
+    for (const c of q.children) if (predicate(c)) queue.push(c);
   return queue;
+}
+
+function touch(from: Context, T: State.Extends, provides?: boolean) {
+  let ctx = from.parent;
+  while (ctx) {
+    const map = provides ? ctx.provide : ctx.consume;
+    if (map.has(T)) break;
+    map.set(T, null);
+    ctx = ctx.parent;
+  }
 }
 
 declare namespace Context {
@@ -69,12 +80,12 @@ class Context {
   public id = uid();
   public parent?: Context;
   public children = new Set<Context>();
-  public listeners = new Map<State.Extends, Set<Context.Expect>>();
+  public consume = new Map<State.Extends, Set<Context.Expect> | null>();
+  public provide = new Map<State.Extends, Set<[State, boolean]> | null>();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
 
   private cleanup = new Map<string | number | Function, () => void>();
-  private registry = new Map<State.Extends, Set<[State, boolean]>>();
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
@@ -114,7 +125,7 @@ class Context {
 
     if (!arg2 || existing)
       for (const ctx of above(this)) {
-        const entries = ctx.registry.get(Type);
+        const entries = ctx.provide.get(Type);
         if (entries) {
           for (const [state, explicit] of entries) {
             if (parent === state) continue;
@@ -139,9 +150,9 @@ class Context {
     const children: T[] = [];
 
     if (arg2 === true || existing)
-      for (const ctx of below(this)) {
-        const entries = ctx.registry.get(Type);
-        if (entries) for (const [state] of entries) children.push(state as T);
+      for (const ctx of below(this, (c) => c.provide.has(Type))) {
+        const entries = ctx.provide.get(Type);
+        for (const [state] of entries || []) children.push(state as T);
       }
 
     if (arg2 === true) return children;
@@ -149,10 +160,10 @@ class Context {
     if (arg2) {
       if (parent) arg2(parent, false, true);
       for (const child of children) arg2(child, true, true);
-      const map = this.listeners;
-      let set = map.get(Type) as Set<any>;
-      if (!set) map.set(Type, (set = new Set()));
+      let set = this.consume.get(Type) as Set<any>;
+      if (!set) this.consume.set(Type, (set = new Set()));
       set.add(arg2);
+      touch(this, Type);
       return () => set.delete(arg2);
     }
 
@@ -225,15 +236,41 @@ class Context {
   }
 
   add(I: State, implicit?: boolean) {
-    const { registry } = this;
+    const { provide, cleanup } = this;
 
     const TT = types(I);
-    const expects = new Map<Context.Expect, boolean | (() => void) | void>();
+    const expects = new Map<Context.Expect, boolean | (() => void)>();
     const removes = new Set<() => void>();
 
-    function watching(from: Context) {
-      return TT.map((T) => [...(from.listeners.get(T) || [])]).flat();
+    for (const T of TT) {
+      const tup = [I, !implicit] as [State, boolean];
+      let reg = provide.get(T);
+      if (!reg) provide.set(T, (reg = new Set()));
+      reg.add(tup);
+      removes.add(() => reg.delete(tup));
+
+      touch(this, T, true);
     }
+
+    for (const [isAbove, items] of [
+      [true, above(this)] as const,
+      [false, below(this, (c) => TT.some((T) => c.consume.has(T)))] as const
+    ])
+      for (const ctx of items)
+        for (const T of TT) {
+          const list = ctx.consume.get(T) || [];
+          for (const cb of list)
+            expects.set(cb, isAbove ? ctx !== this : false);
+        }
+
+    context(I, this);
+
+    listener(I, () => {
+      for (const [cb, isChild] of expects)
+        expects.set(cb, cb(I, !!isChild, false) || false);
+
+      return null;
+    });
 
     function flush() {
       removes.forEach((r) => r());
@@ -242,38 +279,12 @@ class Context {
       expects.clear();
     }
 
-    for (const T of TT) {
-      const tup = [I, !implicit] as [State, boolean];
-      let reg = registry.get(T);
-      if (!reg) registry.set(T, (reg = new Set()));
-      reg.add(tup);
-      removes.add(() => {
-        reg.delete(tup);
-        if (!reg.size) registry.delete(T);
-      });
+    function remove() {
+      cleanup.delete(remove);
+      flush();
     }
 
-    for (const ctx of above(this))
-      for (const cb of watching(ctx)) expects.set(cb, ctx !== this);
-
-    for (const ctx of below(this))
-      for (const cb of watching(ctx)) expects.set(cb, false);
-
-    context(I, this);
-
-    listener(I, () => {
-      for (const [cb, isChild] of expects)
-        expects.set(cb, cb(I, !!isChild, false));
-
-      return null;
-    });
-
-    const remove = () => {
-      this.cleanup.delete(remove);
-      flush();
-    };
-
-    this.cleanup.set(remove, remove);
+    cleanup.set(remove, remove);
 
     return remove;
   }
