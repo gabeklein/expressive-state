@@ -44,16 +44,6 @@ function below(from: Context) {
   return queue;
 }
 
-function subscribe(ctx: Context, T: State.Extends, cb: Context.Expect<any>) {
-  const map = ctx.listeners;
-  let set = map.get(T);
-  if (!set) map.set(T, (set = new Set()));
-  set.add(cb);
-  return () => {
-    set.delete(cb);
-  };
-}
-
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
@@ -104,17 +94,19 @@ class Context {
   /** Subscribe to a type becoming available in either direction. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    callback: Context.Expect<T>
+    callback: Context.Expect<T>,
+    existing?: boolean
   ): () => void;
 
   public get<T extends State>(
     Type: State.Extends<T>,
-    arg2?: boolean | Context.Expect<T>
+    arg2?: boolean | Context.Expect<T>,
+    existing = typeof arg2 == 'function'
   ) {
     let parent: T | null | undefined;
     let priority = false;
 
-    if (arg2 !== true)
+    if (!arg2 || existing)
       for (const ctx of above(this)) {
         const entries = ctx.registry.get(Type);
         if (entries) {
@@ -140,7 +132,7 @@ class Context {
 
     const children: T[] = [];
 
-    if (arg2)
+    if (arg2 === true || existing)
       for (const ctx of below(this)) {
         const entries = ctx.registry.get(Type);
         if (entries) for (const [state] of entries) children.push(state as T);
@@ -151,7 +143,11 @@ class Context {
     if (arg2) {
       if (parent) arg2(parent, false, true);
       for (const child of children) arg2(child, true, true);
-      return subscribe(this, Type, arg2);
+      const map = this.listeners;
+      let set = map.get(Type) as Set<any>;
+      if (!set) map.set(Type, (set = new Set()));
+      set.add(arg2);
+      return () => set.delete(arg2);
     }
 
     if (parent) return parent;
