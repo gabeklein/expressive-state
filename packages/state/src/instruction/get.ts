@@ -121,9 +121,7 @@ function get<T extends State>(
     });
 
     if (!found && arg1 !== false)
-      throw new Error(
-        `Required ${Type} not found in context for ${subject}.`
-      );
+      throw new Error(`Required ${Type} not found in context for ${subject}.`);
 
     return {
       get: arg1 !== false,
@@ -138,13 +136,12 @@ function getDownstream<T extends State>(
 ) {
   return use<T[]>((key, subject) => {
     const applied = new Set<State>();
-    const reset = () => {
+
+    function reset() {
       update(subject, key, Array.from(applied));
-    };
+    }
 
-    const ctx = context(subject);
-
-    ctx.get(Type, (state, child) => {
+    context(subject).get(Type, (state, child) => {
       if (!child) return;
 
       let remove: (() => void) | undefined;
@@ -168,7 +165,7 @@ function getDownstream<T extends State>(
       applied.add(state);
       reset();
 
-      const done = () => {
+      function done() {
         if (flush) flush();
         ignore();
 
@@ -176,7 +173,7 @@ function getDownstream<T extends State>(
         reset();
 
         if (typeof remove == 'function') remove();
-      };
+      }
 
       const ignore = state.set(done, null);
 
@@ -192,9 +189,7 @@ function getDownstream<T extends State>(
 
 function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
   return use<T | undefined>((key, subject) => {
-    const ctx = context(subject);
-
-    ctx.get(Type, (state, child) => {
+    context(subject).get(Type, (state, child) => {
       if (!child) return;
       update(subject, key, state);
       const ignore = state.set(() => {
