@@ -111,74 +111,51 @@ class Context {
     Type: State.Extends<T>,
     arg2?: boolean | Context.Expect<T>
   ) {
-    if (typeof arg2 == 'function') {
+    let parent: T | null | undefined;
+    let priority = false;
+
+    if (arg2 !== true)
       for (const ctx of above(this)) {
         const entries = ctx.registry.get(Type);
         if (entries) {
-          let found: T | undefined;
-          let priority = false;
-
           for (const [state, explicit] of entries) {
-            if (found === state) continue;
-            if (!found || explicit > priority) {
-              found = state as T;
+            if (parent === state) continue;
+            if (!parent || explicit > priority) {
+              parent = state as T;
               priority = explicit;
               continue;
             }
-            if (!priority && !explicit) found = undefined;
-            else if (explicit)
+            if (!priority && !explicit) {
+              parent = null;
+              break;
+            }
+            if (explicit)
               throw new Error(
                 `Did find ${Type} in context, but multiple were defined.`
               );
           }
-
-          if (found) arg2(found, false, true);
           break;
         }
       }
 
+    const children: T[] = [];
+
+    if (arg2)
       for (const ctx of below(this)) {
         const entries = ctx.registry.get(Type);
-        if (entries)
-          for (const [state] of entries) arg2(state as T, true, true);
+        if (entries) for (const [state] of entries) children.push(state as T);
       }
 
+    if (arg2 === true) return children;
+
+    if (arg2) {
+      if (parent) arg2(parent, false, true);
+      for (const child of children) arg2(child, true, true);
       return subscribe(this, Type, arg2);
     }
 
-    if (arg2 === true) {
-      const out: T[] = [];
-      for (const ctx of below(this)) {
-        const entries = ctx.registry.get(Type) || [];
-        for (const [state] of entries) out.push(state as T);
-      }
-      return out;
-    }
-
-    let found: T | undefined;
-    let priority = false;
-
-    for (const ctx of above(this)) {
-      const entries = ctx.registry.get(Type);
-      if (entries) {
-        for (const [state, explicit] of entries) {
-          if (found === state) continue;
-          if (!found || explicit > priority) {
-            found = state as T;
-            priority = explicit;
-            continue;
-          }
-          if (!priority) return null;
-          if (explicit)
-            throw new Error(
-              `Did find ${Type} in context, but multiple were defined.`
-            );
-        }
-        break;
-      }
-    }
-
-    if (found) return found;
+    if (parent) return parent;
+    if (parent === null) return null;
     if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
