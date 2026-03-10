@@ -55,7 +55,7 @@ class Context {
 
   public id = uid();
   public parent?: Context;
-  public children = new Set<Context>();
+  public scope = new Set<Context>();
   public consume = new Map<State.Extends, Set<Context.Expect> | null>();
   public provide = new Map<State.Extends, Set<[State, boolean]> | null>();
 
@@ -66,7 +66,7 @@ class Context {
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
       this.parent = arg;
-      arg.children.add(this);
+      arg.scope.add(this);
     } else if (arg) {
       this.set(arg);
     }
@@ -90,9 +90,9 @@ class Context {
   }
 
   private traverse(accept: (ctx: Context) => boolean | void) {
-    const queue = [...this.children];
+    const queue = [...this.scope];
     for (const ctx of queue)
-      if (accept(ctx) !== false) for (const c of ctx.children) queue.push(c);
+      if (accept(ctx) !== false) for (const c of ctx.scope) queue.push(c);
   }
 
   /** Find specified type upstream. Throws if not found. */
@@ -299,12 +299,12 @@ class Context {
    */
   public pop() {
     this.inputs = {};
-    this.children.forEach((x) => x.pop());
-    this.children.clear();
+    this.scope.forEach((x) => x.pop());
+    this.scope.clear();
     this.cleanup.forEach((cb) => cb());
     this.cleanup.clear();
     if (this.parent) {
-      this.parent.children.delete(this);
+      this.parent.scope.delete(this);
     }
   }
 }
