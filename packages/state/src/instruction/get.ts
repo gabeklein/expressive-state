@@ -1,6 +1,6 @@
 import { scope } from '../observable';
-import { context } from '../context';
-import { State, PARENT, update } from '../state';
+import { find, parent } from '../context';
+import { State, update } from '../state';
 import { use } from './use';
 
 type Type<T extends State> = State.Extends<T> & typeof State;
@@ -94,7 +94,7 @@ function get<T extends State>(
       : getDownstream(Type, arg2 as get.Callback<T>);
 
   return use<T>((key, subject) => {
-    const hasParent = PARENT.get(subject) as T;
+    const direct = parent(subject, true) as T;
     const callback =
       typeof arg1 === 'function' ? (arg1 as get.Callback<T>) : undefined;
 
@@ -106,15 +106,14 @@ function get<T extends State>(
       update(subject, key, value);
     }
 
-    if (hasParent && hasParent instanceof Type) {
-      assign(hasParent);
+    if (direct && direct instanceof Type) {
+      assign(direct);
       return {};
     }
 
-    const ctx = context(subject);
     let found = false;
 
-    ctx.get(Type, (state, child) => {
+    find(subject, Type, (state, child) => {
       if (child || state === subject) return;
       found = true;
       assign(state);
@@ -142,9 +141,7 @@ function getDownstream<T extends State>(
       update(subject, key, Array.from(applied));
     };
 
-    const ctx = context(subject);
-
-    ctx.get(Type, (state, child) => {
+    find(subject, Type, (state, child) => {
       if (!child) return;
 
       let remove: (() => void) | undefined;
@@ -192,9 +189,7 @@ function getDownstream<T extends State>(
 
 function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
   return use<T | undefined>((key, subject) => {
-    const ctx = context(subject);
-
-    ctx.get(Type, (state, child) => {
+    find(subject, Type, (state, child) => {
       if (!child) return;
       update(subject, key, state);
       const ignore = state.set(() => {

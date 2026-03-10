@@ -19,4 +19,6 @@ State.use = SolidState.use;
 
 export { Provider } from './context';
 export { SolidState as State, SolidState as default };
-export { Context, get, use, ref, set } from '@expressive/state';
+export { get, use, ref, set } from '@expressive/state';
+export { find, apply, include, detach, link } from '@expressive/state';
+export type { Accept, Expect } from '@expressive/state';

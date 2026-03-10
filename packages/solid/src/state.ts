@@ -1,4 +1,4 @@
-import { State } from '@expressive/state';
+import { State, find } from '@expressive/state';
 import { Signal, createSignal, onCleanup, useContext } from 'solid-js';
 
 import { Lookup } from './context';
@@ -41,7 +41,8 @@ declare namespace SolidState {
 
 abstract class SolidState extends State {
   static get<T extends State>(this: State.Type<T>): Reactive<T> {
-    const instance = useContext(Lookup).get(this);
+    const boundary = useContext(Lookup);
+    const instance = find(boundary, this, false);
 
     if (!instance) throw new Error(`State not found in context: ${this.name}`);
 

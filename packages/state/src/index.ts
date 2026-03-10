@@ -5,4 +5,5 @@ export { ref } from './instruction/ref';
 
 export { State, State as default, unbind } from './state';
 export { watch, listener, event, Observable } from './observable';
-export { Context, context } from './context';
+export { find, apply, include, detach, parent, link } from './context';
+export type { Accept, Expect } from './context';

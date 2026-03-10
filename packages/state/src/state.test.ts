@@ -1,5 +1,6 @@
 import { vi, expect, it, describe, mockError, mockPromise } from '../vitest';
-import { Context } from './context';
+import { include, detach, link, PROVIDE } from './context';
+import { event } from './observable';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
@@ -640,67 +641,87 @@ describe('get method', () => {
     class Foo extends State {}
     class Bar extends State {}
 
+    function ctx() {
+      const h = Foo.new();
+      PROVIDE.set(h, new Map());
+      return h;
+    }
+
     it('will get from parent context', () => {
+      const h = ctx();
       const bar = new Bar();
       const foo = new Foo();
 
-      new Context(bar).push(foo);
+      include(h, bar);
+      event(bar);
+      include(h, foo);
+      event(foo);
 
       expect(foo.get(Bar)).toBe(bar);
     });
 
     it('will get peer state', () => {
+      const h = ctx();
       const foo = Foo.new();
       const bar = Bar.new();
 
-      new Context({ foo, bar });
+      include(h, foo);
+      include(h, bar);
 
       expect(foo.get(Bar)).toBe(bar);
     });
 
     it('will return undefined if not found', () => {
+      const h = ctx();
       const foo = Foo.new();
 
-      new Context(foo);
+      include(h, foo);
 
       expect(foo.get(Bar, false)).toBeUndefined();
     });
 
     it('will throw if required and not found', () => {
+      const h = ctx();
       const foo = Foo.new();
 
-      new Context(foo);
+      include(h, foo);
 
       expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
     });
 
     it('will throw if upstream not found', () => {
-      const context = new Context();
+      const h = ctx();
       const child = Bar.new();
 
-      context.push(child);
+      include(h, child);
 
       expect(() => child.get(Foo)).toThrow();
     });
 
     it('will return undefined if upstream optional', () => {
-      const context = new Context();
+      const h = ctx();
       const child = Bar.new();
 
-      context.push(child);
+      include(h, child);
 
       expect(child.get(Foo, false)).toBeUndefined();
     });
 
     it('will collect downstream state', () => {
+      const h = ctx();
       const parent = Foo.new();
-      const context = new Context(parent);
+      include(h, parent);
 
       const a = Bar.new();
       const b = Bar.new();
 
-      context.push(a);
-      context.push(b);
+      const ca = ctx();
+      link(h, ca);
+      include(ca, a);
+
+      const cb = ctx();
+      link(h, cb);
+      include(cb, b);
 
       const result = parent.get(Bar, true);
 
@@ -708,44 +729,52 @@ describe('get method', () => {
     });
 
     it('will fetch single downstream required', () => {
+      const h = ctx();
       const parent = Foo.new();
-      const context = new Context(parent);
+      include(h, parent);
 
       const child = Bar.new();
-      context.push(child);
+      const ch = ctx();
+      link(h, ch);
+      include(ch, child);
 
       expect(parent.get(Bar, true, true)).toBe(child);
     });
 
     it('will throw if single downstream required not found', () => {
+      const h = ctx();
       const parent = Foo.new();
-      new Context(parent);
+      include(h, parent);
 
       expect(() => parent.get(Bar, true, true)).toThrow();
     });
 
     it('will return undefined if single downstream optional', () => {
+      const h = ctx();
       const parent = Foo.new();
-      new Context(parent);
+      include(h, parent);
 
       expect(parent.get(Bar, true, false)).toBeUndefined();
     });
 
     it('will subscribe with callback', () => {
+      const h = ctx();
       const parent = Foo.new();
-      const context = new Context(parent);
+      include(h, parent);
 
       const callback = vi.fn();
       const unsub = parent.get(Bar, callback);
 
       const child = Bar.new();
-      const sub = context.push(child);
+      const ch = ctx();
+      link(h, ch);
+      include(ch, child);
 
       expect(callback).toHaveBeenCalledWith(child, true, false);
       expect(typeof unsub).toBe('function');
 
       unsub();
-      sub.pop();
+      detach(ch);
     });
   });
 

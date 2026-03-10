@@ -1,4 +1,5 @@
-import { context, Context } from './context';
+import { include, find, PARENT } from './context';
+import type { Expect } from './context';
 import {
   listener,
   watch,
@@ -21,9 +22,6 @@ const STATE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given State. */
 const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
-
-/** Parent-child relationships. */
-const PARENT = new WeakMap<State, State | null>();
 
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
@@ -230,10 +228,7 @@ abstract class State implements Observable {
   ): T | undefined;
 
   /** Subscribe to a type becoming available in context. */
-  get<T extends State>(
-    type: State.Type<T>,
-    callback: Context.Expect<T>
-  ): () => void;
+  get<T extends State>(type: State.Type<T>, callback: Expect<T>): () => void;
 
   /**
    * Check if state is expired.
@@ -253,7 +248,7 @@ abstract class State implements Observable {
 
   get(
     arg1?: State.Effect<this> | State.Type | string | null,
-    arg2?: boolean | Context.Expect | State.OnUpdate<this, any>,
+    arg2?: boolean | Expect | State.OnUpdate<this, any>,
     arg3?: boolean
   ) {
     const self = this.is;
@@ -585,7 +580,6 @@ function manage(
 
 function child(state: State, key: string | number) {
   let reset: (() => void) | undefined;
-  const ctx = context(state);
 
   listener(
     state,
@@ -603,10 +597,10 @@ function child(state: State, key: string | number) {
       if (prev) reset = undefined;
 
       if (value instanceof State) {
-        const remove = ctx.add(value, true);
+        const owned = !PARENT.has(value);
+        const remove = include(state, value, true);
 
-        if (!PARENT.has(value)) {
-          PARENT.set(value, state);
+        if (owned) {
           listener(state, () => event(value, null), null);
           reset = () => (remove(), event(value, null));
         } else reset = remove;
@@ -649,10 +643,10 @@ function values<T extends State>(state: T): State.Values<T> {
 function lookup(
   self: State,
   Type: State.Type,
-  arg2?: Context.Expect | boolean,
+  arg2?: Expect | boolean,
   arg3?: boolean
 ) {
-  const result = context(self).get(Type, arg2 as any);
+  const result = find(self, Type, arg2 as any);
   if (arg3 === undefined) return result;
   const [found] = result;
   if (found || arg3 !== true) return found;
@@ -739,4 +733,4 @@ function unbind(fn?: Function) {
   return METHOD.get(fn) || fn;
 }
 
-export { event, unbind, State, PARENT, STATE, uid, access, update };
+export { event, unbind, State, STATE, uid, access, update };

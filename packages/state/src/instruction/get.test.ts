@@ -1,4 +1,4 @@
-import { Context } from '../context';
+import { Context } from '../context.test';
 import { vi, describe, it, expect, mockPromise } from '../../vitest';
 import { State } from '../state';
 import { get } from './get';
@@ -793,4 +793,3 @@ describe('lifecycle callbacks', () => {
     expect(didNotify).toBeCalledTimes(1);
   });
 });
-

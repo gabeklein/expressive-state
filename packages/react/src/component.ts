@@ -1,4 +1,12 @@
-import { State, Context, watch, unbind, context } from '@expressive/state';
+import {
+  State,
+  watch,
+  unbind,
+  include,
+  detach,
+  parent,
+  event
+} from '@expressive/state';
 import { ReactNode, createElement, useState, useEffect } from 'react';
 import { Layers, Provide } from './context';
 
@@ -49,7 +57,7 @@ export type Props<T extends State> = Readonly<
 
 export interface Component<P = {}> extends State {
   readonly props: Props<this> & P;
-  context: Context;
+  context: State;
   state: State.Values<this>;
   fallback?: ReactNode;
 
@@ -108,11 +116,11 @@ State.as = function <T extends State, P extends object = {}>(
       this.set(props as {});
     }
 
-    get context() {
-      return context(this);
+    get context(): State {
+      return parent(this) || this;
     }
 
-    private set context(context: Context) {}
+    private set context(_boundary: State) {}
 
     get state() {
       return this.get();
@@ -121,18 +129,18 @@ State.as = function <T extends State, P extends object = {}>(
     private set state(_state: State.Values<this>) {}
 
     constructor(nextProps: any, ...rest: any[]) {
-      let context;
+      let ambient: State | undefined;
       const { is, ...props } = nextProps;
       const defaults = typeof argument === 'object' ? argument : {};
 
-      if (rest[0] instanceof Context) {
-        context = rest.shift() as Context;
+      if (rest[0] instanceof State) {
+        ambient = rest.shift() as State;
       }
 
       super(props, defaults, rest, is && ((x) => void is(x)));
       PROPS.set(this, nextProps);
 
-      if (context) context.push(this);
+      if (ambient) include(ambient, this);
 
       const AsComponent = Render.bind(
         this,
@@ -150,7 +158,7 @@ State.as = function <T extends State, P extends object = {}>(
     forceUpdate!: (callback?: () => void) => void;
 
     componentWillUnmount() {
-      this.context.pop();
+      detach(this);
       this.set(null);
     }
   }
@@ -168,6 +176,8 @@ function Render<T extends Component, P extends State.Assign<T>>(
   render?: (props: P, self: T) => ReactNode
 ) {
   const state = useState(() => {
+    event(this);
+
     let ready: boolean | undefined;
     let active: T;
 

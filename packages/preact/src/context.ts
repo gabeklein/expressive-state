@@ -1,23 +1,16 @@
-import { Context } from '@expressive/state';
-import { State } from '@expressive/react/state';
+import { State, apply, detach, link } from '@expressive/state';
+import type { Accept } from '@expressive/state';
 
 import { ComponentChildren, createContext, createElement } from 'preact';
 import { useContext, useEffect, useMemo } from 'preact/hooks';
 
-const Lookup = createContext(new Context());
+class Boundary extends State {}
 
-declare module '@expressive/state' {
-  namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
-  }
+const Lookup = createContext<State>(Boundary.new());
+
+export function useBoundary(): State {
+  return useContext(Lookup);
 }
-
-Context.use = (create?: boolean) => {
-  const ambient = useContext(Lookup);
-
-  return create ? useMemo(() => ambient.push(), [ambient]) : ambient;
-};
 
 declare namespace Consumer {
   type Props<T extends State> = {
@@ -43,30 +36,37 @@ declare namespace Provider {
   type ForEach<T> = (state: T) => void | (() => void);
 
   interface Props<T extends State> {
-    for: Context.Accept<T>;
+    for: Accept<T>;
     forEach?: ForEach<T>;
     children?: ComponentChildren;
   }
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const context = Context.use(true);
+  const ambient = useContext(Lookup);
+  const boundary = useMemo(() => {
+    const b = Boundary.new();
+    link(ambient, b);
+    return b;
+  }, [ambient]);
 
-  useEffect(() => () => context.pop(), [context]);
+  useEffect(() => () => detach(boundary), [boundary]);
 
-  context.set(props.for, (state) => {
-    if (props.forEach) {
-      const cleanup = props.forEach(state);
-
-      if (cleanup) state.set(cleanup, null);
-    }
-  });
+  apply(
+    boundary,
+    props.for,
+    props.forEach &&
+      ((state) => {
+        const cleanup = props.forEach!(state);
+        if (cleanup) state.set(cleanup, null);
+      })
+  );
 
   return createElement(
     Lookup.Provider,
     {
-      key: context.id,
-      value: context
+      key: String(boundary),
+      value: boundary
     },
     props.children
   );

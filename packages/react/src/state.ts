@@ -1,6 +1,11 @@
-import { State, Context, watch } from '@expressive/state';
+import { State, find, include, detach, watch, event } from '@expressive/state';
+import type { Expect } from '@expressive/state';
+import { useBoundary as _useBoundary } from './context';
 
-export const Pragma = {} as {
+export const Pragma = {
+  useBoundary: _useBoundary
+} as {
+  useBoundary(): State;
   useState<S>(initial: () => S): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   createElement(type: any, props?: any, ...children: any[]): any;
@@ -111,7 +116,7 @@ State.use = function <T extends State>(
   this: State.Type<T>,
   ...args: UseArgs<T>
 ) {
-  const outer = Context.use();
+  const ambient = Pragma.useBoundary();
   const state = Pragma.useState(() => {
     let ready: boolean | undefined;
     let active: T;
@@ -132,7 +137,8 @@ State.use = function <T extends State>(
       }
     });
 
-    const context = outer.push(instance);
+    include(ambient, instance);
+    event(instance);
 
     watch(instance, (current) => {
       active = current;
@@ -143,7 +149,7 @@ State.use = function <T extends State>(
     function didMount() {
       ready = true;
       return () => {
-        context.pop();
+        detach(instance);
         instance.set(null);
       };
     }
@@ -170,7 +176,7 @@ State.get = function <T extends State, R>(
   this: State.Extends<T>,
   argument?: boolean | GetFactory<T, unknown>
 ) {
-  const context = Context.use();
+  const boundary = Pragma.useBoundary();
   const state = Pragma.useState(() => {
     let instance: T | undefined;
     let unwatch: (() => void) | undefined;
@@ -212,7 +218,7 @@ State.get = function <T extends State, R>(
 
     let pending = false;
 
-    const unsubscribe = context.get(this, (next) => {
+    const unsubscribe = find(boundary, this, ((next: T) => {
       bind((instance = next));
 
       if (ready) {
@@ -230,7 +236,7 @@ State.get = function <T extends State, R>(
         unwatch = undefined;
         instance = undefined;
       };
-    });
+    }) as Expect<T>);
 
     if (!instance) {
       unsubscribe();
