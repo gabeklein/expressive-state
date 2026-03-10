@@ -238,15 +238,19 @@ class Context {
     const { provide, cleanup } = this;
 
     const TT = types(I);
-    const expects = new Map<Context.Expect, boolean | (() => void)>();
-    const removes = new Set<() => void>();
+    const expects = new Map<Context.Expect, () => void>();
+    const onDone = new Set<() => void>();
 
     function queue(ctx: Context, above: boolean) {
       let found = false;
       for (const T of TT) {
         const list = ctx.consume.get(T);
         if (list !== undefined) found = true;
-        for (const cb of list || []) expects.set(cb, above);
+        for (const cb of list || [])
+          expects.set(cb, () => {
+            const r = cb(I, above, false);
+            if (r) onDone.add(r);
+          });
       }
       return found;
     }
@@ -256,7 +260,7 @@ class Context {
       let reg = provide.get(T);
       if (!reg) provide.set(T, (reg = new Set()));
       reg.add(tup);
-      removes.add(() => reg.delete(tup));
+      onDone.add(() => reg.delete(tup));
       touch(this, T, true);
     }
 
@@ -267,17 +271,14 @@ class Context {
     context(I, this);
 
     listener(I, () => {
-      for (const [cb, isChild] of expects)
-        expects.set(cb, cb(I, !!isChild, false) || false);
-
+      expects.forEach((f) => f());
+      expects.clear();
       return null;
     });
 
     function flush() {
-      removes.forEach((r) => r());
-      removes.clear();
-      expects.forEach((r) => typeof r == 'function' && r());
-      expects.clear();
+      onDone.forEach((r) => r());
+      onDone.clear();
     }
 
     function remove() {
