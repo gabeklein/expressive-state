@@ -2,7 +2,7 @@ import {
   State,
   watch,
   unbind,
-  include,
+  provide,
   detach,
   parent,
   event
@@ -140,7 +140,7 @@ State.as = function <T extends State, P extends object = {}>(
       super(props, defaults, rest, is && ((x) => void is(x)));
       PROPS.set(this, nextProps);
 
-      if (ambient) include(ambient, this);
+      if (ambient) provide(ambient, this);
 
       const AsComponent = Render.bind(
         this,

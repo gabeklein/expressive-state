@@ -1,4 +1,4 @@
-import { State, find, include, detach, watch, event } from '@expressive/state';
+import { State, find, provide, detach, watch, event } from '@expressive/state';
 import type { Expect } from '@expressive/state';
 import { useBoundary as _useBoundary } from './context';
 
@@ -137,7 +137,7 @@ State.use = function <T extends State>(
       }
     });
 
-    include(ambient, instance);
+    provide(ambient, instance);
     event(instance);
 
     watch(instance, (current) => {

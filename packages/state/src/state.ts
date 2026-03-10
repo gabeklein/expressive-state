@@ -1,4 +1,4 @@
-import { include, find, PARENT } from './context';
+import { provide, find, PARENT } from './context';
 import type { Expect } from './context';
 import {
   listener,
@@ -598,7 +598,7 @@ function child(state: State, key: string | number) {
 
       if (value instanceof State) {
         const owned = !PARENT.has(value);
-        const remove = include(state, value, true);
+        const remove = provide(state, value, true);
 
         if (owned) {
           listener(state, () => event(value, null), null);

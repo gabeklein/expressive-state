@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { find, include, apply, detach, parent, link } from './context';
+import { find, provide, provides, detach, parent, link } from './context';
 import { State } from './state';
 import { event } from './observable';
 
@@ -12,17 +12,17 @@ export class Context extends State {
   constructor(include?: Accept, parent?: Context) {
     super();
     if (parent) link(parent, this);
-    if (include) apply(this, include);
+    if (include) provides(this, include);
   }
 
   add(target: State, implicit?: boolean) {
-    include(this, target, implicit);
+    provide(this, target, implicit);
     event(target);
     return target;
   }
 
   use(inputs: Accept, forEach?: ForEach<State>) {
-    apply(this, inputs, forEach);
+    provides(this, inputs, forEach);
   }
 
   has<T extends State>(Type: State.Extends<T>): T;
@@ -833,7 +833,7 @@ describe('parent function', () => {
   it('will return parent state', () => {
     const context = new Context();
     const child = Example.new();
-    include(context, child);
+    provide(context, child);
 
     expect(parent(child)).toBe(context);
   });

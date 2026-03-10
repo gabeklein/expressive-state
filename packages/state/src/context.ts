@@ -381,8 +381,8 @@ function link(p: State, child: State) {
 
 export {
   find,
-  provide as include,
-  provides as apply,
+  provide,
+  provides,
   detach,
   parent,
   link,

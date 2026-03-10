@@ -1,4 +1,4 @@
-import { State, apply, detach, link } from '@expressive/state';
+import { State, provides, detach, link } from '@expressive/state';
 import type { Accept } from '@expressive/state';
 import {
   createContext,
@@ -25,7 +25,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   const boundary = Boundary.new();
 
   link(ambient, boundary);
-  apply(boundary, props.for, props.set && ((x) => void x.set(props.set!)));
+  provides(boundary, props.for, props.set && ((x) => void x.set(props.set!)));
 
   onCleanup(() => detach(boundary));
 

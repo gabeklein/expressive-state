@@ -1,4 +1,4 @@
-import { State, apply, detach, link } from '@expressive/state';
+import { State, provides, detach, link } from '@expressive/state';
 import type { Accept } from '@expressive/state';
 import {
   createContext,
@@ -76,7 +76,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 
   useEffect(() => () => detach(context), [context]);
 
-  apply(
+  provides(
     context,
     props.for,
     props.forEach &&

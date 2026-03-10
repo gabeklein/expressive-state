@@ -1,5 +1,5 @@
 import { vi, expect, it, describe, mockError, mockPromise } from '../vitest';
-import { include, detach, link, PROVIDE } from './context';
+import { provide, detach, link, PROVIDE } from './context';
 import { event } from './observable';
 import { get } from './instruction/get';
 import { ref } from './instruction/ref';
@@ -652,9 +652,9 @@ describe('get method', () => {
       const bar = new Bar();
       const foo = new Foo();
 
-      include(h, bar);
+      provide(h, bar);
       event(bar);
-      include(h, foo);
+      provide(h, foo);
       event(foo);
 
       expect(foo.get(Bar)).toBe(bar);
@@ -665,8 +665,8 @@ describe('get method', () => {
       const foo = Foo.new();
       const bar = Bar.new();
 
-      include(h, foo);
-      include(h, bar);
+      provide(h, foo);
+      provide(h, bar);
 
       expect(foo.get(Bar)).toBe(bar);
     });
@@ -675,7 +675,7 @@ describe('get method', () => {
       const h = ctx();
       const foo = Foo.new();
 
-      include(h, foo);
+      provide(h, foo);
 
       expect(foo.get(Bar, false)).toBeUndefined();
     });
@@ -684,7 +684,7 @@ describe('get method', () => {
       const h = ctx();
       const foo = Foo.new();
 
-      include(h, foo);
+      provide(h, foo);
 
       expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
     });
@@ -693,7 +693,7 @@ describe('get method', () => {
       const h = ctx();
       const child = Bar.new();
 
-      include(h, child);
+      provide(h, child);
 
       expect(() => child.get(Foo)).toThrow();
     });
@@ -702,7 +702,7 @@ describe('get method', () => {
       const h = ctx();
       const child = Bar.new();
 
-      include(h, child);
+      provide(h, child);
 
       expect(child.get(Foo, false)).toBeUndefined();
     });
@@ -710,18 +710,18 @@ describe('get method', () => {
     it('will collect downstream state', () => {
       const h = ctx();
       const parent = Foo.new();
-      include(h, parent);
+      provide(h, parent);
 
       const a = Bar.new();
       const b = Bar.new();
 
       const ca = ctx();
       link(h, ca);
-      include(ca, a);
+      provide(ca, a);
 
       const cb = ctx();
       link(h, cb);
-      include(cb, b);
+      provide(cb, b);
 
       const result = parent.get(Bar, true);
 
@@ -731,12 +731,12 @@ describe('get method', () => {
     it('will fetch single downstream required', () => {
       const h = ctx();
       const parent = Foo.new();
-      include(h, parent);
+      provide(h, parent);
 
       const child = Bar.new();
       const ch = ctx();
       link(h, ch);
-      include(ch, child);
+      provide(ch, child);
 
       expect(parent.get(Bar, true, true)).toBe(child);
     });
@@ -744,7 +744,7 @@ describe('get method', () => {
     it('will throw if single downstream required not found', () => {
       const h = ctx();
       const parent = Foo.new();
-      include(h, parent);
+      provide(h, parent);
 
       expect(() => parent.get(Bar, true, true)).toThrow();
     });
@@ -752,7 +752,7 @@ describe('get method', () => {
     it('will return undefined if single downstream optional', () => {
       const h = ctx();
       const parent = Foo.new();
-      include(h, parent);
+      provide(h, parent);
 
       expect(parent.get(Bar, true, false)).toBeUndefined();
     });
@@ -760,7 +760,7 @@ describe('get method', () => {
     it('will subscribe with callback', () => {
       const h = ctx();
       const parent = Foo.new();
-      include(h, parent);
+      provide(h, parent);
 
       const callback = vi.fn();
       const unsub = parent.get(Bar, callback);
@@ -768,7 +768,7 @@ describe('get method', () => {
       const child = Bar.new();
       const ch = ctx();
       link(h, ch);
-      include(ch, child);
+      provide(ch, child);
 
       expect(callback).toHaveBeenCalledWith(child, true, false);
       expect(typeof unsub).toBe('function');

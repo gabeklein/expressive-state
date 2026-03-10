@@ -1,4 +1,4 @@
-import { State, apply, detach, link } from '@expressive/state';
+import { State, provides, detach, link } from '@expressive/state';
 import type { Accept } from '@expressive/state';
 
 import { ComponentChildren, createContext, createElement } from 'preact';
@@ -52,7 +52,7 @@ function Provider<T extends State>(props: Provider.Props<T>) {
 
   useEffect(() => () => detach(boundary), [boundary]);
 
-  apply(
+  provides(
     boundary,
     props.for,
     props.forEach &&
