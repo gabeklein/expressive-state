@@ -68,7 +68,7 @@ class Context {
   protected inputs: Record<string | number, State | State.Extends> = {};
 
   private cleanup = new Map<string | number | Function, () => void>();
-  private registry = new Map<State.Extends, [State, boolean][]>();
+  private registry = new Map<State.Extends, Set<[State, boolean]>>();
 
   constructor(arg?: Context | Context.Accept) {
     if (arg instanceof Context) {
@@ -220,73 +220,51 @@ class Context {
 
   add(I: State, implicit?: boolean) {
     const { registry } = this;
-    const cleanup = new Map<string | Function, () => void>();
 
     const TT = types(I);
+    const expects = new Map<Context.Expect, boolean | (() => void) | void>();
+    const removes = new Set<() => void>();
 
-    for (const T of TT) {
-      let arr = registry.get(T);
-      if (!arr) registry.set(T, (arr = []));
-      arr.push([I, !implicit]);
+    function watching(from: Context) {
+      return TT.map((T) => [...(from.listeners.get(T) || [])]).flat();
     }
 
-    /* v8 ignore next 9 -- @preserve */
-    cleanup.set('', () => {
-      for (const T of TT) {
-        const arr = registry.get(T);
-        if (arr) {
-          const idx = arr.findIndex((e) => e[0] === I);
-          if (idx >= 0) arr.splice(idx, 1);
-          if (!arr.length) registry.delete(T);
-        }
-      }
-    });
+    function flush() {
+      removes.forEach((r) => r());
+      removes.clear();
+      expects.forEach((r) => typeof r == 'function' && r());
+      expects.clear();
+    }
 
-    const IT = types(I);
-    const expects = [] as [Context.Expect, boolean][];
-    const seen = new Set<Context.Expect>();
+    for (const T of TT) {
+      const tup = [I, !implicit] as [State, boolean];
+      let reg = registry.get(T);
+      if (!reg) registry.set(T, (reg = new Set()));
+      reg.add(tup);
+      removes.add(() => {
+        reg.delete(tup);
+        if (!reg.size) registry.delete(T);
+      });
+    }
 
     for (const ctx of above(this))
-      for (const T of IT) {
-        const set = ctx.listeners.get(T);
-        if (set)
-          for (const cb of set)
-            if (!seen.has(cb)) {
-              seen.add(cb);
-              expects.push([cb, ctx !== this]);
-            }
-      }
+      for (const cb of watching(ctx)) expects.set(cb, ctx !== this);
 
     for (const ctx of below(this))
-      for (const T of IT) {
-        const set = ctx.listeners.get(T);
-        if (set)
-          for (const cb of set)
-            if (!seen.has(cb)) {
-              seen.add(cb);
-              expects.push([cb, false]);
-            }
-      }
-
-    const unwatch = listener(I, (key) => {
-      if (key === true)
-        for (const [cb, child] of expects) {
-          const r = cb(I, child, false);
-          if (r) cleanup.set(r, r);
-        }
-    });
-
-    const reset = () => {
-      unwatch();
-      cleanup.forEach((cb) => cb());
-      cleanup.clear();
-    };
+      for (const cb of watching(ctx)) expects.set(cb, false);
 
     context(I, this);
 
+    listener(I, () => {
+      for (const [cb, isChild] of expects)
+        expects.set(cb, cb(I, !!isChild, false));
+
+      return null;
+    });
+
     const remove = () => {
       this.cleanup.delete(remove);
-      reset();
+      flush();
     };
 
     this.cleanup.set(remove, remove);

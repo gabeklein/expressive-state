@@ -168,7 +168,7 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
 
   // should be called again with replacement
   expect(cb).toBeCalledTimes(2);
-  expect(cb.mock.calls[1][0]).toBe(foo2);
+  expect(cb).toBeCalledWith(foo2, false, false);
 });
 
 it('will not add stale implicit if property changes before context attaches', () => {
