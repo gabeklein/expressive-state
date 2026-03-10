@@ -50,9 +50,15 @@ function get(source: any, key: any, Type: new () => any) {
   return value;
 }
 
+const TYPES = new WeakMap<State.Extends, State.Extends[]>();
+
 function types(state: State) {
   let T = state.constructor as State.Extends;
+  const cached = TYPES.get(T);
+  if (cached) return cached;
+
   const out: State.Extends[] = [];
+  TYPES.set(T, out);
   while (T !== State) {
     out.push(T);
     T = Object.getPrototypeOf(T);
@@ -118,42 +124,53 @@ function find<T extends State>(
 function find<T extends State>(
   state: State,
   Type: State.Extends<T>,
-  arg2?: boolean | Expect<T>
+  arg2?: boolean | Expect<T>,
+  existing = typeof arg2 == 'function'
 ) {
-  if (typeof arg2 == 'function') {
+  let parent: T | null | undefined;
+  let priority = false;
+
+  if (!arg2 || existing)
     for (const s of above(state)) {
       const registry = PROVIDE.get(s);
       if (!registry) continue;
       const entries = registry.get(Type);
       if (entries) {
-        let found: T | undefined;
-        let priority = false;
-
         for (const [state, explicit] of entries) {
-          if (found === state) continue;
-          if (!found || explicit > priority) {
-            found = state as T;
+          if (parent === state) continue;
+          if (!parent || explicit > priority) {
+            parent = state as T;
             priority = explicit;
             continue;
           }
-          if (!priority && !explicit) found = undefined;
-          else if (explicit)
+          if (!priority && !explicit) {
+            parent = null;
+            break;
+          }
+          if (explicit)
             throw new Error(
               `Did find ${Type} in context, but multiple were defined.`
             );
         }
-
-        if (found) arg2(found, false, true);
         break;
       }
     }
 
+  const children: T[] = [];
+
+  if (arg2 === true || existing)
     for (const s of below(root(state))) {
       const registry = PROVIDE.get(s);
       if (!registry) continue;
       const entries = registry.get(Type);
-      if (entries) for (const [st] of entries) arg2(st as T, true, true);
+      if (entries) for (const [st] of entries) children.push(st as T);
     }
+
+  if (arg2 === true) return children;
+
+  if (typeof arg2 == 'function') {
+    if (parent) arg2(parent, false, true);
+    for (const child of children) arg2(child, true, true);
 
     const set = get(get(CONSUME, state, Map), Type, Set);
     set.add(arg2 as Expect);
@@ -163,42 +180,8 @@ function find<T extends State>(
     };
   }
 
-  if (arg2 === true) {
-    const out: T[] = [];
-    for (const s of below(root(state))) {
-      const registry = PROVIDE.get(s);
-      if (!registry) continue;
-      const entries = registry.get(Type) || [];
-      for (const [state] of entries) out.push(state as T);
-    }
-    return out;
-  }
-
-  let found: T | undefined;
-  let priority = false;
-
-  for (const s of above(state)) {
-    const registry = PROVIDE.get(s);
-    if (!registry) continue;
-    const entries = registry.get(Type);
-    if (!entries) continue;
-    for (const [state, explicit] of entries) {
-      if (found === state) continue;
-      if (!found || explicit > priority) {
-        found = state as T;
-        priority = explicit;
-        continue;
-      }
-      if (!priority) return null;
-      if (explicit)
-        throw new Error(
-          `Did find ${Type} in context, but multiple were defined.`
-        );
-    }
-    break;
-  }
-
-  if (found) return found;
+  if (parent) return parent;
+  if (parent === null) return null;
   if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
 }
 
@@ -272,14 +255,13 @@ function provide(from: State, subject: State, implicit?: boolean) {
   const registry = get(PROVIDE, registrar, Map);
 
   const TT = types(subject);
-  const cleanup = new Map<string | Function, () => void>();
+  const expects = new Map<Expect, () => void>();
+  const onDone = new Set<() => void>();
 
-  for (const T of TT) {
-    get(registry, T, Array).push([subject, !implicit]);
-  }
+  for (const T of TT) get(registry, T, Array).push([subject, !implicit]);
 
   /* v8 ignore next 9 -- @preserve */
-  cleanup.set('', () => {
+  onDone.add(() => {
     for (const T of TT) {
       const arr = registry.get(T);
       if (arr) {
@@ -294,18 +276,16 @@ function provide(from: State, subject: State, implicit?: boolean) {
 
   get(CHILDREN, from, Set).add(subject);
 
-  const expects: [Expect, boolean][] = [];
-  const seen = new Set<Expect>();
-
   function collect(state: State, child: boolean) {
     for (const T of TT) {
       const set = CONSUME.get(state)?.get(T);
       if (set)
         for (const cb of set)
-          if (!seen.has(cb)) {
-            seen.add(cb);
-            expects.push([cb, child]);
-          }
+          if (!expects.has(cb))
+            expects.set(cb, () => {
+              const r = cb(subject, child, false);
+              if (r) onDone.add(r);
+            });
     }
   }
 
@@ -315,7 +295,7 @@ function provide(from: State, subject: State, implicit?: boolean) {
     const provided = PROVIDE.get(s);
     if (provided)
       for (const entries of provided.values())
-        for (const [st] of entries) if (st !== subject) collect(st, isAbove);
+        for (const [st] of entries) if (st !== subject) collect(st, true);
   }
 
   for (const s of below(registrar)) {
@@ -327,28 +307,24 @@ function provide(from: State, subject: State, implicit?: boolean) {
   }
 
   const unwatch = listener(subject, (key) => {
-    if (key === true)
-      for (const [cb, child] of expects) {
-        const r = cb(subject, child, false);
-        if (r) cleanup.set(r, r);
-      }
+    if (key === true) {
+      expects.forEach((f) => f());
+      expects.clear();
+    }
   });
 
-  const reset = () => {
-    unwatch();
-    cleanup.forEach((cb) => cb());
-    cleanup.clear();
-    CHILDREN.get(from)?.delete(subject);
-  };
+  onDone.add(unwatch);
+  onDone.add(() => CHILDREN.get(from)?.delete(subject));
 
   const hostCleanup = get(CLEANUP, from, Map);
   const targetCleanup = get(CLEANUP, subject, Map);
 
-  const remove = () => {
+  function remove() {
     hostCleanup.delete(remove);
     targetCleanup.delete(remove);
-    reset();
-  };
+    onDone.forEach((r) => r());
+    onDone.clear();
+  }
 
   hostCleanup.set(remove, remove);
   targetCleanup.set(remove, remove);
