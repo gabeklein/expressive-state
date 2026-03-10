@@ -43,11 +43,10 @@ function above(from: Context) {
   return out;
 }
 
-function below(from: Context, predicate: (ctx: Context) => boolean) {
+function walk(from: Context, callback: (ctx: Context) => boolean | void) {
   const queue = [...from.children];
-  for (const q of queue)
-    for (const c of q.children) if (predicate(c)) queue.push(c);
-  return queue;
+  for (const ctx of queue)
+    if (callback(ctx) !== false) for (const c of ctx.children) queue.push(c);
 }
 
 function touch(from: Context, T: State.Extends, provides?: boolean) {
@@ -149,10 +148,11 @@ class Context {
     const children: T[] = [];
 
     if (arg2 === true || existing)
-      for (const ctx of below(this, (c) => c.provide.has(Type))) {
-        const entries = ctx.provide.get(Type);
-        for (const [state] of entries || []) children.push(state as T);
-      }
+      walk(this, (ctx) => {
+        const entries = ctx.provide.get(Type) || [];
+        for (const [state] of entries) children.push(state as T);
+        return ctx.provide.has(Type);
+      });
 
     if (arg2 === true) return children;
 
@@ -241,6 +241,16 @@ class Context {
     const expects = new Map<Context.Expect, boolean | (() => void)>();
     const removes = new Set<() => void>();
 
+    function queue(ctx: Context, above: boolean) {
+      let found = false;
+      for (const T of TT) {
+        const list = ctx.consume.get(T);
+        if (list !== undefined) found = true;
+        for (const cb of list || []) expects.set(cb, above);
+      }
+      return found;
+    }
+
     for (const T of TT) {
       const tup = [I, !implicit] as [State, boolean];
       let reg = provide.get(T);
@@ -250,16 +260,9 @@ class Context {
       touch(this, T, true);
     }
 
-    for (const [isAbove, items] of <[boolean, Iterable<Context>][]>[
-      [false, [this]],
-      [true, above(this)],
-      [false, below(this, (c) => TT.some((T) => c.consume.has(T)))]
-    ])
-      for (const ctx of items)
-        for (const T of TT) {
-          const list = ctx.consume.get(T) || [];
-          for (const cb of list) expects.set(cb, isAbove);
-        }
+    queue(this, false);
+    above(this).forEach((ctx) => queue(ctx, true));
+    walk(this, (ctx) => queue(ctx, false));
 
     context(I, this);
 
@@ -309,7 +312,9 @@ class Context {
     this.children.clear();
     this.cleanup.forEach((cb) => cb());
     this.cleanup.clear();
-    if (this.parent) this.parent.children.delete(this);
+    if (this.parent) {
+      this.parent.children.delete(this);
+    }
   }
 }
 
