@@ -39,9 +39,9 @@ function above(from: Context) {
 }
 
 function below(from: Context) {
-  const queue = new Set(from.children);
-  for (const q of queue) for (const c of q.children) queue.add(c);
-  return [...queue];
+  const queue = [...from.children];
+  for (const q of queue) for (const c of q.children) queue.push(c);
+  return queue;
 }
 
 declare namespace Context {
