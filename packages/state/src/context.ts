@@ -21,14 +21,20 @@ function context({ is }: State, set?: Context) {
   return ctx;
 }
 
+const TYPES = new WeakMap<State.Extends, State.Extends[]>();
+
 function types(state: State) {
   let T = state.constructor as State.Extends;
-  const out: State.Extends[] = [];
-  while (T !== State) {
-    out.push(T);
-    T = Object.getPrototypeOf(T);
+  let types = TYPES.get(T);
+  if (!types) {
+    TYPES.set(T, (types = []));
+    while (T !== State) {
+      types.push(T);
+      T = Object.getPrototypeOf(T);
+    }
   }
-  return out;
+
+  return types;
 }
 
 function above(from: Context) {
