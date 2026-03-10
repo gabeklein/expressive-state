@@ -37,12 +37,6 @@ function types(state: State) {
   return types;
 }
 
-function above(from: Context) {
-  const out: Context[] = [];
-  while ((from = from.parent!)) out.push(from);
-  return out;
-}
-
 function walk(from: Context, callback: (ctx: Context) => boolean | void) {
   const queue = [...from.children];
   for (const ctx of queue)
@@ -122,7 +116,7 @@ class Context {
     let priority = false;
 
     if (!arg2 || existing)
-      for (const ctx of [this, ...above(this)]) {
+      for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
         const entries = ctx.provide.get(Type);
         if (entries) {
           for (const [state, explicit] of entries) {
@@ -265,7 +259,7 @@ class Context {
     }
 
     queue(this, false);
-    above(this).forEach((ctx) => queue(ctx, true));
+    for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     walk(this, (ctx) => queue(ctx, false));
 
     context(I, this);
