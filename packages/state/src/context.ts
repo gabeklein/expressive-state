@@ -39,8 +39,7 @@ function types(state: State) {
 
 function above(from: Context) {
   const out: Context[] = [];
-  do out.push(from);
-  while ((from = from.parent!));
+  while ((from = from.parent!)) out.push(from);
   return out;
 }
 
@@ -124,7 +123,7 @@ class Context {
     let priority = false;
 
     if (!arg2 || existing)
-      for (const ctx of above(this)) {
+      for (const ctx of [this, ...above(this)]) {
         const entries = ctx.provide.get(Type);
         if (entries) {
           for (const [state, explicit] of entries) {
@@ -248,19 +247,18 @@ class Context {
       if (!reg) provide.set(T, (reg = new Set()));
       reg.add(tup);
       removes.add(() => reg.delete(tup));
-
       touch(this, T, true);
     }
 
-    for (const [isAbove, items] of [
-      [true, above(this)] as const,
-      [false, below(this, (c) => TT.some((T) => c.consume.has(T)))] as const
+    for (const [isAbove, items] of <[boolean, Iterable<Context>][]>[
+      [false, [this]],
+      [true, above(this)],
+      [false, below(this, (c) => TT.some((T) => c.consume.has(T)))]
     ])
       for (const ctx of items)
         for (const T of TT) {
           const list = ctx.consume.get(T) || [];
-          for (const cb of list)
-            expects.set(cb, isAbove ? ctx !== this : false);
+          for (const cb of list) expects.set(cb, isAbove);
         }
 
     context(I, this);
