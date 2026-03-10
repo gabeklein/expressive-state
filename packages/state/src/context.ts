@@ -37,22 +37,6 @@ function types(state: State) {
   return types;
 }
 
-function traverse(from: Context, callback: (ctx: Context) => boolean | void) {
-  const queue = [...from.children];
-  for (const ctx of queue)
-    if (callback(ctx) !== false) for (const c of ctx.children) queue.push(c);
-}
-
-function touch(from: Context, T: State.Extends, provides?: boolean) {
-  let ctx = from.parent;
-  while (ctx) {
-    const map = provides ? ctx.provide : ctx.consume;
-    if (map.has(T)) break;
-    map.set(T, null);
-    ctx = ctx.parent;
-  }
-}
-
 declare namespace Context {
   type Accept<T extends State = State> =
     | T
@@ -86,6 +70,22 @@ class Context {
     } else if (arg) {
       this.set(arg);
     }
+  }
+
+  private touch(type: State.Extends, asConsumer?: boolean) {
+    let ctx = this.parent;
+    while (ctx) {
+      const map = asConsumer ? ctx.consume : ctx.provide;
+      if (map.has(type)) break;
+      map.set(type, null);
+      ctx = ctx.parent;
+    }
+  }
+
+  private traverse(accept: (ctx: Context) => boolean | void) {
+    const queue = [...this.children];
+    for (const ctx of queue)
+      if (accept(ctx) !== false) for (const c of ctx.children) queue.push(c);
   }
 
   /** Find specified type upstream. Throws if not found. */
@@ -142,7 +142,7 @@ class Context {
     const children: T[] = [];
 
     if (arg2 === true || existing)
-      traverse(this, (ctx) => {
+      this.traverse((ctx) => {
         const entries = ctx.provide.get(Type) || [];
         for (const [state] of entries) children.push(state as T);
         return ctx.provide.has(Type);
@@ -156,7 +156,7 @@ class Context {
       let set = this.consume.get(Type) as Set<any>;
       if (!set) this.consume.set(Type, (set = new Set()));
       set.add(arg2);
-      touch(this, Type);
+      this.touch(Type, true);
       return () => set.delete(arg2);
     }
 
@@ -255,12 +255,12 @@ class Context {
       if (!reg) provide.set(T, (reg = new Set()));
       reg.add(tup);
       onDone.add(() => reg.delete(tup));
-      touch(this, T, true);
+      this.touch(T);
     }
 
     queue(this, false);
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
-    traverse(this, (ctx) => queue(ctx, false));
+    this.traverse((ctx) => queue(ctx, false));
 
     context(I, this);
 
