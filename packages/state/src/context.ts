@@ -37,7 +37,7 @@ function types(state: State) {
   return types;
 }
 
-function walk(from: Context, callback: (ctx: Context) => boolean | void) {
+function traverse(from: Context, callback: (ctx: Context) => boolean | void) {
   const queue = [...from.children];
   for (const ctx of queue)
     if (callback(ctx) !== false) for (const c of ctx.children) queue.push(c);
@@ -142,7 +142,7 @@ class Context {
     const children: T[] = [];
 
     if (arg2 === true || existing)
-      walk(this, (ctx) => {
+      traverse(this, (ctx) => {
         const entries = ctx.provide.get(Type) || [];
         for (const [state] of entries) children.push(state as T);
         return ctx.provide.has(Type);
@@ -260,7 +260,7 @@ class Context {
 
     queue(this, false);
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
-    walk(this, (ctx) => queue(ctx, false));
+    traverse(this, (ctx) => queue(ctx, false));
 
     context(I, this);
 
