@@ -1,4 +1,4 @@
-import { observing } from '../observable';
+import { listener, observing } from '../observable';
 import { access, State, STATE, uid, update } from '../state';
 
 /**
@@ -12,15 +12,14 @@ type Instruction<T = any, M extends State = any> =
     key: Extract<State.Field<M>, string>,
     thisArg: M,
     state: State.Values<M>
-  ) => Instruction.Descriptor<T> | ((source: M) => T) | void;
+  ) => Instruction.Config<T> | (() => void) | void;
 
 declare namespace Instruction {
-  type Getter<T> = (source: State) => T;
-
-  type Descriptor<T = any> = {
-    get?: Getter<T> | boolean;
+  type Config<T = any> = {
+    get?: ((source: State) => T) | boolean;
     set?: State.Setter<T> | boolean;
     enumerable?: boolean;
+    destroy?: () => void;
     value?: T;
   };
 }
@@ -51,9 +50,11 @@ function init(this: State) {
 
     if (!output) continue;
 
-    const desc = typeof output == 'object' ? output : { get: output };
+    const desc = typeof output == 'function' ? { destroy: output } : output;
 
     if ('value' in desc) state[key] = desc.value;
+
+    if (desc.destroy) listener(this, desc.destroy, null);
 
     const self = this;
 

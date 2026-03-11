@@ -57,18 +57,15 @@ describe('instruction', () => {
 
   describe('getter', () => {
     it('will run upon access', () => {
-      const mockAccess = vi.fn((_subscriber) => 'foobar');
-      const mockApply = vi.fn((_key) => mockAccess);
+      const mockAccess = vi.fn((_subscriber: State) => 'foobar');
 
       class Test extends State {
-        property = use(mockApply);
+        property = use(() => ({ get: mockAccess }));
       }
 
       const instance = Test.new();
 
-      expect(mockApply).toBeCalledWith('property', expect.any(Test), {});
       expect(mockAccess).not.toBeCalled();
-
       expect(instance.property).toBe('foobar');
       expect(mockAccess).toBeCalledWith(instance);
     });
@@ -77,7 +74,7 @@ describe('instruction', () => {
       const didGetValue = vi.fn();
 
       class Test extends State {
-        property = use(() => didGetValue);
+        property = use(() => ({ get: didGetValue }));
       }
 
       const state = Test.new();
@@ -218,5 +215,38 @@ describe('instruction', () => {
       expect(didUpdate).toBeCalledTimes(1);
     });
   });
-});
 
+  describe('cleanup', () => {
+    it('will call cleanup function on destroy', () => {
+      const cleanup = vi.fn();
+
+      class Test extends State {
+        property = use(() => cleanup);
+      }
+
+      const test = Test.new();
+      expect(cleanup).not.toBeCalled();
+
+      test.set(null);
+      expect(cleanup).toBeCalled();
+    });
+
+    it('will call config destroy on destroy', () => {
+      const destroy = vi.fn();
+
+      class Test extends State {
+        property = use(() => ({
+          value: 'hello',
+          destroy
+        }));
+      }
+
+      const test = Test.new();
+      expect(test.property).toBe('hello');
+      expect(destroy).not.toBeCalled();
+
+      test.set(null);
+      expect(destroy).toBeCalled();
+    });
+  });
+});

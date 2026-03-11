@@ -91,7 +91,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         `Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`
       );
 
-    const property: Instruction.Descriptor = {};
+    const property: Instruction.Config = {};
 
     // Handle reactive compute modes
     if (value instanceof State || value === true) {
@@ -154,15 +154,17 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         update(subject, key, next, !isAsync);
       }
 
-      return () => {
-        if (!proxy) {
-          source(connect);
-          isAsync = true;
+      return {
+        get() {
+          if (!proxy) {
+            source(connect);
+            isAsync = true;
+          }
+
+          if (STALE.delete(compute)) compute();
+
+          return access(subject, key, !proxy) as T;
         }
-
-        if (STALE.delete(compute)) compute();
-
-        return access(subject, key, !proxy) as T;
       };
     }
 
