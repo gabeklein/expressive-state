@@ -5,22 +5,20 @@ import { access, State, STATE, uid, update } from '../state';
  * Property initializer, will run upon instance creation.
  * Optional returned callback will run when once upon first access.
  */
-type Apply<T = any, M extends State = any> =
-  // TODO: Should this allow for numbers/symbol properties?
-  (
-    this: M,
-    key: Extract<State.Field<M>, string>,
-    thisArg: M,
-    state: State.Values<M>
-  ) => Apply.Config<T> | (() => void) | void;
+type Apply<T = any, M extends State = any> = (
+  this: M,
+  key: Extract<State.Field<M>, string>,
+  thisArg: M,
+  state: State.Values<M>
+) => Apply.Config<T> | (() => void) | void;
 
 declare namespace Apply {
   type Config<T = any> = {
-    get?: ((source: State) => T) | boolean;
-    set?: State.Setter<T> | boolean;
-    enumerable?: boolean;
-    destroy?: () => void;
-    value?: T;
+    readonly get?: ((source: State) => T) | boolean;
+    readonly set?: State.Setter<T> | boolean;
+    readonly enumerable?: boolean;
+    readonly destroy?: () => void;
+    readonly value?: T;
   };
 }
 
@@ -38,41 +36,39 @@ State.on((_key, self) => {
   const state = STATE.get(self)!;
 
   for (const key in self) {
-    const { value } = Object.getOwnPropertyDescriptor(self, key)!;
-    const instruction = APPLY.get(value);
+    const desc = Object.getOwnPropertyDescriptor(self, key)!;
+    const instruction = APPLY.get(desc.value);
 
     if (!instruction) continue;
 
-    APPLY.delete(value);
+    APPLY.delete(desc.value);
     delete (self as any)[key];
 
     const output = instruction.call(self, key, self, state);
 
     if (!output) continue;
 
-    const desc = typeof output == 'function' ? { destroy: output } : output;
+    const config = typeof output == 'function' ? { destroy: output } : output;
 
-    if ('value' in desc) state[key] = desc.value;
-
-    if (desc.destroy) listener(self, desc.destroy, null);
+    if ('value' in config) state[key] = config.value;
+    if (config.destroy) listener(self, config.destroy, null);
 
     Object.defineProperty(self, key, {
-      enumerable: desc.enumerable !== false,
+      enumerable: config.enumerable !== false,
       get(this: State) {
         return observing(
           this,
           key,
-          typeof desc.get == 'function'
-            ? desc.get(this)
-            : access(self, key, desc.get)
+          typeof config.get == 'function'
+            ? config.get(this)
+            : access(self, key, config.get)
         );
       },
       set(next) {
-        if (desc.set === false) {
+        if (config.set === false) {
           throw new Error(`${self}.${key} is read-only.`);
         }
-
-        update(self, key, next, desc.set);
+        update(self, key, next, config.set);
       }
     });
   }
