@@ -31,9 +31,6 @@ const METHOD = new WeakMap<any, any>();
 /** List of methods defined by a given type. */
 const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 
-/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
-let EXPORT: Map<any, any> | undefined;
-
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -445,28 +442,6 @@ define(State, 'toString', {
   }
 });
 
-function assign(state: State, data: State.Assign<State>, silent?: boolean) {
-  emit(state, true);
-
-  const methods = METHODS.get(state.constructor)!;
-
-  for (const key in data) {
-    const bind = methods.get(key);
-
-    if (bind) bind.call(state, data[key]);
-    else if (key in state && key !== 'is') {
-      const desc = Object.getOwnPropertyDescriptor(state, key)!;
-      const set = desc && (desc.set as (value: any, silent?: boolean) => void);
-
-      if (set) {
-        set.call(state, data[key], silent);
-      } else {
-        (state as any)[key] = data[key];
-      }
-    }
-  }
-}
-
 /** Apply instructions and inherited event listeners. Ensure class metadata is ready. */
 function prepare(state: State) {
   let T = state.constructor as State.Extends;
@@ -527,9 +502,7 @@ function prepare(state: State) {
  * Accumulate and handle cleanup events.
  **/
 function init(state: State, ...args: State.Args) {
-  const store = {} as Record<string | number | symbol, unknown>;
-
-  STORE.set(state, store);
+  STORE.set(state, {});
 
   args = args.flat().filter((arg) => {
     if (typeof arg == 'string') ID.set(state, arg);
@@ -541,7 +514,6 @@ function init(state: State, ...args: State.Args) {
 
     for (const key in state) {
       const desc = Object.getOwnPropertyDescriptor(state, key)!;
-
       if ('value' in desc) manage(state, key, desc.value, true);
     }
 
@@ -599,27 +571,29 @@ function child(state: State, key: string | number) {
   );
 
   return (value: unknown, silent?: boolean) => {
-    if (update(state, key, value, silent)) {
-      const prev = reset;
+    if (!update(state, key, value, silent)) return;
 
-      if (prev) reset = undefined;
+    const prev = reset;
+    reset = undefined;
 
-      if (value instanceof State) {
-        const remove = ctx.add(value, true);
+    if (value instanceof State) {
+      const remove = ctx.add(value, true);
 
-        if (!PARENT.has(value)) {
-          PARENT.set(value, state);
-          listener(state, () => event(value, null), null);
-          reset = () => (remove(), event(value, null));
-        } else reset = remove;
+      if (!PARENT.has(value)) {
+        PARENT.set(value, state);
+        listener(state, () => event(value, null), null);
+        reset = () => (remove(), event(value, null));
+      } else reset = remove;
 
-        event(value);
-      }
-
-      if (prev) prev();
+      event(value);
     }
+
+    if (prev) prev();
   };
 }
+
+/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
+let EXPORT: Map<any, any> | undefined;
 
 function values<T extends State>(state: T): State.Values<T> {
   const values = {} as any;
@@ -695,6 +669,28 @@ function access(state: State, property: string, required?: boolean) {
     message: error.message,
     stack: error.stack
   });
+}
+
+function assign(state: State, data: State.Assign<State>, silent?: boolean) {
+  emit(state, true);
+
+  const methods = METHODS.get(state.constructor)!;
+
+  for (const key in data) {
+    const bind = methods.get(key);
+
+    if (bind) bind.call(state, data[key]);
+    else if (key in state && key !== 'is') {
+      const desc = Object.getOwnPropertyDescriptor(state, key)!;
+      const set = desc && (desc.set as (value: any, silent?: boolean) => void);
+
+      if (set) {
+        set.call(state, data[key], silent);
+      } else {
+        (state as any)[key] = data[key];
+      }
+    }
+  }
 }
 
 /**
