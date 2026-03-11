@@ -153,7 +153,6 @@ function pending<K extends Event>(state: Observable): K[] & PromiseLike<K[]> {
 }
 
 function emit(state: Observable, key: Signal): void {
-  const listeners = LISTENERS.get(state)!;
   const isReady = READY.has(state);
 
   if (key === true && isReady) return;
@@ -168,6 +167,8 @@ function emit(state: Observable, key: Signal): void {
   PENDING.set(state, (pending = new Set(isReady ? [key] : [true, key])));
 
   if (key === true || key === null) READY.set(state, key);
+
+  const listeners = LISTENERS.get(state)!;
 
   for (const key of pending)
     for (const [callback, filter] of listeners)
