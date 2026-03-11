@@ -1,5 +1,5 @@
 import { listener, observing } from '../observable';
-import { access, State, STATE, uid, update } from '../state';
+import { access, State, STORE, uid, update } from '../state';
 
 /**
  * Property initializer, will run upon instance creation.
@@ -33,7 +33,7 @@ function apply(arg1: Apply) {
 }
 
 State.on((_key, self) => {
-  const state = STATE.get(self)!;
+  const state = STORE.get(self)!;
 
   for (const key in self) {
     const desc = Object.getOwnPropertyDescriptor(self, key)!;

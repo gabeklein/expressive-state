@@ -17,7 +17,7 @@ const define = Object.defineProperty;
 const ID = new WeakMap<State, string>();
 
 /** Internal state assigned to states. */
-const STATE = new WeakMap<State, Record<string | number | symbol, unknown>>();
+const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 
 /** External listeners for any given State. */
 const NOTIFY = new WeakMap<State.Extends, Set<Observable.Notify>>();
@@ -166,6 +166,8 @@ abstract class State implements Observable {
   /**
    * Optional lifecycle hook called during State initialization.
    * Can return a cleanup function to run when state is destroyed.
+   *
+   * ⚠️ - It is recommended you protect this method.
    */
   protected new?(): void | (() => void);
 
@@ -385,7 +387,7 @@ abstract class State implements Observable {
    * Yeilds the key and current value for each property.
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
-    return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
+    return Object.entries(STORE.get(this.is)!)[Symbol.iterator]();
   }
 
   /**
@@ -527,7 +529,7 @@ function prepare(state: State) {
 function init(state: State, ...args: State.Args) {
   const store = {} as Record<string | number | symbol, unknown>;
 
-  STATE.set(state, store);
+  STORE.set(state, store);
 
   args = args.flat().filter((arg) => {
     if (typeof arg == 'string') ID.set(state, arg);
@@ -569,7 +571,7 @@ function manage(
   value: any,
   silent?: boolean
 ) {
-  const store = STATE.get(state)!;
+  const store = STORE.get(state)!;
   const set =
     value instanceof State ? child(state, key) : update.bind(null, state, key);
 
@@ -662,7 +664,7 @@ function lookup(
 }
 
 function access(state: State, property: string, required?: boolean) {
-  const store = STATE.get(state)!;
+  const store = STORE.get(state)!;
 
   if (property in store || required === false) {
     const value = store[property];
@@ -719,7 +721,7 @@ function update<T>(
       `Tried to update ${state}.${String(key)} but state is destroyed.`
     );
 
-  const store = STATE.get(state)!;
+  const store = STORE.get(state)!;
   const previous = store[key] as T;
 
   if (typeof arg == 'function') {
@@ -753,4 +755,4 @@ function unbind(fn?: Function) {
   return METHOD.get(fn) || fn;
 }
 
-export { event, unbind, State, PARENT, STATE, uid, access, update };
+export { event, unbind, State, PARENT, STORE, uid, access, update };
