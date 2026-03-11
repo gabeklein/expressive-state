@@ -160,25 +160,13 @@ class Context {
     required: boolean
   ): T | undefined;
 
-  /** Subscribe to a single downstream State. */
-  public one<T extends State>(
-    Type: State.Extends<T>,
-    callback: Context.Expect<T>
-  ): () => void;
-
-  public one<T extends State>(
-    Type: State.Extends<T>,
-    arg?: boolean | Context.Expect<T>
-  ) {
-    if (typeof arg === 'function') {
-      const [first] = this.all(Type);
-      if (first) arg(first, true);
-      return this.register(Type, [arg, true], true);
-    }
-
-    const [first] = this.all(Type);
-    if (first) return first;
-    if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
+  public one<T extends State>(Type: State.Extends<T>, required?: boolean) {
+    const results = this.all(Type);
+    if (results.length > 1)
+      throw new Error(`Ambiguous: found multiple ${Type} in scope.`);
+    if (results[0]) return results[0];
+    if (required !== false)
+      throw new Error(`Could not find ${Type} in context.`);
   }
 
   /** Get all downstream States of a type. */

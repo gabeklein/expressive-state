@@ -187,7 +187,7 @@ function getDownstream<T extends State>(
 
 function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
   return use<T | undefined>((key, subject) => {
-    context(subject).one(Type, (state) => {
+    context(subject).all(Type, (state) => {
       update(subject, key, state);
       const ignore = state.set(() => {
         ignore();
