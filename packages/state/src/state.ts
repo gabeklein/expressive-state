@@ -695,19 +695,31 @@ function access(state: State, property: string, required?: boolean) {
   });
 }
 
+/**
+ * Update a property on a state instance and notify listeners.
+ *
+ * When `arg` is:
+ * - omitted: updates value and emits an event.
+ * - `true`: updates value silently (no event emission).
+ * - a `Setter<T>`: intercepts the update. The setter receives `(value, previous)` and may:
+ *   - return `false` to reject the update
+ *   - return a `() => T` thunk to substitute the value
+ *   - return `void` to accept the value as-is
+ *
+ * @returns `true` if the value changed, `false` if rejected by setter, `undefined` if unchanged.
+ */
 function update<T>(
   state: State,
-  key: string | number | symbol,
+  key: State.Event<T>,
   value: T,
   arg?: boolean | State.Setter<T>
 ) {
-  const store = STATE.get(state)!;
-
   if (observable(state) === null)
     throw new Error(
       `Tried to update ${state}.${String(key)} but state is destroyed.`
     );
 
+  const store = STATE.get(state)!;
   const previous = store[key] as T;
 
   if (typeof arg == 'function') {

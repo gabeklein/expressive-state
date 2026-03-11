@@ -1,6 +1,6 @@
 import { listener, scope } from '../observable';
 import { State, update } from '../state';
-import { use } from './use';
+import { apply } from './apply';
 
 const { defineProperty, defineProperties } = Object;
 
@@ -94,7 +94,7 @@ function ref<T>(
   arg?: ref.Callback<T> | State,
   arg2?: ((key: string) => any) | boolean
 ) {
-  return use<T>((key, subject, state) => {
+  return apply<T>((key, subject, state) => {
     let value = {};
     const method =
       (key: string, from: Record<string, T>) =>

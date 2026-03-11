@@ -1,26 +1,26 @@
 import { vi, describe, it, expect } from '../../vitest';
 import { State } from '../state';
-import { use } from './use';
+import { apply } from './apply';
 
 describe('instruction', () => {
   it('will run on create', () => {
     class Test extends State {
-      property = use((key) => {
-        didRunInstruction(key);
+      property = apply((key) => {
+        didApply(key);
       });
     }
 
-    const didRunInstruction = vi.fn();
+    const didApply = vi.fn();
 
     Test.new();
 
-    expect(didRunInstruction).toBeCalledWith('property');
+    expect(didApply).toBeCalledWith('property');
   });
 
   describe('symbol', () => {
     it('will use unique symbol as placeholder', async () => {
       class Test extends State {
-        value = use(() => ({ value: 1 })) as unknown;
+        value = apply(() => ({ value: 1 })) as unknown;
       }
 
       const test = new Test();
@@ -36,7 +36,7 @@ describe('instruction', () => {
 
     it('will be deleted prior to instruction', () => {
       class Test extends State {
-        value = use(() => {
+        value = apply(() => {
           expect('value' in this).toBe(false);
         });
       }
@@ -60,7 +60,7 @@ describe('instruction', () => {
       const mockAccess = vi.fn((_subscriber: State) => 'foobar');
 
       class Test extends State {
-        property = use(() => ({ get: mockAccess }));
+        property = apply(() => ({ get: mockAccess }));
       }
 
       const instance = Test.new();
@@ -74,7 +74,7 @@ describe('instruction', () => {
       const didGetValue = vi.fn();
 
       class Test extends State {
-        property = use(() => ({ get: didGetValue }));
+        property = apply(() => ({ get: didGetValue }));
       }
 
       const state = Test.new();
@@ -88,7 +88,7 @@ describe('instruction', () => {
 
     it('will not throw suspense if get (required) is false', async () => {
       class Test extends State {
-        value = use(() => ({ get: false }));
+        value = apply(() => ({ get: false }));
       }
 
       const test = Test.new('ID');
@@ -105,7 +105,7 @@ describe('instruction', () => {
   describe('setter', () => {
     it('will reject update if false', () => {
       class Test extends State {
-        value = use(() => ({ set: false }));
+        value = apply(() => ({ set: false }));
       }
 
       const test = Test.new('ID');
@@ -120,7 +120,7 @@ describe('instruction', () => {
       });
 
       class Test extends State {
-        property = use(() => {
+        property = apply(() => {
           return {
             value: 'foobar',
             set: didSetValue
@@ -148,7 +148,7 @@ describe('instruction', () => {
       let ignore = false;
 
       class Test extends State {
-        property = use(() => {
+        property = apply(() => {
           return {
             value: 0,
             set: (value) => (ignore ? false : () => value + 10)
@@ -173,7 +173,7 @@ describe('instruction', () => {
 
     it('will not duplicate explicit update', () => {
       class Test extends State {
-        property = use<string>(() => ({
+        property = apply<string>(() => ({
           value: 'foobar',
           set: (value) => () => value + '!'
         }));
@@ -194,7 +194,7 @@ describe('instruction', () => {
 
     it('will not update on reassignment', () => {
       class Test extends State {
-        property = use<string>((key) => ({
+        property = apply<string>((key) => ({
           value: 'foobar',
           set: (value: any) => {
             return () => value + '!';
@@ -221,7 +221,7 @@ describe('instruction', () => {
       const cleanup = vi.fn();
 
       class Test extends State {
-        property = use(() => cleanup);
+        property = apply(() => cleanup);
       }
 
       const test = Test.new();
@@ -235,7 +235,7 @@ describe('instruction', () => {
       const destroy = vi.fn();
 
       class Test extends State {
-        property = use(() => ({
+        property = apply(() => ({
           value: 'hello',
           destroy
         }));
