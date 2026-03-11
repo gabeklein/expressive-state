@@ -946,6 +946,48 @@ describe('ambiguous implicit entries', () => {
   });
 });
 
+describe('one', () => {
+  it('will find single downstream state', () => {
+    class Foo extends State {}
+
+    const ctx = new Context();
+    const child = ctx.push();
+    const foo = Foo.new();
+
+    child.add(foo);
+
+    expect(ctx.one(Foo)).toBe(foo);
+  });
+
+  it('will throw if not found', () => {
+    class Foo extends State {}
+
+    const ctx = new Context();
+
+    expect(() => ctx.one(Foo)).toThrow('Could not find');
+  });
+
+  it('will return undefined if not required', () => {
+    class Foo extends State {}
+
+    const ctx = new Context();
+
+    expect(ctx.one(Foo, false)).toBeUndefined();
+  });
+
+  it('will throw if multiple found', () => {
+    class Foo extends State {}
+
+    const ctx = new Context();
+    const child = ctx.push();
+
+    child.add(Foo.new());
+    child.add(Foo.new());
+
+    expect(() => ctx.one(Foo)).toThrow('Ambiguous');
+  });
+});
+
 describe('add method listener lookup', () => {
   it('will notify listeners on child context when state added to parent', () => {
     class Foo extends State {}
