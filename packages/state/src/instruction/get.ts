@@ -114,8 +114,8 @@ function get<T extends State>(
     const ctx = context(subject);
     let found = false;
 
-    ctx.get(Type, (state, child) => {
-      if (child || state === subject) return;
+    ctx.get(Type, (state) => {
+      if (state === subject) return;
       found = true;
       assign(state);
     });
@@ -141,9 +141,7 @@ function getDownstream<T extends State>(
       update(subject, key, Array.from(applied));
     }
 
-    context(subject).get(Type, (state, child) => {
-      if (!child) return;
-
+    context(subject).all(Type, (state) => {
       let remove: (() => void) | undefined;
       let flush: (() => void) | undefined;
 
@@ -189,8 +187,7 @@ function getDownstream<T extends State>(
 
 function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
   return use<T | undefined>((key, subject) => {
-    context(subject).get(Type, (state, child) => {
-      if (!child) return;
+    context(subject).one(Type, (state) => {
       update(subject, key, state);
       const ignore = state.set(() => {
         ignore();

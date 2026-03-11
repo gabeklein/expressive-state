@@ -37,17 +37,18 @@ function types(state: State) {
   return types;
 }
 
-declare namespace Context {
-  type Accept<T extends State = State> =
-    | T
-    | State.Type<T>
-    | Record<string | number, T | State.Type<T>>;
+type Accept<T extends State = State> =
+  | T
+  | State.Type<T>
+  | Record<string | number, T | State.Type<T>>;
 
-  type Expect<T extends State = State> = (
-    state: T,
-    child: boolean,
-    existing: boolean
-  ) => (() => void) | false | void;
+type Expect<T extends State = State> = (
+  state: T,
+  existing: boolean
+) => (() => void) | false | void;
+
+declare namespace Context {
+  export { Accept, Expect };
 }
 
 class Context {
@@ -56,14 +57,14 @@ class Context {
   public id = uid();
   public parent?: Context;
   public scope = new Set<Context>();
-  public consume = new Map<State.Extends, Set<Context.Expect> | null>();
+  public consume = new Map<State.Extends, Set<[Expect, boolean]> | null>();
   public provide = new Map<State.Extends, Set<[State, boolean]> | null>();
 
   protected inputs: Record<string | number, State | State.Extends> = {};
 
   private cleanup = new Map<string | number | Function, () => void>();
 
-  constructor(arg?: Context | Context.Accept) {
+  constructor(arg?: Context | Accept) {
     if (arg instanceof Context) {
       this.parent = arg;
       arg.scope.add(this);
@@ -96,76 +97,113 @@ class Context {
   }
 
   /** Find specified type upstream. Throws if not found. */
-  public get<T extends State>(Type: State.Extends<T>): T;
+  public get<T extends State>(Type: State.Extends<T>, required?: true): T;
 
   /** Find specified type upstream. Returns undefined if not found. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    required: false | undefined
+    required?: boolean
   ): T | undefined;
 
-  /** Get all entries of a type registered downstream. */
-  public get<T extends State>(Type: State.Extends<T>, below: true): T[];
-
-  /** Subscribe to a type becoming available in either direction. */
+  /** Subscribe to a type becoming available upstream. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    callback: Context.Expect<T>,
-    existing?: boolean
+    callback: Context.Expect<T>
   ): () => void;
 
   public get<T extends State>(
     Type: State.Extends<T>,
-    arg2?: boolean | Context.Expect<T>,
-    existing = typeof arg2 == 'function'
+    arg?: boolean | Context.Expect<T>
   ) {
-    let parent: T | null | undefined;
+    let found: T | null | undefined;
     let priority = false;
 
-    if (!arg2 || existing)
-      for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
-        const entries = ctx.provide.get(Type);
-        if (entries) {
-          for (const [state, explicit] of entries) {
-            if (parent === state) continue;
-            if (!parent || explicit > priority) {
-              parent = state as T;
-              priority = explicit;
-              continue;
-            }
-            if (!priority && !explicit) {
-              parent = null;
-              break;
-            }
-            if (explicit)
-              throw new Error(
-                `Did find ${Type} in context, but multiple were defined.`
-              );
-          }
+    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
+      const entries = ctx.provide.get(Type);
+      if (!entries) continue;
+
+      for (const [state, explicit] of entries) {
+        if (found === state) continue;
+        if (!found || explicit > priority) {
+          found = state as T;
+          priority = explicit;
+          continue;
+        }
+        if (!priority && !explicit) {
+          found = null;
           break;
         }
+        if (explicit)
+          throw new Error(
+            `Did find ${Type} in context, but multiple were defined.`
+          );
       }
-
-    const children: T[] = [];
-
-    if (arg2 === true || existing)
-      this.traverse((ctx) => {
-        const entries = ctx.provide.get(Type) || [];
-        for (const [state] of entries) children.push(state as T);
-        return ctx.provide.has(Type);
-      });
-
-    if (arg2 === true) return children;
-
-    if (arg2) {
-      if (parent) arg2(parent, false, true);
-      for (const child of children) arg2(child, true, true);
-      return this.register(Type, arg2, true);
+      break;
     }
 
-    if (parent) return parent;
-    if (parent === null) return null;
-    if (arg2 !== false) throw new Error(`Could not find ${Type} in context.`);
+    if (typeof arg === 'function') {
+      if (found) arg(found, true);
+      return this.register(Type, [arg as Context.Expect, false], true);
+    }
+
+    if (found) return found;
+    if (found === null) return null;
+    if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
+  }
+
+  /** Find single downstream State. Throws if not found. */
+  public one<T extends State>(Type: State.Extends<T>, required?: true): T;
+
+  /** Find single downstream State. Returns undefined if not found. */
+  public one<T extends State>(
+    Type: State.Extends<T>,
+    required: boolean
+  ): T | undefined;
+
+  /** Subscribe to a single downstream State. */
+  public one<T extends State>(
+    Type: State.Extends<T>,
+    callback: Context.Expect<T>
+  ): () => void;
+
+  public one<T extends State>(
+    Type: State.Extends<T>,
+    arg?: boolean | Context.Expect<T>
+  ) {
+    if (typeof arg === 'function') {
+      const [first] = this.all(Type);
+      if (first) arg(first, true);
+      return this.register(Type, [arg, true], true);
+    }
+
+    const [first] = this.all(Type);
+    if (first) return first;
+    if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
+  }
+
+  /** Get all downstream States of a type. */
+  public all<T extends State>(Type: State.Extends<T>): T[];
+
+  /** Subscribe to downstream States of a type. */
+  public all<T extends State>(
+    Type: State.Extends<T>,
+    callback: Context.Expect<T>
+  ): () => void;
+
+  public all<T extends State>(
+    Type: State.Extends<T>,
+    callback?: Context.Expect<T>
+  ): T[] | (() => void) {
+    const results: T[] = [];
+    this.traverse((ctx) => {
+      const entries = ctx.provide.get(Type) || [];
+      for (const [state] of entries) results.push(state as T);
+      return ctx.provide.has(Type);
+    });
+
+    if (!callback) return results;
+    for (const state of results) callback(state, true);
+    return this.register(Type, [callback, true], true);
   }
 
   /**
@@ -223,7 +261,7 @@ class Context {
 
     for (const state of init) {
       event(state);
-      if (forEach) forEach(state as T, false, false);
+      if (forEach) forEach(state as T, false);
     }
 
     this.inputs = inputs;
@@ -238,16 +276,17 @@ class Context {
     const expects = new Map<Context.Expect, () => void>();
     const onDone = new Set<() => void>();
 
-    function queue(ctx: Context, above: boolean) {
+    function queue(ctx: Context, downstream: boolean) {
       let found = false;
       for (const T of TT) {
         const list = ctx.consume.get(T);
         if (list !== undefined) found = true;
-        for (const cb of list || [])
-          expects.set(cb, () => {
-            const r = cb(I, above, false);
-            if (r) onDone.add(r);
-          });
+        for (const [cb, filter] of list || [])
+          if (filter === downstream)
+            expects.set(cb, () => {
+              const r = cb(I, false);
+              if (r) onDone.add(r);
+            });
       }
       return found;
     }

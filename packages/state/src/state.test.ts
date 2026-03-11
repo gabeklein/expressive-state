@@ -733,15 +733,15 @@ describe('get method', () => {
 
     it('will subscribe with callback', () => {
       const parent = Foo.new();
-      const context = new Context(parent);
+      const ctx = new Context(parent);
 
       const callback = vi.fn();
-      const unsub = parent.get(Bar, callback);
+      const unsub = ctx.all(Bar, callback);
 
       const child = Bar.new();
-      const sub = context.push(child);
+      const sub = ctx.push(child);
 
-      expect(callback).toHaveBeenCalledWith(child, true, false);
+      expect(callback).toHaveBeenCalledWith(child, false);
       expect(typeof unsub).toBe('function');
 
       unsub();

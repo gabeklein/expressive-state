@@ -162,13 +162,13 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
 
   // called immediately with existing instance
   expect(cb).toBeCalledTimes(1);
-  expect(cb).toBeCalledWith(foo1, false, true);
+  expect(cb).toBeCalledWith(foo1, true);
 
   parent.child = foo2;
 
   // should be called again with replacement
   expect(cb).toBeCalledTimes(2);
-  expect(cb).toBeCalledWith(foo2, false, false);
+  expect(cb).toBeCalledWith(foo2, false);
 });
 
 it('will not add stale implicit if property changes before context attaches', () => {
@@ -260,7 +260,7 @@ describe('has method', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    context.get(DownstreamState, cb);
+    context.all(DownstreamState, cb);
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
@@ -271,7 +271,7 @@ describe('has method', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    const cancel = context.get(DownstreamState, cb);
+    const cancel = context.all(DownstreamState, cb);
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
@@ -288,7 +288,7 @@ describe('has method', () => {
     const cleanup = vi.fn();
     const cb = vi.fn(() => cleanup);
 
-    context.get(DownstreamState, cb);
+    context.all(DownstreamState, cb);
 
     const child = context.push(DownstreamState);
 
@@ -304,7 +304,7 @@ describe('has method', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    const cancel = context.get(DownstreamState, cb);
+    const cancel = context.all(DownstreamState, cb);
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
@@ -320,7 +320,7 @@ describe('has method', () => {
     const context = new Context();
     context.push(DownstreamState);
 
-    const entries = context.get(DownstreamState, true);
+    const entries = context.all(DownstreamState);
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toBeInstanceOf(DownstreamState);
@@ -331,7 +331,7 @@ describe('has method', () => {
 
     root.push().push(DownstreamState);
 
-    const entries = root.get(DownstreamState, true);
+    const entries = root.all(DownstreamState);
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toBeInstanceOf(DownstreamState);
@@ -343,7 +343,7 @@ describe('has method', () => {
 
     root.push(Unrelated);
 
-    expect(root.get(DownstreamState, true)).toHaveLength(0);
+    expect(root.all(DownstreamState)).toHaveLength(0);
   });
 
   it('will call callback for already-registered downstream states', () => {
@@ -352,10 +352,10 @@ describe('has method', () => {
     const existing = child.get(DownstreamState);
     const cb = vi.fn();
 
-    context.get(DownstreamState, cb);
+    context.all(DownstreamState, cb);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(existing, true, true);
+    expect(cb).toBeCalledWith(existing, true);
   });
 
   it('will flag existing vs new in callback', () => {
@@ -363,17 +363,17 @@ describe('has method', () => {
     context.push(DownstreamState);
     const cb = vi.fn();
 
-    context.get(DownstreamState, cb);
+    context.all(DownstreamState, cb);
 
-    // existing gets child=true, existing=true
+    // existing
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(expect.any(DownstreamState), true, true);
+    expect(cb).toBeCalledWith(expect.any(DownstreamState), true);
 
-    // new addition has child=true, no existing flag
+    // new addition
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(2);
-    expect(cb).toBeCalledWith(expect.any(DownstreamState), true, false);
+    expect(cb).toBeCalledWith(expect.any(DownstreamState), false);
   });
 
   it('will call callback for multiple existing downstream states', () => {
@@ -382,11 +382,11 @@ describe('has method', () => {
     context.push(DownstreamState);
     const cb = vi.fn();
 
-    context.get(DownstreamState, cb);
+    context.all(DownstreamState, cb);
 
     expect(cb).toBeCalledTimes(2);
-    expect(cb.mock.calls[0][2]).toBe(true);
-    expect(cb.mock.calls[1][2]).toBe(true);
+    expect(cb.mock.calls[0][1]).toBe(true);
+    expect(cb.mock.calls[1][1]).toBe(true);
   });
 
   it('will notify has-subscriber for state created before context', () => {
@@ -394,7 +394,7 @@ describe('has method', () => {
     const child = parent.push();
     const cb = vi.fn();
 
-    parent.get(DownstreamState, cb);
+    parent.all(DownstreamState, cb);
 
     const state = DownstreamState.new();
 
@@ -402,7 +402,7 @@ describe('has method', () => {
     child.set(state);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(state, true, false);
+    expect(cb).toBeCalledWith(state, false);
   });
 });
 
@@ -461,7 +461,7 @@ describe('get callback (upstream subscription)', () => {
     parent.set(shared);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(shared, false, false);
+    expect(cb).toBeCalledWith(shared, false);
   });
 
   it('will call callback for already-registered upstream state', () => {
@@ -473,7 +473,7 @@ describe('get callback (upstream subscription)', () => {
 
     expect(cb).toBeCalledTimes(1);
 
-    expect(cb).toBeCalledWith(expect.any(Upstream), false, true);
+    expect(cb).toBeCalledWith(expect.any(Upstream), true);
   });
 
   it('will flag existing vs new upstream in callback', () => {
@@ -486,11 +486,11 @@ describe('get callback (upstream subscription)', () => {
 
     expect(cb).not.toBeCalled();
 
-    // new addition has child=false, no existing flag
+    // new addition
     parent.set(Upstream);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(expect.any(Upstream), false, false);
+    expect(cb).toBeCalledWith(expect.any(Upstream), false);
   });
 });
 
@@ -741,8 +741,8 @@ describe('set method', () => {
 
     context.set({ foo, bar }, cb);
 
-    expect(cb).toBeCalledWith(foo, false, false);
-    expect(cb).toBeCalledWith(bar, false, false);
+    expect(cb).toBeCalledWith(foo, false);
+    expect(cb).toBeCalledWith(bar, false);
     expect(cb).toBeCalledTimes(2);
 
     context.set({ foo, bar }, cb);
@@ -753,7 +753,7 @@ describe('set method', () => {
 
     context.set({ foo, bar, foo2 }, cb);
 
-    expect(cb).toBeCalledWith(foo2, false, false);
+    expect(cb).toBeCalledWith(foo2, false);
     expect(cb).toBeCalledTimes(3);
   });
 
@@ -925,7 +925,7 @@ describe('ambiguous implicit entries', () => {
 
     // Should only get the explicit one
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(explicit, false, true);
+    expect(cb).toBeCalledWith(explicit, true);
   });
 
   it('will deduplicate same state in callback get entries', () => {
@@ -942,7 +942,7 @@ describe('ambiguous implicit entries', () => {
     ctx.get(Base, cb);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(a, false, true);
+    expect(cb).toBeCalledWith(a, true);
   });
 });
 
@@ -970,7 +970,7 @@ describe('add method listener lookup', () => {
     const parent = new Context();
     const cb = vi.fn();
 
-    parent.get(Foo, cb);
+    parent.all(Foo, cb);
 
     // Push child with Foo — this is downstream
     parent.push(Foo);
@@ -986,7 +986,7 @@ describe('add method listener lookup', () => {
     const cb = vi.fn();
 
     // Subscribe for both Foo and Bar — but cb is same ref
-    parent.get(Foo, cb);
+    parent.all(Foo, cb);
 
     // Push child with Bar — parent listener for Foo should match
     parent.push(Bar);
@@ -1003,14 +1003,14 @@ describe('add method listener lookup', () => {
     const child = parent.push();
     const cb = vi.fn();
 
-    // Register same cb on both grandparent and parent (above path)
-    grandparent.get(Foo, cb);
-    parent.get(Foo, cb);
+    // Register same cb on both grandparent and parent
+    grandparent.all(Foo, cb);
+    parent.all(Foo, cb);
 
-    // Add to child — above includes parent and grandparent, both have cb
+    // Add to child — both grandparent and parent have cb
     child.set(Foo);
 
-    // Should only call cb once due to dedup in above path
+    // Should only call cb once due to dedup
     expect(cb).toBeCalledTimes(1);
   });
 

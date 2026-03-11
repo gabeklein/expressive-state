@@ -216,20 +216,20 @@ abstract class State implements Observable {
   /** Fetch a State from context. Returns undefined if not found. */
   get<T extends State>(type: State.Type<T>, required: false): T | undefined;
 
-  /** Collect all State of type which belong to children in context. */
+  /** Collect all downstream State of type in context. */
   get<T extends State>(type: State.Type<T>, children: true): T[];
 
-  /** Fetch a single state of type amongst children in context. Throws if not found. */
+  /** Fetch a single downstream State. Throws if not found. */
   get<T extends State>(type: State.Type<T>, children: true, single: true): T;
 
-  /** Fetch a single state of type amongst children in context. Returns undefined if not found. */
+  /** Fetch a single downstream State. Returns undefined if not found. */
   get<T extends State>(
     type: State.Type<T>,
     downstream: true,
     required: false
   ): T | undefined;
 
-  /** Subscribe to a type becoming available in context. */
+  /** Subscribe to upstream State becoming available in context. */
   get<T extends State>(
     type: State.Type<T>,
     callback: Context.Expect<T>
@@ -652,11 +652,13 @@ function lookup(
   arg2?: Context.Expect | boolean,
   arg3?: boolean
 ) {
-  const result = context(self).get(Type, arg2 as any);
-  if (arg3 === undefined) return result;
-  const [found] = result;
-  if (found || arg3 !== true) return found;
-  throw new Error(`Required ${Type} not found downstream of ${self}.`);
+  const ctx = context(self);
+
+  return arg2 === true
+    ? arg3 === undefined
+      ? ctx.all(Type)
+      : ctx.one(Type, arg3)
+    : ctx.get(Type, arg2 as any);
 }
 
 function access(state: State, property: string, required?: boolean) {
