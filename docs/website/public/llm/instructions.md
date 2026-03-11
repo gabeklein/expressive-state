@@ -140,7 +140,7 @@ class MyState extends State {
 ```ts
 class MyState extends State {
   name = set('default', (next, prev) => {
-    if (next.length < 3) return false; // reject update
+    if (next.length < 3) throw false; // reject update
   });
 
   query = set('', (value) => {
@@ -149,6 +149,8 @@ class MyState extends State {
   });
 }
 ```
+
+> Callbacks may throw `false` to reject an update, or return a new value to transform it. Returning `undefined` is a no-op — prefer `null` for values you want to override to falsy.
 
 ### Computed (Reactive to Another State)
 

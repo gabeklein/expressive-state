@@ -58,7 +58,7 @@ function set<T>(factory: set.Factory<T>, onUpdate?: set.Callback<T>): T;
  * Set a property with empty placeholder and/or update callback.
  *
  * @param value - Starting value for property. If undefined, suspense will be thrown on access, until value is set and accepted by callback.
- * @param onUpdate - Callback run when property is set. If returns false, update is not accepted and property will keep previous value.
+ * @param onUpdate - Callback run when property is set. Throw `false` to reject the update. Return a new value to transform it; returning `undefined` is a no-op (use `null` to clear).
  */
 function set<T>(value: T | undefined, onUpdate?: set.Callback<T>): T;
 
@@ -90,8 +90,6 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       throw new Error(
         `Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`
       );
-
-    const property: Apply.Config = {};
 
     // Handle reactive compute modes
     if (value instanceof State || value === true) {
@@ -168,6 +166,8 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       };
     }
 
+    const config: Apply.Config = {};
+
     // Handle factory/value modes (existing logic)
     if (typeof value == 'function' || value instanceof Promise) {
       function init() {
@@ -181,14 +181,14 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
             throw err;
           }
 
-        property.get = argument !== false;
+        config.get = argument !== false;
 
         const set = (value: any) => (subject[key] = value);
 
         if (value instanceof Promise)
           value.then(set, (error) => {
             event(subject, key);
-            property.get = () => {
+            config.get = () => {
               throw error;
             };
           });
@@ -202,21 +202,19 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       if (argument) {
         listener(subject, init, true);
       } else {
-        property.get = init;
+        config.get = init;
       }
     } else if (value !== undefined) {
-      property.value = value;
+      config.value = value;
     }
 
     if (typeof argument == 'function') {
       let unset: ((next: T) => void) | undefined;
 
-      property.set = function (this: any, value: any, previous: any) {
+      config.set = function (this: any, value: any, previous: any) {
         const exit = scope();
         const returns = argument.call(this, value, previous);
         const flush = exit();
-
-        if (returns === false) return false;
 
         if (typeof unset == 'function') unset(value);
 
@@ -227,12 +225,12 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         };
       };
     } else
-      property.set = (value) => {
-        property.get = undefined;
-        update(subject, key, value);
+      config.set = () => {
+        config.get = undefined;
+        config.set = undefined;
       };
 
-    return property;
+    return config;
   });
 }
 

@@ -33,7 +33,7 @@ function apply(arg1: Apply) {
 }
 
 State.on((_key, self) => {
-  const state = STORE.get(self)!;
+  const store = STORE.get(self)!;
 
   for (const key in self) {
     const desc = Object.getOwnPropertyDescriptor(self, key)!;
@@ -44,13 +44,13 @@ State.on((_key, self) => {
     APPLY.delete(desc.value);
     delete (self as any)[key];
 
-    const output = instruction.call(self, key, self, state);
+    const output = instruction.call(self, key, self, store);
 
     if (!output) continue;
 
     const config = typeof output == 'function' ? { destroy: output } : output;
 
-    if ('value' in config) state[key] = config.value;
+    if ('value' in config) store[key] = config.value;
     if (config.destroy) listener(self, config.destroy, null);
 
     Object.defineProperty(self, key, {
@@ -68,7 +68,21 @@ State.on((_key, self) => {
         if (config.set === false) {
           throw new Error(`${self}.${key} is read-only.`);
         }
-        update(self, key, next, config.set);
+
+        if (typeof config.set === 'function')
+          try {
+            const output = config.set(next, store[key]);
+            if (output !== undefined) next = output;
+          } catch (err: unknown) {
+            if (err === false) return;
+            if (err === true) {
+              update(self, key, next, true);
+              return;
+            }
+            throw err;
+          }
+
+        update(self, key, next);
       }
     });
   }

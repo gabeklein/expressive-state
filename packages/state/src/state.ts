@@ -92,7 +92,7 @@ declare namespace State {
     ? Export<T[K]>
     : unknown;
 
-  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+  type Setter<T> = (value: T, previous: T) => T | void;
 
   type OnEvent<T extends State> = (
     this: T,
@@ -696,21 +696,13 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
 /**
  * Update a property on a state instance and notify listeners.
  *
- * When `arg` is:
- * - omitted: updates value and emits an event.
- * - `true`: updates value silently (no event emission).
- * - a `Setter<T>`: intercepts the update. The setter receives `(value, previous)` and may:
- *   - return `false` to reject the update
- *   - return a `() => T` thunk to substitute the value
- *   - return `void` to accept the value as-is
- *
- * @returns `true` if the value changed, `false` if rejected by setter, `undefined` if unchanged.
+ * This is used internally to manage properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  */
 function update<T>(
   state: State,
   key: State.Event<T>,
   value: T,
-  arg?: boolean | State.Setter<T>
+  silent?: boolean
 ) {
   if (observable(state) === null)
     throw new Error(
@@ -718,21 +710,12 @@ function update<T>(
     );
 
   const store = STORE.get(state)!;
-  const previous = store[key] as T;
 
-  if (typeof arg == 'function') {
-    const out = arg.call(state, value, previous);
-
-    if (out === false) return false;
-
-    if (typeof out == 'function') value = out();
-  }
-
-  if (value === previous && key in store) return;
+  if (key in store && value === store[key]) return false;
 
   store[key] = value;
 
-  if (arg !== true) event(state, key);
+  if (silent !== true) event(state, key);
 
   return true;
 }

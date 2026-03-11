@@ -48,7 +48,7 @@ class MyState extends State {
 value = set<string>();                           // placeholder, suspends until assigned
 value = set('default');                           // initial value, type inferred
 value = set(() => compute(), false);              // optional async factory
-value = set('initial', (next, prev) => { ... }); // with update callback
+value = set('initial', (next, prev) => { ... }); // with update callback (throw false to reject, return value to transform)
 value = set(this, (state) => state.x + state.y); // computed from self
 value = set(otherState, (s) => s.value);          // computed from other state
 value = set(true, this.method);                   // reactive method reference

@@ -221,7 +221,7 @@ describe('intercept', () => {
     class Subject extends State {
       test = set('foo', (value) => {
         callback(value);
-        return false;
+        throw false;
       });
     }
 
@@ -236,36 +236,17 @@ describe('intercept', () => {
     expect(state.test).toBe('foo');
   });
 
-  it('will not call prior cleanup if supressed', async () => {
-    const cleanup = vi.fn();
-    const setter = vi.fn((value: number) => {
-      return value === 3 ? false : cleanup;
-    });
-
-    class Test extends State {
-      value = set(1, setter);
+  it('will rethrow real errors from callback', () => {
+    class Subject extends State {
+      test = set('foo', () => {
+        throw new Error('bad value');
+      });
     }
 
-    const subject = Test.new();
+    const state = Subject.new();
 
-    subject.value = 2;
-
-    expect(setter).toBeCalledWith(2, 1);
-    await expect(subject).toHaveUpdated();
-    expect(subject.value).toBe(2);
-
-    // this update will be supressed by setter
-    subject.value = 3;
-
-    expect(setter).toBeCalledWith(3, 2);
-    await expect(subject).not.toHaveUpdated();
-    expect(cleanup).not.toBeCalled();
-
-    subject.value = 4;
-
-    expect(setter).toBeCalledWith(4, 2);
-    expect(cleanup).toBeCalledTimes(1);
-    expect(cleanup).toBeCalledWith(4);
+    expect(() => { state.test = 'bar'; }).toThrow('bad value');
+    expect(state.test).toBe('foo');
   });
 });
 

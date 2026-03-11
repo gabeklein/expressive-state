@@ -103,116 +103,95 @@ describe('instruction', () => {
   });
 
   describe('setter', () => {
-    it('will reject update if false', () => {
-      class Test extends State {
-        value = apply(() => ({ set: false }));
-      }
+    describe('boolean', () => {
+      it('will reject update if false', () => {
+        class Test extends State {
+          value = apply(() => ({ set: false }));
+        }
 
-      const test = Test.new('ID');
-      const assign = () => (test.value = 'foo');
+        const test = Test.new('ID');
+        const assign = () => (test.value = 'foo');
 
-      expect(assign).toThrow(`ID.value is read-only.`);
+        expect(assign).toThrow(`ID.value is read-only.`);
+      });
     });
 
-    it('will prevent update if returns false', async () => {
-      const didSetValue = vi.fn((newValue) => {
-        if (newValue == 'ignore') return false;
+    describe('function', () => {
+      it('will ignore update if callback throws false', async () => {
+        const setValue = vi.fn((value) => {
+          if (value == 'ignore') throw false;
+        });
+
+        class Test extends State {
+          property = apply(() => ({
+            value: 'foobar',
+            set: setValue
+          }));
+        }
+
+        const test = Test.new();
+
+        expect(test.property).toBe('foobar');
+
+        test.property = 'test';
+        expect(setValue).toBeCalledWith('test', 'foobar');
+        expect(test.property).toBe('test');
+        await expect(test).toHaveUpdated();
+
+        test.property = 'ignore';
+        expect(setValue).toBeCalledWith('ignore', 'test');
+        expect(test.property).toBe('test');
+        await expect(test).not.toHaveUpdated();
       });
 
-      class Test extends State {
-        property = apply(() => {
-          return {
-            value: 'foobar',
-            set: didSetValue
-          };
-        });
-      }
+      // duplicate test?
+      it('will reject update if throws false', async () => {
+        let ignore = false;
 
-      const test = Test.new();
-
-      expect(test.property).toBe('foobar');
-
-      test.property = 'test';
-      expect(didSetValue).toBeCalledWith('test', 'foobar');
-      expect(test.property).toBe('test');
-      await expect(test).toHaveUpdated();
-
-      test.property = 'ignore';
-      expect(didSetValue).toBeCalledWith('ignore', 'test');
-      expect(test.property).toBe('test');
-      await expect(test).not.toHaveUpdated();
-    });
-
-    // duplicate test?
-    it('will revert update if returns false', async () => {
-      let ignore = false;
-
-      class Test extends State {
-        property = apply(() => {
-          return {
+        class Test extends State {
+          property = apply(() => ({
             value: 0,
-            set: (value) => (ignore ? false : () => value + 10)
-          };
-        });
-      }
+            set: () => {
+              if (ignore) throw false;
+            }
+          }));
+        }
 
-      const instance = Test.new();
+        const instance = Test.new();
 
-      expect(instance.property).toBe(0);
+        expect(instance.property).toBe(0);
 
-      instance.property = 10;
-      expect(instance.property).toBe(20);
-      await expect(instance).toHaveUpdated();
+        instance.property = 10;
+        expect(instance.property).toBe(10);
+        await expect(instance).toHaveUpdated();
 
-      ignore = true;
+        ignore = true;
 
-      instance.property = 0;
-      expect(instance.property).toBe(20);
-      await expect(instance).not.toHaveUpdated();
-    });
+        instance.property = 0;
+        expect(instance.property).toBe(10);
+        await expect(instance).not.toHaveUpdated();
+      });
 
-    it('will not duplicate explicit update', () => {
-      class Test extends State {
-        property = apply<string>(() => ({
-          value: 'foobar',
-          set: (value) => () => value + '!'
-        }));
-      }
+      it('will not update twice on reassignment', () => {
+        class Test extends State {
+          property = apply<string>(() => ({
+            value: 'foobar',
+            set: (value) => value + '!'
+          }));
+        }
 
-      const test = Test.new();
-      const didUpdate = vi.fn();
+        const test = Test.new();
+        const didUpdate = vi.fn();
 
-      test.set(didUpdate);
+        test.set(didUpdate);
 
-      expect(test.property).toBe('foobar');
+        expect(test.property).toBe('foobar');
 
-      test.property = 'test';
+        test.property = 'test';
 
-      expect(test.property).toBe('test!');
-      expect(didUpdate).toBeCalledTimes(1);
-    });
-
-    it('will not update on reassignment', () => {
-      class Test extends State {
-        property = apply<string>((key) => ({
-          value: 'foobar',
-          set: (value: any) => {
-            return () => value + '!';
-          }
-        }));
-      }
-
-      const test = Test.new();
-      const didUpdate = vi.fn();
-
-      test.set(didUpdate);
-
-      expect(test.property).toBe('foobar');
-
-      test.property = 'test';
-
-      expect(test.property).toBe('test!');
-      expect(didUpdate).toBeCalledTimes(1);
+        expect(test.property).toBe('test!');
+        expect(didUpdate).toBeCalledTimes(1);
+      });
     });
   });
 
