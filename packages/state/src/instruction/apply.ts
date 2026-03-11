@@ -14,11 +14,11 @@ type Apply<T = any, M extends State = any> = (
 
 declare namespace Apply {
   type Config<T = any> = {
-    readonly get?: ((source: State) => T) | boolean;
-    readonly set?: State.Setter<T> | boolean;
-    readonly enumerable?: boolean;
-    readonly destroy?: () => void;
-    readonly value?: T;
+    get?: ((source: State) => T) | boolean;
+    set?: State.Setter<T> | boolean;
+    enumerable?: boolean;
+    destroy?: () => void;
+    value?: T;
   };
 }
 
