@@ -216,7 +216,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
         const returns = argument.call(this, value, previous);
         const flush = exit();
 
-        if (typeof unset == 'function') unset(value);
+        if (unset) unset(value);
 
         unset = (next: T) => {
           if (typeof returns == 'function') returns(next);
