@@ -91,7 +91,7 @@ function get<T extends State>(
   if (arg1 === true)
     return typeof arg2 === 'boolean'
       ? getOneDownstream(Type, arg2)
-      : getDownstream(Type, arg2 as get.Callback<T>);
+      : getDownstream(Type, arg2);
 
   return apply<T>((key, subject) => {
     const hasParent = PARENT.get(subject) as T;
