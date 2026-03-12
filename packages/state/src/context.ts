@@ -183,10 +183,11 @@ class Context {
     callback?: Context.Expect<T>
   ): T[] | (() => void) {
     const results: T[] = [];
+
     this.traverse((ctx) => {
-      const entries = ctx.provide.get(Type) || [];
-      for (const [state] of entries) results.push(state as T);
-      return ctx.provide.has(Type);
+      const has = ctx.provide.get(Type);
+      if (has) for (const [state] of has) results.push(state as T);
+      return has !== undefined;
     });
 
     if (!callback) return results;
