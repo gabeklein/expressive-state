@@ -1227,7 +1227,7 @@ describe('State.get', () => {
         const promise = mockPromise<string>();
 
         class Test extends State {
-          value = set(() => promise, true);
+          value = set(() => promise);
         }
 
         const hook = renderWith(Test, () => {
@@ -1247,7 +1247,7 @@ describe('State.get', () => {
         const promise = mockPromise();
 
         class Test extends State {
-          value = set(() => promise, true);
+          value = set(() => promise);
         }
 
         const hook = renderWith(Test, () => {

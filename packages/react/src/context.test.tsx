@@ -609,7 +609,7 @@ describe('suspense', () => {
     let resolve!: (value: string) => void;
 
     class Test extends State {
-      value = set<string>(() => new Promise((res) => (resolve = res)), true);
+      value = set(() => new Promise<string>((res) => (resolve = res)));
     }
 
     const GetValue = () => {
