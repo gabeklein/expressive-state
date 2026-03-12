@@ -156,16 +156,17 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
 
         config.get = argument !== false;
 
-        const set = (value: any) => (subject[key] = value);
-
         if (value instanceof Promise)
-          value.then(set, (error) => {
-            event(subject, key);
-            config.get = () => {
-              throw error;
-            };
-          });
-        else set(value);
+          value.then(
+            (value: any) => (subject[key] = value),
+            (error) => {
+              event(subject, key);
+              config.get = () => {
+                throw error;
+              };
+            }
+          );
+        else subject[key] = value;
 
         if (argument) return null;
 
