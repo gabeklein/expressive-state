@@ -73,6 +73,12 @@ class Context {
     }
   }
 
+  private traverse(accept: (ctx: Context) => boolean | void) {
+    const queue = [...this.scope];
+    for (const ctx of queue)
+      if (accept(ctx) !== false) for (const c of ctx.scope) queue.push(c);
+  }
+
   private register(type: State.Extends, value: any, asConsumer?: boolean) {
     const map = asConsumer ? this.consume : this.provide;
     let set = map.get(type) as Set<any>;
@@ -88,12 +94,6 @@ class Context {
     }
 
     return () => set.delete(value);
-  }
-
-  private traverse(accept: (ctx: Context) => boolean | void) {
-    const queue = [...this.scope];
-    for (const ctx of queue)
-      if (accept(ctx) !== false) for (const c of ctx.scope) queue.push(c);
   }
 
   /** Find specified type upstream. Throws if not found. */
