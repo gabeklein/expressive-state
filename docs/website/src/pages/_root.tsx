@@ -5,7 +5,9 @@ import '@/styles/globals.css';
 async function RootElement({ children }: PropsWithChildren) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+      </head>
       <body data-version="1.0">
         <Provider>{children}</Provider>
       </body>
