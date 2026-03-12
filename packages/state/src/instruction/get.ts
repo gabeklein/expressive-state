@@ -115,9 +115,10 @@ function get<T extends State>(
     let found = false;
 
     ctx.get(Type, (state) => {
-      if (state === subject) return;
-      found = true;
-      assign(state);
+      if (state !== subject) {
+        found = true;
+        assign(state);
+      }
     });
 
     if (!found && arg1 !== false)
@@ -130,16 +131,31 @@ function get<T extends State>(
   });
 }
 
+function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
+  return apply<T | undefined>((key, subject) => {
+    context(subject).all(Type, (state) => {
+      update(subject, key, state);
+      const ignore = state.set(() => {
+        ignore();
+        update(subject, key, undefined);
+      }, null);
+      return ignore;
+    });
+
+    return {
+      get: required,
+      value: undefined,
+      enumerable: false
+    };
+  });
+}
+
 function getDownstream<T extends State>(
   Type: Type<T>,
   callback: get.Callback<T> | undefined
 ) {
   return apply<T[]>((key, subject) => {
     const applied = new Set<State>();
-
-    function reset() {
-      update(subject, key, Array.from(applied));
-    }
 
     context(subject).all(Type, (state) => {
       let remove: (() => void) | undefined;
@@ -161,14 +177,14 @@ function getDownstream<T extends State>(
       }
 
       applied.add(state);
-      reset();
+      update(subject, key, [...applied]);
 
       function done() {
         if (flush) flush();
         ignore();
 
         applied.delete(state);
-        reset();
+        update(subject, key, [...applied]);
 
         if (typeof remove == 'function') remove();
       }
@@ -180,25 +196,6 @@ function getDownstream<T extends State>(
 
     return {
       value: [],
-      enumerable: false
-    };
-  });
-}
-
-function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
-  return apply<T | undefined>((key, subject) => {
-    context(subject).all(Type, (state) => {
-      update(subject, key, state);
-      const ignore = state.set(() => {
-        ignore();
-        update(subject, key, undefined);
-      }, null);
-      return ignore;
-    });
-
-    return {
-      get: required,
-      value: undefined,
       enumerable: false
     };
   });
