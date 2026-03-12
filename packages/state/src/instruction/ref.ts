@@ -55,15 +55,15 @@ function ref<T extends State>(state: T): ref.Proxy<T>;
 
 /**
  * Creates an object with values based on managed values.
- * Each property will invoke mapper function on first access supply
+ * Each property will invoke map function on first access supply
  * the its return value going forward.
  *
  * @param state - Source state from which to reference values.
- * @param mapper - Function producing the placeholder value for any given property.
+ * @param map - Function producing the placeholder value for any given property.
  */
 function ref<T extends State, R>(
   state: T,
-  mapper: (key: State.Field<T>) => R
+  map: (key: State.Field<T>) => R
 ): ref.CustomProxy<T, R>;
 
 /**
