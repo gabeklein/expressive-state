@@ -1,6 +1,6 @@
 import { watch, Observable, observable } from './observable';
 import { set } from './instruction/set';
-import { use } from './instruction/use';
+import { apply } from './instruction/apply';
 import { mockError, vi, describe, it, expect, mockPromise } from '../vitest';
 import { State } from './state';
 
@@ -33,7 +33,7 @@ describe('effect', () => {
     const mock = vi.fn();
 
     class Test extends State {
-      property = use((_key, _state, state) => {
+      property = apply((_key, _state, state) => {
         this.get(() => mock(state));
       });
 
