@@ -1,7 +1,7 @@
 'use client';
-import type { ReactNode } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { RootProvider } from 'fumadocs-ui/provider/waku';
 
-export function Provider({ children }: { children: ReactNode }) {
+export function Provider({ children }: PropsWithChildren) {
   return <RootProvider>{children}</RootProvider>;
 }
