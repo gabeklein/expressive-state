@@ -852,6 +852,68 @@ describe('set method', () => {
     expect(ctx.get(Foo, false)).toBeUndefined();
   });
 
+  it('will call forEach cleanup when state is removed via set', () => {
+    class Foo extends State {}
+
+    const cleanup = vi.fn();
+    const forEach = vi.fn(() => cleanup);
+    const context = new Context();
+
+    context.set(Foo, forEach);
+
+    expect(forEach).toBeCalledTimes(1);
+    expect(cleanup).not.toBeCalled();
+
+    context.set({});
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will call forEach cleanup for each state removed', () => {
+    class Foo extends State {}
+    class Bar extends State {}
+
+    const didCleanup = vi.fn();
+    const context = new Context();
+
+    context.set({ Foo, Bar }, (state) => {
+      return didCleanup(state.constructor.name);
+    });
+
+    context.set({});
+
+    expect(didCleanup).toBeCalledWith('Foo');
+    expect(didCleanup).toBeCalledWith('Bar');
+  });
+
+  it('will call forEach cleanup when state is replaced', () => {
+    class Foo extends State {}
+    class Foo2 extends State {}
+
+    const cleanup = vi.fn();
+    const context = new Context();
+
+    context.set({ x: Foo }, () => cleanup);
+    context.set({ x: Foo2 });
+
+    expect(cleanup).toBeCalledTimes(1);
+    expect(context.get(Foo, false)).toBeUndefined();
+    expect(context.get(Foo2)).toBeInstanceOf(Foo2);
+  });
+
+  it('will call forEach cleanup on pop', () => {
+    class Foo extends State {}
+
+    const cleanup = vi.fn();
+    const parent = new Context();
+    const child = parent.push();
+
+    child.set(Foo, () => cleanup);
+    child.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
   it('will clean up subtype keys on delete', () => {
     class Base extends State {}
     class Child extends Base {}

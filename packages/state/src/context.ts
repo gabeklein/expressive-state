@@ -185,8 +185,8 @@ class Context {
    * @param forEach Optional callback to run for each State registered.
    */
   public set<T extends State>(inputs: Accept<T>, forEach?: Expect<T>) {
+    const init = new Set<() => void>();
     const { cleanup } = this;
-    const init = new Set<State>();
 
     if (typeof inputs == 'function' || inputs instanceof State)
       inputs = { [0]: inputs };
@@ -214,22 +214,18 @@ class Context {
       const state = State.is(V) ? new (V as State.Type)() : V.is;
       const remove = this.add(state, false);
 
-      init.add(state);
-      cleanup.set(
-        K,
-        state === V
-          ? remove
-          : () => {
-              remove();
-              event(state, null);
-            }
-      );
+      init.add(() => {
+        event(state);
+        const dispose = forEach && forEach(state as T, false);
+        cleanup.set(K, () => {
+          if (dispose) dispose();
+          remove();
+          if (state !== V) event(state, null);
+        });
+      });
     }
 
-    for (const state of init) {
-      event(state);
-      if (forEach) forEach(state as T, false);
-    }
+    for (const i of init) i();
 
     this.inputs = inputs;
 
