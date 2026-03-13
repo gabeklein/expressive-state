@@ -15,8 +15,11 @@ const _get = Context.get;
 
 Context.get = (state?: State) => {
   if (state) return _get(state);
-  try { return useContext(Layers); }
-  catch { return Context.root; }
+  try {
+    return useContext(Layers);
+  } catch {
+    return Context.root;
+  }
 };
 
 declare namespace Consumer {
@@ -42,15 +45,7 @@ function Consumer<T extends State>(props: Consumer.Props<T>) {
 declare namespace Provider {
   type ForEach<T> = (state: T) => void | (() => void);
 
-  interface Props<T extends State> {
-    /** State or group of States to provide to descendant Consumers. */
-    for: Context.Accept<T>;
-
-    /**
-     * Callback to run for each provided State.
-     */
-    forEach?: ForEach<T>;
-
+  interface SharedProps {
     /**
      * Children to render within this Provider.
      */
@@ -65,23 +60,40 @@ declare namespace Provider {
      */
     name?: string | undefined;
   }
+
+  type ForSingleProps<T extends State> = SharedProps & {
+    for: T | State.Type<T>;
+  } & { [K in State.Field<T>]?: T[K] };
+
+  type ForEachProps<T extends State> = SharedProps & {
+    for: Context.Accept<T>;
+    forEach?: ForEach<T>;
+  };
+
+  type Props<T extends State = State> = ForSingleProps<T> | ForEachProps<T>;
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
+  const {
+    for: input,
+    children,
+    fallback,
+    name,
+    ...rest
+  } = props as Provider.ForSingleProps<T> & Provider.ForEachProps<T>;
+
   const ambient = useContext(Layers);
-  const context = useMemo(() => ambient.push(), [ambient]);
+  const context = useMemo(() => ambient.push(), []);
 
-  useEffect(() => () => context.pop(), [context]);
+  context.set(input, (added) => rest.forEach && rest.forEach(added));
 
-  context.set(props.for, (state) => {
-    if (props.forEach) {
-      const cleanup = props.forEach(state);
+  if (Object.keys(rest).length)
+    if (State.is(input)) context.get(input).set(rest as State.Assign<T>);
+    else if (input instanceof State) input.set(rest as State.Assign<T>);
 
-      if (cleanup) state.set(cleanup, null);
-    }
-  });
+  useEffect(() => () => context.pop(), []);
 
-  return createElement(Provide, { context, ...props });
+  return createElement(Provide, { context, children, fallback, name });
 }
 
 interface ProvideProps {

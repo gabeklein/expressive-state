@@ -74,6 +74,68 @@ describe('Provider', () => {
     );
   });
 
+  it('will pass props to created instance', () => {
+    class Test extends State {
+      foo = 'default';
+      bar = 0;
+    }
+
+    render(
+      <Provider for={Test} foo="hello" bar={42}>
+        <Consumer for={Test}>
+          {(i) => {
+            expect(i.foo).toBe('hello');
+            expect(i.bar).toBe(42);
+          }}
+        </Consumer>
+      </Provider>
+    );
+  });
+
+  it('will update instance when props change', async () => {
+    class Test extends State {
+      value = 'initial';
+    }
+
+    const Child = vi.fn(() => {
+      const { value } = Test.get();
+      return <span>{value}</span>;
+    });
+
+    const element = render(
+      <Provider for={Test} value="first">
+        <Child />
+      </Provider>
+    );
+
+    screen.getByText('first');
+
+    act(() => {
+      element.rerender(
+        <Provider for={Test} value="second">
+          <Child />
+        </Provider>
+      );
+    });
+
+    screen.getByText('second');
+  });
+
+  it('will pass props to instance', () => {
+    const test = Foo.new();
+
+    render(
+      <Provider for={test} value="hello">
+        <Consumer for={Foo}>
+          {({ is }) => {
+            expect(is).toBe(test);
+            expect(is.value).toBe('hello');
+          }}
+        </Consumer>
+      </Provider>
+    );
+  });
+
   it('will provide children of given model', () => {
     class Foo extends State {
       value?: string = undefined;
