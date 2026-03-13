@@ -9,48 +9,6 @@ export const Pragma = {} as {
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
 
-type ForceRefresh = {
-  /** Request a refresh for current component. */
-  (): void;
-
-  /**
-   * Request a refresh and again after promise either resolves or rejects.
-   *
-   * @param waitFor Promise to wait for.
-   * @returns Promise which resolves, after refresh, to same value as `waitFor`.
-   */
-  <T = void>(waitFor: Promise<T>): Promise<T>;
-
-  /**
-   * Request refresh before and after async function.
-   * A refresh will occur both before and after the given function.
-   *
-   * **Note:** Any actions performed before first `await` will occur prior to refresh.
-   *
-   * @param invoke Async function to invoke.
-   * @returns Promise which resolves returned value after refresh.
-   */
-  <T = void>(invoke: () => Promise<T>): Promise<T>;
-};
-
-type GetFactory<T extends State, R> = (
-  this: T,
-  current: T,
-  refresh: ForceRefresh
-) => R;
-
-type GetEffect<T extends State> = (
-  this: T,
-  current: T,
-  refresh: ForceRefresh
-) => null;
-
-type UseArgs<T extends State> = T extends {
-  use(...props: infer P): any;
-}
-  ? P
-  : State.Args<T>;
-
 declare module '@expressive/state' {
   interface UseState extends State {
     /**
@@ -65,6 +23,48 @@ declare module '@expressive/state' {
   }
 
   namespace State {
+    type ForceRefresh = {
+      /** Request a refresh for current component. */
+      (): void;
+
+      /**
+       * Request a refresh and again after promise either resolves or rejects.
+       *
+       * @param waitFor Promise to wait for.
+       * @returns Promise which resolves, after refresh, to same value as `waitFor`.
+       */
+      <T = void>(waitFor: Promise<T>): Promise<T>;
+
+      /**
+       * Request refresh before and after async function.
+       * A refresh will occur both before and after the given function.
+       *
+       * **Note:** Any actions performed before first `await` will occur prior to refresh.
+       *
+       * @param invoke Async function to invoke.
+       * @returns Promise which resolves returned value after refresh.
+       */
+      <T = void>(invoke: () => Promise<T>): Promise<T>;
+    };
+
+    type GetFactory<T extends State, R> = (
+      this: T,
+      current: T,
+      refresh: ForceRefresh
+    ) => R;
+
+    type GetEffect<T extends State> = (
+      this: T,
+      current: T,
+      refresh: ForceRefresh
+    ) => null;
+
+    type UseArgs<T extends State> = T extends {
+      use(...props: infer P): any;
+    }
+      ? P
+      : State.Args<T>;
+
     /**
      * Create and manage instance of this State within React component.
      *
@@ -101,15 +101,11 @@ declare module '@expressive/state' {
       factory: GetEffect<T>
     ): null;
   }
-
-  namespace State {
-    export type { UseArgs, GetFactory, GetEffect, ForceRefresh };
-  }
 }
 
 State.use = function <T extends State>(
   this: State.Type<T>,
-  ...args: UseArgs<T>
+  ...args: State.UseArgs<T>
 ) {
   const outer = Context.get();
   const state = Pragma.useState(() => {
@@ -168,7 +164,7 @@ State.use = function <T extends State>(
 
 State.get = function <T extends State, R>(
   this: State.Extends<T>,
-  argument?: boolean | GetFactory<T, unknown>
+  argument?: boolean | State.GetFactory<T, unknown>
 ) {
   const context = Context.get();
   const state = Pragma.useState(() => {
@@ -183,10 +179,8 @@ State.get = function <T extends State, R>(
 
     function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
       if (typeof action == 'function') action = action();
-
       render();
-
-      if (action) return action.finally(render);
+      if (action instanceof Promise) return action.finally(render);
     }
 
     function bind(target: State) {
