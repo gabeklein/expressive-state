@@ -387,6 +387,18 @@ abstract class State implements Observable {
     return Object.entries(STORE.get(this.is)!)[Symbol.iterator]();
   }
 
+  static [Symbol.iterator](): Iterator<State.Extends> {
+    let T = this;
+    return {
+      next() {
+        if (T === State) return { done: true, value: 0 };
+        const value = T;
+        T = Object.getPrototypeOf(T);
+        return { value };
+      }
+    };
+  }
+
   /**
    * Create and activate a new instance of this state.
    *

@@ -3,22 +3,6 @@ import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context>();
 
-const TYPES = new WeakMap<State.Extends, State.Extends[]>();
-
-function types(state: State) {
-  let T = state.constructor as State.Extends;
-  let types = TYPES.get(T);
-  if (!types) {
-    TYPES.set(T, (types = []));
-    while (T !== State) {
-      types.push(T);
-      T = Object.getPrototypeOf(T);
-    }
-  }
-
-  return types;
-}
-
 type Accept<T extends State = State> =
   | T
   | State.Type<T>
@@ -248,7 +232,7 @@ class Context {
   add(I: State, implicit?: boolean) {
     const { cleanup } = this;
 
-    const TT = types(I);
+    const TT = Array.from(I.constructor as typeof State);
     const expects = new Map<Context.Expect, () => void>();
     const onDone = new Set<() => void>();
 

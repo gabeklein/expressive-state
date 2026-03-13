@@ -22,6 +22,14 @@ it('will not create base State', () => {
   expect(create).toThrow('Cannot create base State.');
 });
 
+it('will iterate types down to but not including State', () => {
+  class A extends State {}
+  class B extends A {}
+  class C extends B {}
+
+  expect([...C]).toEqual([C, B, A]);
+});
+
 it('will not create abstract State', () => {
   abstract class Subject extends State {}
 
