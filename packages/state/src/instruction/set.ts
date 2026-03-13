@@ -1,4 +1,4 @@
-import { listener, scope, watch } from '../observable';
+import { listener, capture, watch } from '../observable';
 import { access, event, unbind, State, update } from '../state';
 import { Apply, apply } from './apply';
 
@@ -189,23 +189,16 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       let unset: ((next: T) => void) | undefined;
 
       config.set = function (this: any, value: any, previous: any) {
-        const exit = scope();
-
-        try {
+        capture((release) => {
           const returns = argument.call(this, value, previous);
-          const flush = exit();
 
           if (unset) unset(value);
 
           unset = (next: T) => {
             if (typeof returns == 'function') returns(next);
-
-            flush();
+            release();
           };
-        } catch (err) {
-          exit();
-          throw err;
-        }
+        });
       };
     } else
       config.set = () => {

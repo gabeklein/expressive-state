@@ -1,4 +1,4 @@
-import { scope } from '../observable';
+import { capture } from '../observable';
 import { Context } from '../context';
 import { State, PARENT, update } from '../state';
 import { apply } from './apply';
@@ -159,28 +159,30 @@ function getDownstream<T extends State>(
 
     Context.get(subject).all(Type, (state) => {
       let remove: (() => void) | undefined;
-      let flush: (() => void) | undefined;
+      let release: (() => void) | undefined;
 
       if (applied.has(state)) return;
 
       if (callback) {
-        const exit = scope();
+        let rejected = false;
 
-        try {
+        capture((fn) => {
           const done = callback(state, subject);
 
-          if (done === false) return false;
-          if (typeof done == 'function') remove = done;
-        } finally {
-          flush = exit();
-        }
+          if (done === false) rejected = true;
+          else if (typeof done == 'function') remove = done;
+
+          release = fn;
+        });
+
+        if (rejected) return false;
       }
 
       applied.add(state);
       update(subject, key, [...applied]);
 
       function done() {
-        if (flush) flush();
+        if (release) release();
         ignore();
 
         applied.delete(state);

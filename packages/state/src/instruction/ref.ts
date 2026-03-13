@@ -1,4 +1,4 @@
-import { listener, scope } from '../observable';
+import { listener, capture } from '../observable';
 import { State, update } from '../state';
 import { apply } from './apply';
 
@@ -144,20 +144,17 @@ function ref<T>(
       const get = method(key, state);
       const set = (value?: any) => {
         if (!update(subject, key, value) || !arg) return;
-
         if (unset) unset = void unset(value);
-
         if (value === null && arg2 !== false) return;
 
-        const exit = scope();
-        const out = arg.call(subject, value);
-        const flush = exit();
+        capture((release) => {
+          const out = arg.call(subject, value);
 
-        unset = (key) => {
-          if (typeof out == 'function') out(key);
-
-          flush();
-        };
+          unset = (key) => {
+            if (typeof out == 'function') out(key);
+            release();
+          };
+        });
       };
 
       state[key] = null;

@@ -272,21 +272,23 @@ function watch<T extends Observable>(
       enqueue(invoke);
     }
 
-    try {
-      const exit = argument === false ? undefined : scope();
+    function run(release?: () => void) {
       const proxy = target[Observable](onUpdate, argument === true) as T;
       const output = callback.call(proxy, proxy, cause);
-      const flush = exit ? exit() : () => {};
 
       ignore = false;
       reset = output === null ? null : invoke;
       unset = (key) => {
         if (typeof output == 'function') output(key);
-
-        flush();
+        if (release) release();
       };
 
       cause = [];
+    }
+
+    try {
+      if (argument !== false) capture(run);
+      else run();
     } catch (err) {
       if (err instanceof Promise) {
         reset = undefined;
@@ -317,14 +319,15 @@ function watch<T extends Observable>(
 
 let EffectContext: Set<() => void> | undefined;
 
-function scope() {
+function capture(fn: (release: () => void) => void) {
   const last = EffectContext;
   const context = (EffectContext = new Set());
 
-  return () => {
+  try {
+    fn(() => context.forEach((fn) => fn()));
+  } finally {
     EffectContext = last;
-    return () => context.forEach((fn) => fn());
-  };
+  }
 }
 
 export {
@@ -337,5 +340,5 @@ export {
   pending,
   observable,
   watch,
-  scope
+  capture
 };
