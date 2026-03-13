@@ -50,6 +50,18 @@ class Context {
       if (accept(ctx) !== false) for (const c of ctx.scope) queue.push(c);
   }
 
+  private register<T extends State>(
+    type: State.Extends<T>,
+    value: [Expect<T>, boolean],
+    asConsumer: true
+  ): () => void;
+
+  private register<T extends State>(
+    type: State.Extends<T>,
+    value: [T, boolean],
+    asConsumer?: false
+  ): () => void;
+
   private register(type: State.Extends, value: any, asConsumer?: boolean) {
     const map = asConsumer ? this.consume : this.provide;
     let set = map.get(type) as Set<any>;
@@ -77,12 +89,12 @@ class Context {
   /** Subscribe to a type becoming available upstream. */
   public get<T extends State>(
     Type: State.Extends<T>,
-    callback: Context.Expect<T>
+    callback: Expect<T>
   ): () => void;
 
   public get<T extends State>(
     Type: State.Extends<T>,
-    arg?: boolean | Context.Expect<T>
+    arg?: boolean | Expect<T>
   ) {
     let found: T | null | undefined;
     let priority = false;
@@ -112,7 +124,7 @@ class Context {
 
     if (typeof arg === 'function') {
       if (found) arg(found, true);
-      return this.register(Type, [arg as Context.Expect, false], true);
+      return this.register(Type, [arg as Expect, false], true);
     }
 
     if (found) return found;
@@ -144,12 +156,12 @@ class Context {
   /** Subscribe to downstream States of a type. */
   public all<T extends State>(
     Type: State.Extends<T>,
-    callback: Context.Expect<T>
+    callback: Expect<T>
   ): () => void;
 
   public all<T extends State>(
     Type: State.Extends<T>,
-    callback?: Context.Expect<T>
+    callback?: Expect<T>
   ): T[] | (() => void) {
     const results: T[] = [];
 
@@ -172,10 +184,7 @@ class Context {
    * @param inputs State, State class, or map of States / State classes to register.
    * @param forEach Optional callback to run for each State registered.
    */
-  public set<T extends State>(
-    inputs: Context.Accept<T>,
-    forEach?: Context.Expect<T>
-  ) {
+  public set<T extends State>(inputs: Accept<T>, forEach?: Expect<T>) {
     const { cleanup } = this;
     const init = new Set<State>();
 
@@ -231,7 +240,7 @@ class Context {
     const { cleanup } = this;
 
     const TT = Array.from(I.constructor as typeof State);
-    const expects = new Map<Context.Expect, () => void>();
+    const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
     function queue(ctx: Context, downstream: boolean) {
@@ -283,7 +292,7 @@ class Context {
    *
    * @param inputs State, State class, or map of States / State classes to register.
    */
-  public push(inputs?: Context.Accept) {
+  public push(inputs?: Accept) {
     const next = new Context(this);
     if (inputs) next.set(inputs);
     return next;
