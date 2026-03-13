@@ -164,7 +164,7 @@ abstract class State implements Observable {
    * Optional lifecycle hook called during State initialization.
    * Can return a cleanup function to run when state is destroyed.
    *
-   * ⚠️ - It is recommended you protect this method.
+   * It is recommended you protect this method.
    */
   protected new?(): void | (() => void);
 
@@ -387,6 +387,9 @@ abstract class State implements Observable {
     return Object.entries(STORE.get(this.is)!)[Symbol.iterator]();
   }
 
+  /**
+   * Iterate over all super classes of this State, starting with self, not including base State. Yeilds the class constructor
+   */
   static [Symbol.iterator](): Iterator<State.Extends> {
     let T = this;
     return {
