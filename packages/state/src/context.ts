@@ -167,7 +167,7 @@ class Context {
 
     this.traverse((ctx) => {
       const has = ctx.provide.get(Type);
-      if (has) for (const [state] of has) results.push(state as T);
+      if (has) for (const x of has) results.push(x[0] as T);
       return has !== undefined;
     });
 
