@@ -88,10 +88,7 @@ function get<T extends State>(
   arg1?: get.Callback<T> | boolean,
   arg2?: get.Callback<T> | boolean
 ) {
-  if (arg1 === true)
-    return typeof arg2 === 'boolean'
-      ? getOneDownstream(Type, arg2)
-      : getDownstream(Type, arg2);
+  if (arg1 === true) return getDownstream(Type, arg2);
 
   return apply<T>((key, subject) => {
     const hasParent = PARENT.get(subject) as T;
@@ -131,43 +128,43 @@ function get<T extends State>(
   });
 }
 
-function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
-  return apply<T | undefined>((key, subject) => {
-    Context.get(subject).all(Type, (state) => {
-      update(subject, key, state);
-      const ignore = state.set(() => {
-        ignore();
-        update(subject, key, undefined);
-      }, null);
-      return ignore;
-    });
-
-    return {
-      get: required,
-      value: undefined,
-      enumerable: false
-    };
-  });
-}
-
 function getDownstream<T extends State>(
   Type: Type<T>,
-  callback: get.Callback<T> | undefined
+  arg: get.Callback<T> | boolean | undefined
 ) {
   return apply<T[]>((key, subject) => {
+    const context = Context.get(subject);
+
+    if (typeof arg == 'boolean') {
+      context.all(Type, (state) => {
+        update(subject, key, state);
+        const ignore = state.set(() => {
+          ignore();
+          update(subject, key, undefined);
+        }, null);
+        return ignore;
+      });
+
+      return {
+        get: arg,
+        value: undefined,
+        enumerable: false
+      };
+    }
+
     const applied = new Set<State>();
 
-    Context.get(subject).all(Type, (state) => {
+    context.all(Type, (state) => {
       let remove: (() => void) | undefined;
       let release: (() => void) | undefined;
 
       if (applied.has(state)) return;
 
-      if (callback) {
+      if (arg) {
         let rejected = false;
 
         capture((fn) => {
-          const done = callback(state, subject);
+          const done = arg(state, subject);
 
           if (done === false) rejected = true;
           else if (typeof done == 'function') remove = done;
