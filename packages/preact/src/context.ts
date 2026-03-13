@@ -6,17 +6,12 @@ import { useContext, useEffect, useMemo } from 'preact/hooks';
 
 const Lookup = createContext(new Context());
 
-declare module '@expressive/state' {
-  namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
-  }
-}
+const _get = Context.get;
 
-Context.use = (create?: boolean) => {
-  const ambient = useContext(Lookup);
-
-  return create ? useMemo(() => ambient.push(), [ambient]) : ambient;
+Context.get = (state?) => {
+  if (state) return _get(state);
+  try { return useContext(Lookup); }
+  catch { return Context.root; }
 };
 
 declare namespace Consumer {
@@ -50,7 +45,8 @@ declare namespace Provider {
 }
 
 function Provider<T extends State>(props: Provider.Props<T>) {
-  const context = Context.use(true);
+  const ambient = Context.get();
+  const context = useMemo(() => ambient.push(), [ambient]);
 
   useEffect(() => () => context.pop(), [context]);
 

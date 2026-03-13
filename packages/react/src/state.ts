@@ -111,7 +111,7 @@ State.use = function <T extends State>(
   this: State.Type<T>,
   ...args: UseArgs<T>
 ) {
-  const outer = Context.use();
+  const outer = Context.get();
   const state = Pragma.useState(() => {
     let ready: boolean | undefined;
     let active: T;
@@ -170,7 +170,7 @@ State.get = function <T extends State, R>(
   this: State.Extends<T>,
   argument?: boolean | GetFactory<T, unknown>
 ) {
-  const context = Context.use();
+  const context = Context.get();
   const state = Pragma.useState(() => {
     let instance: T | undefined;
     let unwatch: (() => void) | undefined;

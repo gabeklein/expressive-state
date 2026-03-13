@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { context as getContext, Context } from './context';
+import { Context } from './context';
 import { State } from './state';
 
 class Example extends State {}
@@ -81,12 +81,12 @@ it('will remove implicit children on pop', () => {
   const context = new Context(Parent);
   const { child } = context.get(Parent);
 
-  expect(getContext(child)).toBe(context);
+  expect(Context.get(child)).toBe(context);
 
   context.pop();
 
   // context assignment is permanent
-  expect(getContext(child)).toBe(context);
+  expect(Context.get(child)).toBe(context);
 });
 
 it('child pop is safe to call before parent pop', () => {
@@ -503,7 +503,7 @@ describe('with existing context', () => {
 
     new Context(foo);
 
-    expect(getContext(foo)).toBe(original);
+    expect(Context.get(foo)).toBe(original);
   });
 });
 
@@ -514,13 +514,13 @@ describe('context helper', () => {
     const test = new Test();
     const context = new Context(test);
 
-    expect(getContext(test)).toBe(context);
+    expect(Context.get(test)).toBe(context);
   });
 
   it('will fallback to root context if none assigned', () => {
     const test = new Test();
 
-    expect(getContext(test)).toBe(Context.root);
+    expect(Context.get(test)).toBe(Context.root);
   });
 
   it('will keep first context assigned', () => {
@@ -529,7 +529,7 @@ describe('context helper', () => {
 
     new Context(test);
 
-    expect(getContext(test)).toBe(first);
+    expect(Context.get(test)).toBe(first);
   });
 });
 
@@ -688,12 +688,12 @@ describe('set method', () => {
     const context = new Context({ Parent });
     const { child } = context.get(Parent);
 
-    expect(getContext(child)).toBe(context);
+    expect(Context.get(child)).toBe(context);
 
     context.set({});
 
     // context assignment is permanent
-    expect(getContext(child)).toBe(context);
+    expect(Context.get(child)).toBe(context);
     expect(context.get(Example, false)).toBeUndefined();
   });
 

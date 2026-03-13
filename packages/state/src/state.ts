@@ -1,4 +1,4 @@
-import { context, Context } from './context';
+import { Context } from './context';
 import {
   listener,
   watch,
@@ -559,7 +559,7 @@ function manage(
 
 function child(state: State, key: string | number) {
   let reset: (() => void) | undefined;
-  const ctx = context(state);
+  const ctx = Context.get(state);
 
   listener(
     state,
@@ -628,7 +628,7 @@ function lookup(
   arg2?: Context.Expect | boolean,
   arg3?: boolean
 ) {
-  const ctx = context(self);
+  const ctx = Context.get(self);
 
   return arg2 === true
     ? arg3 === undefined

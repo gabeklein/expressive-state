@@ -3,24 +3,6 @@ import { event, State, uid } from './state';
 
 const LOOKUP = new WeakMap<State, Context>();
 
-/** Get the context for a specified State. Falls back to Context.root. */
-function context(on: State, assign?: Context): Context;
-
-/**
- * Assign a context to a State. Ignored if already assigned.
- *
- * @returns The context assigned to the State, either existing or new.
- */
-function context(on: State, set: Context): Context;
-
-function context({ is }: State, set?: Context) {
-  const found = LOOKUP.get(is);
-  if (found) return found;
-  const ctx = set || Context.root;
-  LOOKUP.set(is, ctx);
-  return ctx;
-}
-
 const TYPES = new WeakMap<State.Extends, State.Extends[]>();
 
 function types(state: State) {
@@ -53,6 +35,11 @@ declare namespace Context {
 
 class Context {
   static root = new Context();
+
+  /** Get the context for a State. Adapters may override to provide framework context. */
+  static get(state?: State): Context {
+    return (state && LOOKUP.get(state.is)) || Context.root;
+  }
 
   public id = uid();
   public parent?: Context;
@@ -233,7 +220,7 @@ class Context {
           }.`
         );
 
-      const state = State.is(V) ? new (V as State.Type)() : V;
+      const state = State.is(V) ? new (V as State.Type)() : V.is;
       const remove = this.add(state, false);
 
       init.add(state);
@@ -286,7 +273,7 @@ class Context {
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
-    context(I, this);
+    if (!LOOKUP.has(I)) LOOKUP.set(I, this);
 
     listener(I, () => {
       expects.forEach((f) => f());
@@ -343,4 +330,4 @@ Object.defineProperty(Context.prototype, 'toString', {
   }
 });
 
-export { Context, context };
+export { Context };

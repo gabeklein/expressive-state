@@ -11,14 +11,13 @@ import {
 
 export const Layers = createContext(new Context());
 
-declare module '@expressive/state' {
-  namespace Context {
-    function use(create?: true): Context;
-    function use(create: boolean): Context | null | undefined;
-  }
-}
+const _get = Context.get;
 
-Context.use = () => useContext(Layers);
+Context.get = (state?: State) => {
+  if (state) return _get(state);
+  try { return useContext(Layers); }
+  catch { return Context.root; }
+};
 
 declare namespace Consumer {
   type Props<T extends State> = {

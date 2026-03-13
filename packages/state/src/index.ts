@@ -5,4 +5,4 @@ export { ref } from './instruction/ref';
 
 export { State, State as default, unbind } from './state';
 export { watch, listener, event, Observable } from './observable';
-export { Context, context } from './context';
+export { Context } from './context';

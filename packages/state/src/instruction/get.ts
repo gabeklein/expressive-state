@@ -1,5 +1,5 @@
 import { scope } from '../observable';
-import { context } from '../context';
+import { Context } from '../context';
 import { State, PARENT, update } from '../state';
 import { apply } from './apply';
 
@@ -111,7 +111,7 @@ function get<T extends State>(
       return {};
     }
 
-    const ctx = context(subject);
+    const ctx = Context.get(subject);
     let found = false;
 
     ctx.get(Type, (state) => {
@@ -133,7 +133,7 @@ function get<T extends State>(
 
 function getOneDownstream<T extends State>(Type: Type<T>, required: boolean) {
   return apply<T | undefined>((key, subject) => {
-    context(subject).all(Type, (state) => {
+    Context.get(subject).all(Type, (state) => {
       update(subject, key, state);
       const ignore = state.set(() => {
         ignore();
@@ -157,7 +157,7 @@ function getDownstream<T extends State>(
   return apply<T[]>((key, subject) => {
     const applied = new Set<State>();
 
-    context(subject).all(Type, (state) => {
+    Context.get(subject).all(Type, (state) => {
       let remove: (() => void) | undefined;
       let flush: (() => void) | undefined;
 
