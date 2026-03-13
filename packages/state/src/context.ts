@@ -56,12 +56,10 @@ class Context {
     if (!set) map.set(type, (set = new Set()));
     set.add(value);
 
-    let ctx = this.parent;
-    while (ctx) {
+    for (let ctx = this.parent; ctx; ctx = ctx!.parent) {
       const pmap = asConsumer ? ctx.consume : ctx.provide;
       if (pmap.has(type)) break;
       pmap.set(type, null);
-      ctx = ctx.parent;
     }
 
     return () => set.delete(value);
