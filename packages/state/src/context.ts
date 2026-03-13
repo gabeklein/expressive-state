@@ -248,12 +248,13 @@ class Context {
       for (const T of TT) {
         const list = ctx.consume.get(T);
         if (list !== undefined) found = true;
-        for (const [cb, filter] of list || [])
-          if (filter === downstream)
-            expects.set(cb, () => {
-              const r = cb(I, false);
-              if (r) onDone.add(r);
-            });
+        if (list)
+          for (const [cb, filter] of list)
+            if (filter === downstream)
+              expects.set(cb, () => {
+                const r = cb(I, false);
+                if (r) onDone.add(r);
+              });
       }
       return found;
     }
