@@ -92,6 +92,27 @@ describe('Provider', () => {
     );
   });
 
+  it('will call is callback with created instance', () => {
+    class Test extends State {
+      value = 'hello';
+    }
+
+    const is = vi.fn();
+
+    render(
+      <Provider for={Test} is={is}>
+        <Consumer for={Test}>
+          {(i) => {
+            expect(i).toBeInstanceOf(Test);
+          }}
+        </Consumer>
+      </Provider>
+    );
+
+    expect(is).toBeCalledTimes(1);
+    expect(is).toBeCalledWith(expect.any(Test));
+  });
+
   it('will update instance when props change', async () => {
     class Test extends State {
       value = 'initial';

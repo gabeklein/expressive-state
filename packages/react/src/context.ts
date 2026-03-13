@@ -63,6 +63,7 @@ declare namespace Provider {
 
   type ForSingleProps<T extends State> = SharedProps & {
     for: T | State.Type<T>;
+    is: (instance: T) => void;
   } & { [K in State.Field<T>]?: T[K] };
 
   type ForEachProps<T extends State> = SharedProps & {
@@ -85,7 +86,10 @@ function Provider<T extends State>(props: Provider.Props<T>) {
   const ambient = useContext(Layers);
   const context = useMemo(() => ambient.push(), []);
 
-  context.set(input, (added) => rest.forEach && rest.forEach(added));
+  context.set(input, (added) => {
+    const cb = rest.forEach || rest.is;
+    return cb && cb(added);
+  });
 
   if (Object.keys(rest).length)
     if (State.is(input)) context.get(input).set(rest as State.Assign<T>);
