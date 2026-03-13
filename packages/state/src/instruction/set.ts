@@ -64,6 +64,10 @@ function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
  * @param factory - Callback receiving self proxy, returns computed value.
  */
 // TODO: add optional onUpdate callback for reactive computed (observation-only)
+// Normally is treated as readonly, but if a callback is provided, it can be assigned.
+// Callback would run for both direct updates and reactive updates, and would receive the next value and previous value as arguments.
+// Return value of callback would be unset function. This would be good to know especially for async updates.
+// You can cancel pending updates if a new update comes in before the previous one finishes.
 function set<T, S extends State>(
   factory: (self: S, key: string) => T | Promise<T>
 ): T;
@@ -74,6 +78,9 @@ function set<T, S extends State>(
  * @param value - Starting value for property.
  * @param onUpdate - Optional callback run when property is set.
  */
+// TODO: if onUpdate is not defined, should this have behavior unique to simple assignment?
+// I'm thinking default behavior should be to assign value directly to property, without triggering any additional updates.
+// All this requires is a default callback which throws true, silent updates are already implemented.
 function set<T>(value: T | Promise<T>, onUpdate?: set.Callback<T>): T;
 
 function set<T = any>(value?: unknown, argument?: unknown): any {
