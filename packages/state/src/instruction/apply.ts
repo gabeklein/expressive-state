@@ -24,12 +24,10 @@ declare namespace Apply {
 
 const APPLY = new Map<symbol, Apply>();
 
-function apply<T>(instruction: Apply<T>): T extends void ? unknown : T;
-
-function apply(arg1: Apply) {
+function apply<T>(arg1: Apply<T>) {
   const token = Symbol('instruction-' + uid());
   APPLY.set(token, arg1);
-  return token;
+  return token as T extends void ? unknown : T;
 }
 
 State.on((_key, self) => {
