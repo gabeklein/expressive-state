@@ -125,13 +125,48 @@ class Parent extends State {
 
 ## set — Computed Values, Factories & Validation
 
-The most versatile instruction.
+The most versatile instruction. All `set()` properties differ from plain assignment (`= value`) in their enumerable and writable behavior.
+
+### Property Descriptor Policy
+
+| Form | Enumerable | Writable | Description |
+| --- | --- | --- | --- |
+| `= "foo"` | yes | yes | Plain data property |
+| `= set("foo")` | no | yes | Managed value, excluded from snapshots/ref |
+| `= set("foo", cb)` | no | yes | Managed value with setter callback |
+| `= set(() => "foo")` | no | no | Factory-initialized, read-only |
+| `= set(() => "foo", cb)` | no | yes | Factory with setter callback |
+| `= set((self) => ...)` | yes | no | Reactive computed, included in snapshots/ref |
+
+- **Enumerable** determines if the property appears in `Object.keys()`, `get()` snapshots, and `ref(this)`.
+- **Writable** determines if the property can be assigned to. Read-only properties throw on assignment.
+- Only reactive computed properties are enumerable because they are derived data. All other `set()` forms are non-enumerable.
+- A property is only writable if a setter callback is provided, or if initialized with a non-function value.
+
+### Placeholder (Suspense)
 
 ```ts
 class MyState extends State {
-  data = set<string>(); // required placeholder (suspends until set)
-  config = set(() => loadConfig()); // factory (lazy init)
-  api = set(async () => fetch('/api').then((r) => r.json())); // async (suspends, integrates with Suspense)
+  data = set<string>(); // required, suspends until assigned
+}
+```
+
+### Factory
+
+```ts
+class MyState extends State {
+  config = set(() => loadConfig()); // lazy, read-only
+  api = set(async () => fetch('/api').then(r => r.json())); // async, suspends
+}
+```
+
+Factory properties are read-only. To make writable, provide a callback:
+
+```ts
+class MyState extends State {
+  config = set(() => loadDefaults(), (next, prev) => {
+    console.log('config changed');
+  });
 }
 ```
 
@@ -150,30 +185,18 @@ class MyState extends State {
 }
 ```
 
-> Callbacks may throw `false` to reject an update, or return a new value to transform it. Returning `undefined` is a no-op — prefer `null` for values you want to override to falsy.
+> Callbacks may throw `false` to reject an update. Returning a function provides cleanup called on next update.
 
-### Computed (Reactive to Another State)
-
-```ts
-class MyState extends State {
-  items = [1, 2, 3];
-  multiplier = 2;
-  total = set(this, ($) => $.items.reduce((a, b) => a + b, 0) * $.multiplier);
-}
-```
-
-`total` re-computes when `items` or `multiplier` changes. `$` is a tracking proxy.
-
-### Computed (Reactive to Self)
+### Reactive Computed
 
 ```ts
 class MyState extends State {
   value = 10;
-  doubled = set(true, (self) => self.value * 2);
+  doubled = set((from: this) => from.value * 2);
 }
 ```
 
-Pass `true` as first argument to react to `this`.
+`doubled` re-computes when `value` changes. The `self` parameter is a tracking proxy - only properties accessed through it are subscribed to. Reactive computed properties are enumerable (considered data) and read-only.
 
 ---
 

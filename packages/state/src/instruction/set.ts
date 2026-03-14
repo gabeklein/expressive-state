@@ -22,6 +22,8 @@ declare namespace set {
  * Property cannot be accessed until it is defined. If accessed while undefined, a hybrid
  * `Promise`/`Error` (aka: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
  *
+ * Non-enumerable; writable only if `onUpdate` callback is provided.
+ *
  * @param value - Starting value (undefined for suspense placeholder).
  * @param onUpdate - Callback run when property is set.
  */
@@ -32,6 +34,8 @@ function set<T>(value?: undefined, onUpdate?: set.Callback<T>): T;
  * If required is not defined, factory runs lazily on first access.
  * If async, or returns a promise, suspense is thrown upon access until resolved.
  *
+ * Non-enumerable and read-only.
+ *
  * @param factory - Zero-arg async callback to produce property value.
  * @param required - Pass `true` to run factory immediately and require value.
  */
@@ -39,6 +43,8 @@ function set<T>(factory: () => T | Promise<T>, required?: true): T;
 
 /**
  * Set property with a lazy factory, no suspense.
+ *
+ * Non-enumerable and read-only.
  *
  * @param factory - Zero-arg callback to produce property value.
  * @param required - Pass `false` to allow undefined while pending.
@@ -51,6 +57,8 @@ function set<T>(
 /**
  * Set property with a factory and update callback.
  *
+ * Non-enumerable but writable via the callback.
+ *
  * @param factory - Callback to produce initial value.
  * @param onUpdate - Callback run when property is updated.
  */
@@ -60,6 +68,8 @@ function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
  * Set a reactive computed property.
  *
  * Factory receives a watched proxy `self` and re-runs when accessed properties change.
+ *
+ * Enumerable (considered data) and read-only. Included in snapshots, serialization, and `ref(this)`.
  *
  * @param factory - Callback receiving self proxy, returns computed value.
  */
@@ -74,6 +84,9 @@ function set<T, S extends State>(
 
 /**
  * Set a property with a non-function value.
+ *
+ * Non-enumerable but writable. Unlike plain assignment (`= value`), this
+ * property is excluded from snapshots and `ref(this)`.
  *
  * @param value - Starting value for property.
  * @param onUpdate - Optional callback run when property is set.
@@ -133,6 +146,8 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       }
 
       return {
+        enumerable: true,
+        set: false,
         get() {
           if (!proxy) {
             connect(subject);
@@ -146,10 +161,16 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       };
     }
 
-    const config: Apply.Config = {};
+    const config: Apply.Config = {
+      enumerable: false,
+      set: false
+    };
+
+    let computed = false;
 
     // One-shot factory or Promise
     if (typeof value == 'function' || value instanceof Promise) {
+      computed = true;
       function init() {
         if (typeof value == 'function')
           try {
@@ -163,17 +184,19 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
 
         config.get = argument !== false;
 
+        function assign(next: any, silent?: boolean) {
+          if (typeof argument == 'function') subject[key] = next;
+          else update(subject, key, next, silent);
+        }
+
         if (value instanceof Promise)
-          value.then(
-            (value: any) => (subject[key] = value),
-            (error) => {
-              event(subject, key);
-              config.get = () => {
-                throw error;
-              };
-            }
-          );
-        else subject[key] = value;
+          value.then(assign, (error) => {
+            event(subject, key);
+            config.get = () => {
+              throw error;
+            };
+          });
+        else assign(value, true);
 
         if (argument) return null;
 
@@ -207,7 +230,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
           };
         });
       };
-    } else
+    } else if (!computed)
       config.set = () => {
         config.get = undefined;
         config.set = undefined;

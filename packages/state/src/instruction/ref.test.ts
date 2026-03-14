@@ -306,10 +306,11 @@ describe('proxy', () => {
 });
 
 describe('set instruction', () => {
-  it('will include computed properties', () => {
+  it('will include reactive computed properties', () => {
     class Subject extends State {
+      source = 'foo';
       ref = ref(this);
-      foo = set(() => 'foo');
+      foo = set((from: this) => from.source);
     }
 
     const test = Subject.new();
@@ -318,18 +319,29 @@ describe('set instruction', () => {
     expect(test.ref.foo.current).toBe('foo');
   });
 
-  it('will trigger callback', () => {
-    const callback = vi.fn();
-
+  it('will not include factory-based properties', () => {
     class Subject extends State {
       ref = ref(this);
-      foo = set(() => 'foo', callback);
+      foo = set(() => 'foo');
     }
 
     const test = Subject.new();
 
-    test.ref.foo.current = 'bar';
-    expect(callback).toBeCalledWith('bar', 'foo');
+    expect(test.ref).not.toHaveProperty('foo');
+  });
+
+  it('will not allow writing to reactive computed via ref', () => {
+    class Subject extends State {
+      source = 'foo';
+      ref = ref(this);
+      foo = set((from: this) => from.source);
+    }
+
+    const test = Subject.new();
+
+    expect(() => {
+      test.ref.foo.current = 'bar';
+    }).toThrow(/read-only/);
   });
 });
 

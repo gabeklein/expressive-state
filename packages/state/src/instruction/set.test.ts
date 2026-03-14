@@ -12,14 +12,106 @@ import { set } from './set';
 
 const warn = mockWarn();
 
-it('will be enumerable', () => {
-  class Test extends State {
-    value = set('foo');
-  }
+describe('property descriptors', () => {
+  it('will not be enumerable with value', () => {
+    class Test extends State {
+      value = set('foo');
+    }
 
-  const test = Test.new();
+    const test = Test.new();
 
-  expect(Object.keys(test)).toContain('value');
+    expect(Object.keys(test)).not.toContain('value');
+  });
+
+  it('will not be enumerable with factory', () => {
+    class Test extends State {
+      value = set(() => 'foo');
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).not.toContain('value');
+  });
+
+  it('will be enumerable with reactive computed', () => {
+    class Test extends State {
+      source = 'hello';
+      value = set((from: this) => from.source);
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).toContain('value');
+  });
+
+  it('will be writable with value', () => {
+    class Test extends State {
+      value = set('foo');
+    }
+
+    const test = Test.new();
+
+    test.value = 'bar';
+    expect(test.value).toBe('bar');
+  });
+
+  it('will be read-only with factory', () => {
+    class Test extends State {
+      value = set(() => 'foo');
+    }
+
+    const test = Test.new();
+
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+  });
+
+  it('will be read-only with required factory', () => {
+    class Test extends State {
+      value = set(() => 'foo', true);
+    }
+
+    const test = Test.new();
+
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+  });
+
+  it('will be writable with factory and callback', () => {
+    const callback = vi.fn();
+
+    class Test extends State {
+      value = set(() => 'foo', callback);
+    }
+
+    const test = Test.new();
+
+    test.value = 'bar';
+    expect(test.value).toBe('bar');
+    expect(callback).toBeCalledWith('bar', 'foo');
+  });
+
+  it('will be read-only with reactive computed', () => {
+    class Test extends State {
+      source = 'foo';
+      value = set((from: this) => from.source);
+    }
+
+    const test = Test.new();
+
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+  });
+
+  it('will be writable with placeholder and callback', () => {
+    const callback = vi.fn();
+
+    class Test extends State {
+      value = set<string>(undefined, callback);
+    }
+
+    const test = Test.new();
+
+    test.value = 'hello';
+    expect(callback).toBeCalledWith('hello', undefined);
+  });
 });
 
 describe('placeholder', () => {
@@ -272,20 +364,15 @@ describe('factory', () => {
     expect(test.value).toBe('foo');
   });
 
-  it('will ignore setter if assigned', () => {
-    const getValue = vi.fn(() => 'foo');
-
+  it('will be read-only', () => {
     class Test extends State {
-      value = set(getValue);
+      value = set(() => 'foo');
     }
 
     const test = Test.new();
 
-    test.value = 'bar';
-
-    expect(test).toHaveUpdated();
-    expect(test.value).toBe('bar');
-    expect(getValue).not.toBeCalled();
+    expect(() => { test.value = 'bar' }).toThrow(/read-only/);
+    expect(test.value).toBe('foo');
   });
 
   it('will compute when accessed', () => {
