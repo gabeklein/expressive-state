@@ -213,7 +213,10 @@ abstract class State implements Observable {
   get<T extends State>(type: State.Type<T>): T;
 
   /** Fetch a State from context. Returns undefined if not found. */
-  get<T extends State>(type: State.Type<T>, required: false): T | undefined;
+  get<T extends State>(
+    type: State.Type<T>,
+    required: false | undefined
+  ): T | undefined;
 
   /** Collect all downstream State of type in context. */
   get<T extends State>(type: State.Type<T>, children: true): T[];
