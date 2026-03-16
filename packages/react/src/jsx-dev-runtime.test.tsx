@@ -1,3 +1,5 @@
+/** @jsxImportSource . */
+
 import { expect, it } from '../vitest';
 
 import { State } from '.';
@@ -14,7 +16,7 @@ it('exports Fragment', () => {
 it('will convert State to element', () => {
   class Test extends State {}
 
-  const element = jsxDEV(Test, { children: 'Hello' }, 'key', false);
+  const element = <Test>Hello</Test>;
 
   expect(element).toMatchObject({
     type: expect.any(Function),
