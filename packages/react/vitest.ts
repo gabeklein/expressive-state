@@ -8,7 +8,7 @@ import { Provider, State } from './src';
 afterEach(cleanup);
 
 export * from 'vitest';
-export * from '@testing-library/react';
+export { act, render, screen } from '@testing-library/react';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
