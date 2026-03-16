@@ -1,8 +1,3 @@
-import Runtime from 'react/jsx-dev-runtime';
-
-import { patch } from './jsx-runtime';
-
-export const jsxDEV = patch.bind(Runtime.jsxDEV);
-
+export { jsxDEV } from 'react/jsx-dev-runtime';
 export { type JSX } from './jsx-runtime';
 export { Fragment } from 'react';

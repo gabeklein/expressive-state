@@ -30,7 +30,6 @@ export type Props<T extends State> = Readonly<
   StateProps<T> & {
     /**
      * Callback for newly created instance. Only called once.
-     * @returns Callback to run when instance is destroyed.
      */
     is?: (instance: T) => void;
 
@@ -68,21 +67,23 @@ export type ComponentType<T, P = {}> = State.Type<T & Component<P>>;
 
 declare module '@expressive/state' {
   namespace State {
-    export function as<T extends State, P extends object = {}>(
+    function as<T extends State, P extends object = {}>(
       this: State.Type<T>,
       render?: Render<T, P>
     ): ComponentType<T, P>;
 
-    export function as<T extends State, P extends object = {}>(
+    function as<T extends State, P extends object = {}>(
       this: ComponentType<T, P>,
       withProps: StateProps<T>
     ): ComponentType<T, P>;
 
-    export function as<T extends State>(
+    function as<T extends State>(
       this: State.Type<T>,
       withProps: StateProps<T>
     ): ComponentType<T, {}>;
+  }
 
+  namespace State {
     export type { Component, Props };
   }
 }
@@ -91,28 +92,21 @@ State.as = function <T extends State, P extends object = {}>(
   this: State.Type<T>,
   argument?: ((props: P, self: T) => ReactNode) | StateProps<T>
 ) {
-  const Base = this as unknown as State.Type<State>;
   const render = typeof argument === 'function' ? argument : undefined;
 
-  class ReactType extends Base {
+  class ReactType extends (this as unknown as State.Type<State>) {
     static contextType = Layers;
 
     fallback?: ReactNode;
 
-    get props(): Props<this> {
+    get props(): Props<any> {
       return PROPS.get(this.is)!;
     }
 
-    private set props(props: Props<this>) {
+    private set props(props: Props<any>) {
       PROPS.set(this.is, props);
       this.set(props as {});
     }
-
-    get context() {
-      return Context.get(this);
-    }
-
-    private set context(_: Context) {}
 
     get state() {
       return this.get();
@@ -120,48 +114,81 @@ State.as = function <T extends State, P extends object = {}>(
 
     private set state(_state: State.Values<this>) {}
 
+    shouldComponentUpdate() {
+      return true;
+    }
+
     constructor(nextProps: any, ...rest: any[]) {
-      let context;
       const { is, ...props } = nextProps;
       const defaults = typeof argument === 'object' ? argument : {};
 
-      if (rest[0] instanceof Context) {
-        context = rest.shift() as Context;
-      }
+      if (rest[0] instanceof Context) rest.shift();
 
       super(props, defaults, rest, is && ((x) => void is(x)));
-      PROPS.set(this, nextProps);
-
-      if (context) context.push(this);
-
-      const AsComponent = Render.bind(
-        this,
-        render || unbind((this as any).render)
-      );
-      this.render = () => createElement(AsComponent);
-    }
-
-    render!: () => ReactNode;
-
-    /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
-    setState!: (state: any, callback?: () => void) => void;
-
-    /** @deprecated Only for React JSX compatibility in typescript and nonfunctional. */
-    forceUpdate!: (callback?: () => void) => void;
-
-    componentWillUnmount() {
-      this.context.pop();
-      this.set(null);
+      PROPS.set(this, props);
     }
   }
 
+  if (render)
+    Object.defineProperty(ReactType.prototype, 'render', {
+      configurable: true,
+      writable: true,
+      value: render
+    });
+
   Object.defineProperty(ReactType, 'name', { value: 'React' + this.name });
-  Object.defineProperty(ReactType.prototype, 'isReactComponent', {
-    get: () => true
-  });
 
   return ReactType as unknown as ComponentType<T, P>;
 };
+
+Object.defineProperty(State, 'contextType', {
+  configurable: true,
+  writable: true,
+  value: Layers
+});
+
+Object.defineProperties(State.prototype, {
+  isReactComponent: { value: true },
+  shouldComponentUpdate: {
+    configurable: true,
+    value(this: Component, props: any) {
+      PROPS.set(this.is, props);
+      this.set(props);
+      return true;
+    }
+  },
+  componentWillUnmount: {
+    configurable: true,
+    value(this: Component) {
+      this.context.pop();
+      this.set(null);
+    }
+  },
+  context: {
+    configurable: true,
+    set(this: Component, ctx: Context) {
+      const { is: self, props = {} } = this;
+      const child = ctx.push(self);
+
+      Object.defineProperty(self, 'context', {
+        get: () => child,
+        set() {}
+      });
+
+      if (!PROPS.has(self)) {
+        PROPS.set(self, props);
+        if (typeof props.is === 'function') props.is(self);
+      }
+
+      const render = unbind(this.render);
+      const Wrapped = Render.bind(self, render);
+      self.render = () => createElement(Wrapped);
+    },
+    get() {
+      return Context.get(this);
+    }
+  }
+});
 
 function Render<T extends Component, P extends State.Assign<T>>(
   this: T,

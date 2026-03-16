@@ -1,6 +1,5 @@
 import { State } from '.';
 
-import Runtime from 'react/jsx-runtime';
 import React from 'react';
 
 interface AsComponent extends State {
@@ -65,21 +64,4 @@ export declare namespace JSX {
   interface IntrinsicElements extends React.JSX.IntrinsicElements {}
 }
 
-const RENDER = new WeakMap<Function, React.ComponentType>();
-
-export function patch(
-  this: (type: React.ElementType, ...args: any[]) => React.ReactElement,
-  type: React.ElementType | State.Type,
-  ...args: any[]
-): React.ReactElement {
-  if (State.is(type) && !('isReactComponent' in type.prototype))
-    if (RENDER.has(type)) type = RENDER.get(type)!;
-    else RENDER.set(type, (type = type.as()));
-
-  return this(type as React.ElementType, ...args);
-}
-
-export const jsx = patch.bind(Runtime.jsx);
-export const jsxs = patch.bind(Runtime.jsxs);
-
-export { Fragment } from 'react';
+export { jsx, jsxs, Fragment } from 'react/jsx-runtime';
