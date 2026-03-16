@@ -1405,8 +1405,7 @@ describe('get method', () => {
 
           value2 = set((from: this) => from.value1 + 1);
 
-          constructor(...args: State.Args) {
-            super(args);
+          protected new() {
             this.get((state) => mock(state.value2));
           }
         }

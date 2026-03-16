@@ -120,16 +120,15 @@ describe('State.as()', () => {
   });
 
   it('will pass untracked props to render', async () => {
+    let test: Test;
+
     class Test extends State {
       foo = 'foo';
 
-      constructor(...args: State.Args) {
-        super(args);
+      protected new() {
         test = this;
       }
     }
-
-    let test: Test;
     const Component = Test.as((props: { value: string }, self) => (
       <span>{self.foo + props.value}</span>
     ));
@@ -145,8 +144,8 @@ describe('State.as()', () => {
     const didUpdateFoo = vi.fn();
     class Test extends State {
       foo = 'foo';
-      constructor(...args: State.Args) {
-        super(...args);
+
+      protected new() {
         this.set(didUpdateFoo);
       }
     }
@@ -167,18 +166,18 @@ describe('State.as()', () => {
   });
 
   it('will retain local updates over initial props', async () => {
+    let test: Test;
+    const didSetFoo = vi.fn();
+
     class Test extends State {
       foo = 'foo';
 
-      constructor(...args: State.Args) {
-        super(args);
+      protected new() {
         test = this;
         this.set(didSetFoo);
       }
     }
 
-    let test: Test;
-    const didSetFoo = vi.fn();
     const renderSpy = vi.fn((_, { foo }) => {
       return <span>{foo}</span>;
     });

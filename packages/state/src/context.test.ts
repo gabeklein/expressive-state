@@ -231,11 +231,8 @@ it('will pop child context', () => {
   let order = 0;
 
   class Test extends State {
-    constructor(...args: State.Args) {
-      super(args);
-      this.set(() => {
-        didDestroy(++order, this.constructor.name);
-      }, null);
+    protected new() {
+      return () => didDestroy(++order, this.constructor.name);
     }
   }
 

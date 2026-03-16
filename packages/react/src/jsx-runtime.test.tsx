@@ -21,8 +21,7 @@ it('will create and provide instance', () => {
 
 it('will create instance only once', () => {
   class Control extends State {
-    constructor(...args: State.Args) {
-      super(args);
+    protected new() {
       didConstruct(this);
     }
   }
@@ -534,8 +533,7 @@ describe.skip('implicit context', () => {
       foo = get(Foo);
       bar = get(Bar);
 
-      constructor(...args: State.Args) {
-        super(args);
+      protected new() {
         baz = this;
       }
     }

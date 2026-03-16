@@ -261,11 +261,8 @@ describe('Provider', () => {
     const didDestroy = vi.fn();
 
     class Test extends State {
-      constructor(...args: State.Args) {
-        super(...args);
-        this.set(() => {
-          didDestroy(this.constructor.name);
-        }, null);
+      protected new() {
+        return () => didDestroy(this.constructor.name);
       }
     }
 
