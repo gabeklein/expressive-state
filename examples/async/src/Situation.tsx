@@ -5,7 +5,7 @@ class Control extends State {
   remaining = 30;
   dead?: boolean = undefined;
 
-  // `this.new` is called hen a model becomes ready.
+  // `this.new` is called when a model becomes ready.
   // The method will only be called once and return function
   // will be called on `null` event, when model is destroyed.
   protected new() {

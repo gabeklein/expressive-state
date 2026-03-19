@@ -13,7 +13,7 @@ class FooBar extends State {
 
 const Demo = () => {
   /*
-    Unlike React's own Provider, Expressive provider accepts a `for` prop,
+    Expressive Provider is universal; it accepts a `for` prop,
     which can be a State class, instance, or a collection of either.
   */
   return (

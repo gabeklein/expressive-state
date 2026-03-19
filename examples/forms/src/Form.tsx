@@ -24,7 +24,7 @@ class Form extends State {
     return a result and be memoized by component going forward.
   */
   static bind(property: string): Ref<HTMLInputElement> {
-    return this.get((form) => {
+    return this.get((self) => {
       let reset: (() => void) | undefined;
 
       return (input) => {
@@ -32,11 +32,11 @@ class Form extends State {
 
         if (!input) return;
 
-        if (!(property in form))
-          throw new Error(`${form} has no property "${property}"`);
+        if (!(property in self))
+          throw new Error(`${self} has no property "${property}"`);
 
-        const unfollow = form.get(property, (x) => (input.value = x as string));
-        const onInput = () => form.set(property, input.value);
+        const unfollow = self.get(property, (x) => (input.value = x as string));
+        const onInput = () => self.set(property, input.value);
 
         input.addEventListener('input', onInput);
 
