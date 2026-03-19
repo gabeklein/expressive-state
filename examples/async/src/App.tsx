@@ -31,7 +31,7 @@ class Control extends State {
   }
 }
 
-const Situation = () => {
+const App = () => {
   const { agent, dead, getNewAgent, remaining } = Control.use();
 
   if (dead === true) {
@@ -43,22 +43,25 @@ const Situation = () => {
   }
 
   return (
-    <div className="timer">
-      <h1 className="box">📦</h1>
-      <p>
-        <b>Agent {agent}</b>, we need you to diffuse the bomb!
-      </p>
-      <p>
-        If you can't do it in {remaining} seconds, Schrödinger's cat may or may
-        not die!
-      </p>
-      <p>
-        But there's still time!
-        <button onClick={getNewAgent}>Tap another agent</button>
-        if you think they can do it.
-      </p>
+    <div className="container">
+      <h1>Async Example</h1>
+      <div className="timer">
+        <h1 className="box">📦</h1>
+        <p>
+          <b>Agent {agent}</b>, we need you to diffuse the bomb!
+        </p>
+        <p>
+          If you can't do it in {remaining} seconds, Schrödinger's cat may or may
+          not die!
+        </p>
+        <p>
+          But there's still time!
+          <button onClick={getNewAgent}>Tap another agent</button>
+          if you think they can do it.
+        </p>
+      </div>
     </div>
   );
 };
 
-export default Situation;
+export default App;

@@ -16,19 +16,22 @@ class Control extends State {
   increment = () => this.current++;
 }
 
-const Counter = () => {
+const App = () => {
   // Here we create an instance of the model with the `use` method.
   // It is a hook and will create, memoize and observe new instance of Control.
   // If touched values ever become stale, the component renders automatically!
   const { current, increment, decrement } = Control.use();
 
   return (
-    <div className="counter">
-      <button onClick={decrement}>{'-'}</button>
-      <pre>{current}</pre>
-      <button onClick={increment}>{'+'}</button>
+    <div className="container">
+      <h1>Counter Example</h1>
+      <div className="counter">
+        <button onClick={decrement}>{'-'}</button>
+        <pre>{current}</pre>
+        <button onClick={increment}>{'+'}</button>
+      </div>
     </div>
   );
 };
 
-export default Counter;
+export default App;

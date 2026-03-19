@@ -2,6 +2,6 @@ import './index.css';
 
 import { createRoot } from 'react-dom/client';
 
-import Demo from './Demo';
+import App from './App';
 
-createRoot(document.getElementById('root')!).render(<Demo />);
+createRoot(document.getElementById('root')!).render(<App />);

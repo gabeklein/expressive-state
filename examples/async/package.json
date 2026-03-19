@@ -2,7 +2,7 @@
   "name": "@example/async",
   "private": true,
   "main": "src/index.tsx",
-  "module": "src/Situation.tsx",
+  "module": "src/App.tsx",
   "dependencies": {
     "@expressive/react": "*",
     "react": "^19",

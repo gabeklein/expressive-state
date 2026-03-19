@@ -35,7 +35,7 @@ class Query extends State {
   }
 }
 
-const SayHello = () => {
+const App = () => {
   const { error, response, waiting, run } = Query.use();
 
   if (response) return <p>Server said: {response}</p>;
@@ -44,7 +44,12 @@ const SayHello = () => {
 
   if (waiting) return <p>Sent! Waiting on response...</p>;
 
-  return <button onClick={run}>Say hello to server!</button>;
+  return (
+    <div className="container">
+      <h1>Fetch Example</h1>
+      <button onClick={run}>Say hello to server!</button>
+    </div>
+  );
 };
 
-export default SayHello;
+export default App;

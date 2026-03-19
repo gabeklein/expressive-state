@@ -2,7 +2,7 @@
   "name": "@example/simple",
   "private": true,
   "main": "src/index.tsx",
-  "module": "src/Demo.tsx",
+  "module": "src/App.tsx",
   "dependencies": {
     "@expressive/react": "*",
     "react": "^19",

@@ -1,7 +1,6 @@
-import { State } from '@expressive/state';
 import { createElement, useEffect, useState } from 'react';
 
-import { Pragma } from './state';
+import { Pragma, State } from './state';
 import { Consumer, Provider } from './context';
 
 import './component';

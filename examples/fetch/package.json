@@ -2,7 +2,7 @@
   "name": "@example/fetch",
   "private": true,
   "main": "src/index.tsx",
-  "module": "src/SayHello.tsx",
+  "module": "src/App.tsx",
   "dependencies": {
     "@expressive/react": "*",
     "react": "^19",

@@ -2,7 +2,7 @@
   "name": "@example/counter",
   "private": true,
   "main": "src/index.tsx",
-  "module": "src/Counter.tsx",
+  "module": "src/App.tsx",
   "dependencies": {
     "@expressive/react": "*",
     "react": "^19",
