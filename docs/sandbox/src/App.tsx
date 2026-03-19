@@ -12,7 +12,24 @@ class Control extends State {
   names = Object.keys(EXAMPLES);
   active = this.names[0];
 
-  files = set((is: this) => EXAMPLES[is.active]);
+  files = set((is: this) => {
+    const source = EXAMPLES[is.active];
+    const files: Record<string, any> = {
+      '/index.tsx': {
+        hidden: true,
+        code: [
+          `import './index.css';`,
+          `import { createRoot } from 'react-dom/client';`,
+          `import App from './App';`,
+          `createRoot(document.getElementById('root')!).render(<App />);`
+        ].join('\n')
+      }
+    };
+
+    for (const [path, code] of Object.entries(source)) files[path] = code;
+
+    return files;
+  });
 }
 
 export default function App() {

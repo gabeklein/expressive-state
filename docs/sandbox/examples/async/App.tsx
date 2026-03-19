@@ -51,8 +51,8 @@ const App = () => {
           <b>Agent {agent}</b>, we need you to diffuse the bomb!
         </p>
         <p>
-          If you can't do it in {remaining} seconds, Schrödinger's cat may or may
-          not die!
+          If you can't do it in {remaining} seconds, Schrödinger's cat may or
+          may not die!
         </p>
         <p>
           But there's still time!

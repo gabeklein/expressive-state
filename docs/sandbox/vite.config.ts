@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 
-const examplesDir = resolve(__dirname, '../../examples');
+const examplesDir = resolve(__dirname, 'examples');
 
 function loadExamples() {
   const examples: Record<string, Record<string, string>> = {};
@@ -11,19 +11,11 @@ function loadExamples() {
   for (const dir of readdirSync(examplesDir, { withFileTypes: true })) {
     if (!dir.isDirectory()) continue;
 
-    const pkgPath = resolve(examplesDir, dir.name, 'package.json');
-
-    try {
-      JSON.parse(readFileSync(pkgPath, 'utf-8'));
-    } catch {
-      continue;
-    }
-
-    const srcDir = resolve(examplesDir, dir.name, 'src');
+    const dirPath = resolve(examplesDir, dir.name);
     const files: Record<string, string> = {};
 
-    for (const file of readdirSync(srcDir)) {
-      files[`/${file}`] = readFileSync(resolve(srcDir, file), 'utf-8');
+    for (const file of readdirSync(dirPath)) {
+      files[`/${file}`] = readFileSync(resolve(dirPath, file), 'utf-8');
     }
 
     examples[dir.name] = files;
