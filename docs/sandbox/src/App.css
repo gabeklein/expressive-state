@@ -1,0 +1,48 @@
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  font-family: system-ui;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.container h1 {
+  margin: 0 0 16px;
+}
+
+nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+nav button {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+}
+
+nav button.active {
+  background: #333;
+  color: #fff;
+}
+
+.sp-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.sp-layout {
+  height: 100%;
+}
