@@ -10,6 +10,8 @@ import { def } from '@expressive/mvc';
 
 Low-level primitive for defining custom property behavior during initialization. All other instructions (`get`, `set`, `ref`) are built on `def`.
 
+Reach for it when writing your own instruction. For unmanaged storage use [`put`](put.md) - a factory returning void defines an own property the store never sees, but an enumerable one is captured as managed state.
+
 ## Usage
 
 ```ts

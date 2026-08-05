@@ -2,6 +2,7 @@ export { def } from './field/def';
 export { get } from './field/get';
 export { has } from './field/has';
 export { map } from './field/map';
+export { put } from './field/put';
 export { set } from './field/set';
 export { ref } from './field/ref';
 
