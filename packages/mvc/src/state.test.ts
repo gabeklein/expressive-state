@@ -178,6 +178,75 @@ it('will destroy owned child when replaced', () => {
   expect(parent.child.get(null)).toBe(false);
 });
 
+it('will adopt child from set factory', () => {
+  const created = vi.fn();
+
+  class Child extends State {
+    value = 1;
+    protected new() {
+      created();
+    }
+  }
+
+  class Parent extends State {
+    child = set(() => new Child());
+  }
+
+  const parent = Parent.new();
+  const { child } = parent;
+
+  expect(created).toBeCalledTimes(1);
+  expect(child.get(null)).toBe(false);
+
+  parent.set(null);
+
+  expect(child.get(null)).toBe(true);
+});
+
+it('will adopt child assigned after undefined', () => {
+  class Child extends State {
+    value = 1;
+  }
+
+  class Parent extends State {
+    child?: Child = undefined;
+  }
+
+  const parent = Parent.new();
+
+  parent.child = new Child();
+
+  const { child } = parent;
+
+  expect(child!.get(null)).toBe(false);
+
+  parent.set(null);
+
+  expect(child!.get(null)).toBe(true);
+});
+
+it('will not adopt child derived by getter', () => {
+  class Child extends State {
+    value = 1;
+  }
+
+  const held = Child.new();
+
+  class Parent extends State {
+    get child() {
+      return held;
+    }
+  }
+
+  const parent = Parent.new();
+
+  expect(parent.child).toBe(held);
+
+  parent.set(null);
+
+  expect(held.get(null)).toBe(false);
+});
+
 it('will not destroy non-owned child when replaced', () => {
   class Child extends State {
     value = 1;
