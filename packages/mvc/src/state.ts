@@ -729,7 +729,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
       console.error(err);
     }
 
-    update(this, key, next, !isAsync, true);
+    update(this, key, next, !isAsync);
   };
 
   apply(
@@ -781,7 +781,7 @@ function apply(
   }
 
   function set(value: unknown, silent?: boolean) {
-    update(state, key, value, silent);
+    update(state, key, value, silent, true);
   }
 
   define(state, key, {
@@ -956,7 +956,7 @@ function update<T>(
   key: State.Event<T>,
   value: T,
   silent?: boolean,
-  derived?: boolean
+  own?: boolean
 ) {
   if (observer(state) === null) {
     if (silent) return false;
@@ -975,13 +975,13 @@ function update<T>(
 
   if (!silent) event(state, key);
 
-  if (!derived) adopt(state, key, value);
+  if (own) adopt(state, key, value);
 
   return true;
 }
 
 /**
- * Hand a value landing in a managed property to that property's adopter,
+ * Hand a value stored by an owning writer to that property's adopter,
  * creating one the first time a State is stored there. A property which has
  * held a State keeps its adopter, so a later non-State value releases the
  * previous child.

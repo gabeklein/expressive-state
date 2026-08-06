@@ -132,7 +132,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
 
         function assign(next: any, silent?: boolean) {
           if (typeof argument == 'function') subject[key] = next;
-          else update(subject, key, next, silent);
+          else update(subject, key, next, silent, true);
         }
 
         if (output instanceof Promise)
