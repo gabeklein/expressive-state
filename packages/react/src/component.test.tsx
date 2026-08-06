@@ -4,7 +4,7 @@ import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
-import { Component, Consumer, set } from '.';
+import { Component, Consumer, State, set } from '.';
 import { transition } from '@expressive/mvc/runtime';
 
 it('will create and provide instance', () => {
@@ -876,6 +876,51 @@ describe('state props on rerender', () => {
     expect(screen).toHaveText('bar');
   });
 
+  it('will own a fresh state passed as prop', () => {
+    class Thing extends State {
+      value = 'foo';
+    }
+
+    class Control extends Component {
+      thing?: Thing = undefined;
+
+      render() {
+        return <span>{this.thing!.value}</span>;
+      }
+    }
+
+    const thing = new Thing();
+    const view = render(<Control thing={thing} />);
+
+    expect(screen).toHaveText('foo');
+
+    view.unmount();
+
+    expect(thing.get(null)).toBe(true);
+  });
+
+  it('will not own an active state passed as prop', () => {
+    class Thing extends State {
+      value = 'foo';
+    }
+
+    class Control extends Component {
+      thing?: Thing = undefined;
+
+      render() {
+        return <span>{this.thing!.value}</span>;
+      }
+    }
+
+    const thing = Thing.new();
+    const view = render(<Control thing={thing} />);
+
+    expect(screen).toHaveText('foo');
+
+    view.unmount();
+
+    expect(thing.get(null)).toBe(false);
+  });
 });
 
 describe('default render', () => {
