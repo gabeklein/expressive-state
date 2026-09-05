@@ -257,23 +257,24 @@ class Context {
 
     for (const T of TT) onDone.add(this.register(T, [I, explicit]));
 
-    function queue(ctx: Context, downstream: boolean) {
+    function queue(ctx: Context, downstream: boolean, same?: boolean) {
       let found = false;
       for (const T of TT) {
         const list = ctx.consume.get(T);
         if (list !== undefined) found = true;
         if (list)
           for (const [cb, filter] of list)
-            if (filter === downstream || filter == null)
+            if (same || filter == null || filter === downstream)
               expects.set(cb, () => {
-                const r = cb(I, downstream);
+                const r = cb(I, filter ?? downstream);
                 if (r) onDone.add(r);
               });
       }
       return found;
     }
 
-    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) queue(ctx, true);
+    queue(this, true, true);
+    for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
     if (!LOOKUP.has(I)) LOOKUP.set(I, this);

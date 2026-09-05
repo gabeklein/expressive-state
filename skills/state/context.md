@@ -47,7 +47,7 @@ const ctx = new Context(Parent);
 ctx.get(Child); // child instance - registered in ctx, not root
 ```
 
-Recursive: grandchildren inherit through their immediate parent. Reassigning a child field destroys the old child (if owned via `new Child()` syntax) and adds the replacement to the same context. Externally-assigned children are not destroyed on replacement.
+Recursive: grandchildren inherit through their immediate parent. Siblings resolve each other through this context regardless of field order. Reassigning a child field destroys the old child (if owned via `new Child()` syntax) and adds the replacement to the same context. Externally-assigned children are not destroyed on replacement.
 
 ## Root Context
 

@@ -1,4 +1,4 @@
-import { capture } from '../observable';
+import { capture, listener, observer } from '../observable';
 import { Context } from '../context';
 import { State, parent, update } from '../state';
 import { def } from './def';
@@ -121,8 +121,26 @@ function above<T extends State>(
       assign(state);
     }, false, subject);
 
-    if (!found && argument !== false)
-      throw new Error(`Required ${Type} not found in context for ${subject}.`);
+    if (!found && argument !== false) {
+      const missing = () =>
+        new Error(`Required ${Type} not found in context for ${subject}.`);
+
+      let activating: State | undefined;
+
+      for (
+        let p: State | null | undefined = hasParent;
+        p && !observer(p)!.ready;
+        p = parent(p)
+      )
+        activating = p;
+
+      if (!activating) throw missing();
+
+      listener(activating, () => {
+        if (!found) throw missing();
+        return null;
+      }, true);
+    }
 
     return {
       get: argument !== false,
