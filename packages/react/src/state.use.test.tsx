@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { flushMicrotasks, mockPromise } from '../test.setup';
-import { transition } from '@expressive/mvc/runtime';
+import { pending } from '@expressive/mvc';
 
 describe('State.use', () => {
   class Test extends State {
@@ -38,10 +38,10 @@ describe('State.use', () => {
 
     it('will transition owned model dispatch', async () => {
       let instance!: Test;
-      const pending = mockPromise<void>();
+      const gate = mockPromise<void>();
       const App = () => {
         instance = Test.use();
-        if (instance.value === 'bar') throw pending;
+        if (instance.value === 'bar') throw gate;
         return <span>{instance.value}</span>;
       };
       const view = render(
@@ -51,14 +51,14 @@ describe('State.use', () => {
       );
 
       await act(async () => {
-        transition(() => void (instance.value = 'bar'));
+        pending(() => void (instance.value = 'bar'));
         await Promise.resolve();
       });
 
       expect(view.container.textContent).toBe('foo');
 
       instance.value = 'done';
-      pending.resolve();
+      gate.resolve();
       await act(async () => {});
 
       expect(view.container.textContent).toBe('done');

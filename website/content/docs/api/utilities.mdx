@@ -1,6 +1,6 @@
 ---
 title: Utilities
-description: Framework-agnostic helpers - transition, Context, unbind, and the observable protocol
+description: Framework-agnostic helpers - pending, Context, unbind, and the observable protocol
 ---
 
 Everything on this page comes from `@expressive/mvc` - the core package under every adapter. Some of it re-exports through `@expressive/react` and some deliberately does not, so the import paths matter here.
@@ -20,9 +20,9 @@ import State, {
   get,
   has,
   map,
+  pending,
   ref,
   set,
-  transition,
   unbind
 } from '@expressive/mvc';
 
@@ -48,10 +48,10 @@ import State, {
   get,
   has,
   map,
+  pending,
   Provider,
   ref,
-  set,
-  transition
+  set
 } from '@expressive/react';
 ```
 
@@ -223,27 +223,43 @@ function observer(state: object, create?: boolean): Observer | undefined | null;
 
 <br />
 
-## `transition(work)`
+## `pending(work)`
 
-Mark synchronous state updates as non-urgent presentation work. The callback runs inline through the registered host transition; model subscriber callbacks retain the designation when they run in the normal microtask dispatch.
+Run `work` now, marking the subscriber updates it queues non-urgent. The callback is synchronous and its writes land immediately - only the notifications become pending.
 
 ```tsx
-import { transition } from '@expressive/react';
+import { pending } from '@expressive/react';
 
-transition(() => {
-  setPanel('settings');
+pending(() => {
   router.path = '/settings';
 });
 ```
 
 React interprets the designation with `startTransition`, so a suspending subscriber can keep its previous content visible while the next presentation prepares. MVC still applies every mutation immediately and preserves its normal batching and final-state squashing.
 
-- Synchronous React setters and Expressive writes inside one callback are both transitional, but MVC subscriber publication occurs through a later transition bracket rather than one atomic transaction.
-- The scope is synchronous. Writes after an `await` or in a later callback need their own `transition()` call.
-- Updates which must remain urgent, including controlled-input state, belong outside `transition()`.
-- If the same pending watcher receives both transitional and urgent invalidation, it runs once as urgent because it can present only the final squashed state.
+The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which cannot report - unmounted, hidden, or one whose host has no scheduler - resolves on replay instead of holding. Every reader is waited on, so this doubles as a barrier with no host at all.
+
+- The scope is synchronous. Writes after an `await` or in a later callback need their own `pending()` call.
+- It covers **Expressive updates**, not everything in the callback. A raw React setter written alongside keeps its own priority - each subscriber replays through the scheduler it subscribed with, so the bracket lands per subscriber rather than around the block.
+- Updates which must remain urgent, including controlled-input state, belong outside `pending()`.
+- If the same queued watcher receives both non-urgent and urgent invalidation, it runs once as urgent because it can present only the final squashed state.
 - Unrelated watchers retain their own priority; one urgent update does not upgrade the entire batch.
-- Without a registered host scheduler, work and dispatch keep their normal timing.
+- Without a host scheduler, work and dispatch keep their normal timing - the promise still resolves.
+
+### `pending()` - the subscriber half
+
+Called with no arguments, from inside a subscriber's replay, `pending()` declares that subscriber has not absorbed its update yet. It returns a release callback, and the writer's promise waits on that rather than on the replay returning - which is how the React adapter holds settlement until it commits.
+
+```ts
+watch(state, () => {
+  const release = pending();
+  animate().then(release);
+});
+```
+
+Only meaningful inside a replay: anywhere else, and where the replay is not deferred, it returns `undefined`.
+
+> Not to be confused with `pending(state)` on the `/observable` subpath, which reports the events a state has queued. Same word, different entry point.
 
 <br />
 

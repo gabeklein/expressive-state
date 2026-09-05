@@ -363,6 +363,49 @@ class DataView extends Component {
 
 `fallback={false}` declines the component's own boundary so suspension bubbles to an ancestor - valid only when the pending value is owned **above** the boundary that catches it. A boundary rebuilds the subtree it retries, so state owned below is reconstructed on every retry and requests again: a silent infinite retry loop.
 
+## Transitions
+
+`pending()` marks work non-urgent, so React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary - the designation rides with the subscriber updates they queue, for state this component does not own included.
+
+```tsx
+import { Component, pending } from '@expressive/react';
+
+class Shell extends Component {
+  busy = false;
+
+  go(to: string) {
+    this.busy = true;
+    pending(() => {
+      data.page = to;
+    }).then(() => {
+      this.busy = false;
+    });
+  }
+}
+```
+
+The returned promise settles once every reader has **absorbed** the work - after a suspended replacement commits, not when the write lands. Writes inside run immediately; only notification defers. A reader which cannot report - unmounted, hidden, or one with no scheduler - absorbs on replay. Every reader is waited on, not the first.
+
+**Where the flag is read matters.** The flag is written urgently, so its readers re-render while the work is still in flight - but they read deferred state at the value already written. A component reading both jumps ahead of the held screen; one which *rebuilds* the deferred content suspends, replacing the screen the deferral existed to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` - both leave its element untouched, so it holds.
+
+```tsx
+const Status = () => <b>{Shell.get().busy ? 'loading' : 'idle'}</b>;
+
+const Lock = ({ children }) => (
+  <fieldset disabled={Shell.get().busy}>{children}</fieldset>
+);
+
+class Shell extends Component {
+  render() {
+    return <><Status /><Lock><Screen /></Lock></>;
+  }
+}
+```
+
+`Lock` re-renders urgently and disables the outgoing screen; `<Screen />` is the same element it already rendered, so it holds.
+
+Reading `busy` in `Shell` itself would rebuild `<Screen />` on the same urgent pass, which is the one arrangement that does not work.
+
 ## Error Boundaries
 
 Override `catch()` to handle child render errors:

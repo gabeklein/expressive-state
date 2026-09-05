@@ -4,8 +4,7 @@ import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
-import { Component, Consumer, set } from '.';
-import { transition } from '@expressive/mvc/runtime';
+import { Component, Consumer, pending, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -66,13 +65,13 @@ it('will call is method on creation', () => {
 });
 
 it('will transition Component dispatch', async () => {
-  const pending = mockPromise<void>();
+  const gate = mockPromise<void>();
 
   class Control extends Component {
     value = 'a';
 
     render() {
-      if (this.value === 'b') throw pending;
+      if (this.value === 'b') throw gate;
       return <span>{this.value}</span>;
     }
   }
@@ -94,17 +93,20 @@ it('will transition Component dispatch', async () => {
   );
 
   await act(async () => {
-    transition(() => {
+    pending(() => {
       setLocal('b');
       instance.value = 'b';
     });
     await Promise.resolve();
   });
 
-  expect(view.container.textContent).toBe('aa');
+  // Local state updates urgently - pending() scopes to mvc-driven updates - while
+  // the Component holds its own content rather than suspending to fallback.
+  expect(view.container.querySelector('i')).toBeNull();
+  expect(view.container.textContent).toBe('ba');
 
   instance.value = 'c';
-  pending.resolve();
+  gate.resolve();
   await act(async () => {});
 
   expect(view.container.textContent).toBe('bc');

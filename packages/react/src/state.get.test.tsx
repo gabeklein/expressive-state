@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
-import { Component, Context, get, State, Provider, set, transition } from '.';
+import { Component, Context, get, State, Provider, set } from '.';
+import { pending } from '@expressive/mvc';
 import {
   vi,
   expect,
@@ -74,10 +75,10 @@ describe('State.get', () => {
     }
 
     const test = Test.new();
-    const pending = mockPromise<void>();
+    const gate = mockPromise<void>();
     const Content = () => {
       const { value } = Test.get();
-      if (value === 'b') throw pending;
+      if (value === 'b') throw gate;
       return <span>{value}</span>;
     };
     const Status = () => <strong>{Test.get().urgent}</strong>;
@@ -91,7 +92,9 @@ describe('State.get', () => {
     );
 
     await act(async () => {
-      transition(() => void (test.value = 'b'));
+      pending(() => {
+        test.value = 'b';
+      });
       test.urgent = 1;
       await Promise.resolve();
     });
@@ -99,7 +102,7 @@ describe('State.get', () => {
     expect(view.container.textContent).toBe('a1');
 
     test.value = 'c';
-    pending.resolve();
+    gate.resolve();
     await act(async () => {});
 
     expect(view.container.textContent).toBe('c1');
@@ -1318,7 +1321,7 @@ describe('State.get - concurrent consistency', () => {
   it('will not commit mixed revisions for a transition write', async () => {
     const test = Test.new();
     const { commits, view, reveal } = fixture(test, (test) => {
-      transition(() => {
+      pending(() => {
         test.revision = 2;
       });
     });

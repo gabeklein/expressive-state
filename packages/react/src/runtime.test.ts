@@ -3,14 +3,17 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import './index';
 import { Runtime, useHook } from './runtime';
 
-// useHook calls useRef, useState, useEffect once each per render. Stub Runtime
-// with a hand-driven lifecycle so a subscription update can fire before vs.
-// after commit, and watch whether the React setter actually runs.
+// Stub Runtime with a hand-driven lifecycle so a subscription update can fire
+// before vs. after commit, and watch whether the React setter actually runs.
+// useHook takes more than one ref (its own record, plus useSettle's) and
+// registers more than one effect (mount, plus useSettle's release), so slots
+// are handed out in call order and every effect runs on commit.
 function harness() {
-  const ref = { current: undefined as any };
+  const refs: { current: any }[] = [];
+  let slot = 0;
   let inited = false;
   let state = 0;
-  let effect: () => (() => void) | void;
+  const effects: (() => (() => void) | void)[] = [];
   let refresh: (next?: any) => void;
   let reset: () => void;
   const unmount = vi.fn();
@@ -19,7 +22,8 @@ function harness() {
   const update = vi.fn((fn: (prev: number) => number) => void (state = fn(state)));
 
   Runtime.useRef = ((value: any) => {
-    if (ref.current === undefined) ref.current = value;
+    const ref = refs[slot] || (refs[slot] = { current: value });
+    slot++;
     return ref;
   }) as typeof Runtime.useRef;
 
@@ -31,17 +35,21 @@ function harness() {
     return [state, update];
   }) as typeof Runtime.useState;
 
-  Runtime.useEffect = ((fn: any) => void (effect = fn)) as typeof Runtime.useEffect;
+  Runtime.useEffect = ((fn: any) => void effects.push(fn)) as typeof Runtime.useEffect;
   Runtime.useSyncExternalStore = undefined;
 
-  let cleanup: (() => void) | void;
+  let cleanups: ((() => void) | void)[] = [];
 
   return {
     update,
     unmount,
-    render: () => useHook((r, x) => ((refresh = r), (reset = x), () => unmount)),
-    commit: () => void (cleanup = effect()),
-    unwind: () => cleanup && cleanup(),
+    render: () => {
+      slot = 0;
+      effects.length = 0;
+      return useHook((r, x) => ((refresh = r), (reset = x), () => unmount));
+    },
+    commit: () => void (cleanups = effects.map((fn) => fn())),
+    unwind: () => cleanups.forEach((fn) => fn && fn()),
     refresh: (next?: any) => refresh(next),
     reset: () => reset()
   };

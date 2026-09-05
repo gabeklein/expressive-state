@@ -1,5 +1,5 @@
 import { isValidElement } from 'preact';
-import Compat, { Children } from 'preact/compat';
+import { Children } from 'preact/compat';
 import { Fragment, jsx, jsxs } from 'preact/jsx-runtime';
 import { host } from '@expressive/mvc/runtime';
 
@@ -29,7 +29,6 @@ host({
   jsx,
   jsxs,
   Fragment,
-  transition: Compat.startTransition,
   isElement: isValidElement,
   childrenOf: Children.toArray,
   typeOf(node){

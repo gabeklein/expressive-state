@@ -3,7 +3,7 @@ title: Bundle Size
 description: What Expressive costs your bundle, measured per import shape and gated in CI
 ---
 
-Every figure on this page is produced by `bun run size`, which bundles the built packages and gzips the result. The same script runs on every pull request and fails the build if any shape exceeds its budget, so these numbers cannot drift away from reality — if they grow, CI says so before the docs go stale.
+Every figure on this page is produced by `bun .github/scripts/size-limit.ts`, which bundles the built packages and gzips the result. The same script runs on every pull request and fails the build if any shape exceeds its budget, so these numbers cannot drift away from reality — if they grow, CI says so before the docs go stale.
 
 ## What it costs
 
@@ -11,15 +11,15 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 
 | What you import | min+gzip |
 | --- | --- |
-| `@expressive/mvc` — `State` only (headless) | ~4.6 kB |
-| `@expressive/mvc` — every export | ~8.0 kB |
-| `@expressive/react` — `State` only | ~7.9 kB |
-| `@expressive/react` — `State`, `Component`, instructions | ~8.5 kB |
-| `@expressive/react` — every export | ~10.5 kB |
-| `@expressive/router` — every export | ~10.3 kB |
-| `@expressive/react` + `@expressive/router` | ~13.9 kB |
+| `@expressive/mvc` — `State` only (headless) | ~4.9 kB |
+| `@expressive/mvc` — every export | ~8.2 kB |
+| `@expressive/react` — `State` only | ~8.5 kB |
+| `@expressive/react` — `State`, `Component`, instructions | ~9.1 kB |
+| `@expressive/react` — every export | ~11.1 kB |
+| `@expressive/router` — every export | ~10.6 kB |
+| `@expressive/react` + `@expressive/router` | ~14.5 kB |
 
-A typical React app lands around **8.5 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
+A typical React app lands around **9.1 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
 
 ## Methodology, and why the numbers differ elsewhere
 
@@ -33,16 +33,16 @@ If a third-party size service quotes something different from this table, the me
 
 ## Tree-shaking
 
-The headless core shakes properly: importing only `State` costs ~4.6 kB against ~8.0 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
+The headless core shakes properly: importing only `State` costs ~4.9 kB against ~8.2 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The React adapter has a **floor you cannot shake below: ~7.9 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
+The React adapter has a **floor you cannot shake below: ~8.5 kB**, reached by importing anything at all from it. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
 - `Component.prototype.$$typeof`, so an instance can be placed directly as JSX
 - `Component.contextType`, wiring the class into React context
 - `isReactComponent`, so React treats it as a class component
 - the host runtime registry, which hands the core its renderer
 
-Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally — `has`, `map` and `transition` together account for the remaining ~2.6 kB and drop out when unused.
+Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally — `has`, `map` and `pending` together account for the remaining ~2.6 kB and drop out when unused.
 
 The practical consequence: Expressive rewards using more of what you have already paid for, and is a poor fit for shipping one tiny piece of it into an otherwise dependency-free bundle.
 

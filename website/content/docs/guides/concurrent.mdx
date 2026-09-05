@@ -1,6 +1,6 @@
 ---
 title: Concurrent Rendering
-description: How Expressive stays consistent under React 18+ concurrent rendering, and how to defer updates with transition()
+description: How Expressive stays consistent under React 18+ concurrent rendering, and how to defer updates with pending()
 ---
 
 Concurrent React can pause a render, run other work, and resume — or throw the attempt away and start over. That is what makes `startTransition` and Suspense useful, and it is also what makes external mutable state dangerous: if a model changes while React is halfway through reading it, the finished frame can contain values from two different points in time. Nothing throws. The screen is simply, briefly, wrong.
@@ -19,25 +19,33 @@ Nothing is required of you to get this. There is no provider to add, no selector
 
 The cost is bounded and worth knowing: a write that lands *during* an in-flight render forces that attempt to restart, so it loses the benefit of having been time-sliced. It never loses consistency. Renders that begin after the write — including the restart itself — validate cleanly, so steady-state updates keep slicing normally.
 
-## Priority: `transition()` for deferred presentation
+## Priority: `pending()` for deferred presentation
 
 Consistency says *what* may be rendered together. It says nothing about *when*. For that, mark the writes:
 
 ```ts
-import { transition } from '@expressive/react';
+import { pending } from '@expressive/react';
 
-transition(() => {
+pending(() => {
   app.page = 'settings';
 });
 ```
 
-Writes inside the callback are tagged as non-urgent. That tag survives batching and the microtask dispatch, and the adapter applies React's `startTransition` at the point the subscriber actually updates. The practical payoff is Suspense behaviour: if the new page suspends, React keeps the current screen on-screen instead of flashing a fallback.
+The updates those writes queue are tagged non-urgent. The tag survives batching and the microtask dispatch, and each subscriber replays through the scheduler it subscribed with — React's `startTransition`, for the adapter's. The practical payoff is Suspense behaviour: if the new page suspends, React keeps the current screen on-screen instead of flashing a fallback.
 
-Three rules:
+It also returns a promise, resolving once every reader has taken the update — for React, once it commits. That is what a progress flag reads:
 
-- The callback runs **synchronously**. Writes after an `await` are outside its scope and need their own `transition()`.
-- **Urgent wins.** If an urgent write invalidates a subscriber already pending at transition priority, the urgent priority takes over — a text input never becomes laggy because a background navigation was in flight.
-- Normal batching still applies; `transition()` changes priority, not timing.
+```ts
+this.busy = true;
+pending(() => { app.page = 'settings' }).then(() => { this.busy = false });
+```
+
+Four rules:
+
+- The callback runs **synchronously**. Writes after an `await` are outside its scope and need their own `pending()` call.
+- It covers **Expressive updates**, not everything in the block. A raw React `setState` alongside these writes keeps its own priority, because the transition bracket is applied per subscriber at replay rather than around the callback.
+- **Urgent wins.** If an urgent write invalidates a subscriber already queued at transition priority, the urgent priority takes over — a text input never becomes laggy because a background navigation was in flight.
+- Normal batching still applies; `pending()` changes priority, not timing.
 
 Presentation deliberately stays on ordinary React state rather than moving into the external store. Store-backed updates are always blocking, so publishing through the store would have made deferred rendering impossible — the two mechanisms are kept apart precisely so you can have both.
 

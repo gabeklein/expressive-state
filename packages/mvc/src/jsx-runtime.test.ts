@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './runtime';
+import { flushMicrotasks } from '../test.setup';
+import { State } from './state';
+
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './runtime';
+import { enqueue, pending } from './dispatch';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -41,7 +45,7 @@ describe('unregistered', () => {
 
   it('will run transition work inline', () => {
     const work = vi.fn();
-    expect(() => transition(work)).not.toThrow();
+    expect(() => pending(work)).not.toThrow();
     expect(work).toHaveBeenCalledTimes(1);
   });
 });
@@ -88,21 +92,26 @@ describe('runtime', () => {
     });
   });
 
-  it('will run transition work inline when host has no scheduler', () => {
-    const work = vi.fn();
-    transition(work);
-    expect(work).toHaveBeenCalledTimes(1);
+  it('will settle headless once subscribers have replayed', async () => {
+    class Model extends State {
+      value = 0;
+    }
+
+    const model = Model.new();
+    const seen: number[] = [];
+
+    model.get(({ value }) => void seen.push(value));
+
+    await pending(() => {
+      model.value = 1;
+    });
+
+    expect(seen).toEqual([0, 1]);
   });
 
-  it('will invoke the host scheduler around transition work', () => {
-    // same-runtime re-registration is how a host extends its seams
-    runtime.transition = vi.fn((work: () => void) => work());
-    host(runtime);
-
+  it('will run deferred work inline', () => {
     const work = vi.fn();
-    transition(work);
-
-    expect(runtime.transition).toHaveBeenCalledWith(work);
+    pending(work);
     expect(work).toHaveBeenCalledTimes(1);
   });
 
@@ -139,5 +148,37 @@ describe('jsx-runtime module', () => {
     expect(compat.jsx).toBe(jsx);
     expect(compat.jsxs).toBe(jsxs);
     expect(compat.Fragment).toBe(Fragment);
+  });
+
+  it('will wait on a subscriber which claims absorption', async () => {
+    let release!: () => void;
+    let settled = false;
+
+    const handler = () => {
+      release = pending()!;
+    };
+
+    pending(() => enqueue(handler)).then(() => (settled = true));
+
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+
+    release();
+    await flushMicrotasks();
+
+    expect(settled).toBe(true);
+  });
+
+  it('will not claim absorption outside a deferred replay', async () => {
+    let claimed: unknown = 'unset';
+
+    enqueue(() => {
+      claimed = pending();
+    });
+
+    await flushMicrotasks();
+
+    expect(claimed).toBeUndefined();
   });
 });

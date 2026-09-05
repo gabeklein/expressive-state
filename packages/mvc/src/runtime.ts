@@ -1,5 +1,4 @@
 import type { Component } from './component';
-import { schedule } from './dispatch';
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
@@ -39,8 +38,6 @@ export interface HostRuntime {
   jsxs(type: unknown, props: object, key?: unknown): Component.Node;
   propsOf(node: unknown): Record<string, unknown>;
   typeOf(node: unknown): unknown;
-  /** Non-urgent update bracket (e.g. React `startTransition`). Optional - see {@link transition}. */
-  transition?(work: () => void): void;
   Fragment: unknown;
 }
 
@@ -74,10 +71,9 @@ let registered: HostRuntime | undefined;
 
 /**
  * Register the host runtime. Idempotent for the same runtime - re-registering
- * picks up members added since (e.g. an optional dev or scheduler seam).
- * Element mechanics the host leaves unset keep defaults that throw a
- * setup-pointing error; the optional seams (`jsxDEV`, `transition`) are
- * routed around at the call sites instead.
+ * picks up members added since (e.g. an optional dev seam). Element mechanics
+ * the host leaves unset keep defaults that throw a setup-pointing error;
+ * `jsxDEV` is routed around at the call site instead.
  */
 export function host(runtime: HostRuntime) {
   if (registered && registered !== runtime)
@@ -141,11 +137,3 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
-/**
- * Mark synchronous work as non-urgent. `work` runs inline through the host
- * scheduler; queued subscriber updates inherit the designation and replay it
- * after dispatch. Without a host scheduler, normal timing is retained.
- */
-export function transition(work: () => void): void {
-  schedule(work, HOST.transition);
-}

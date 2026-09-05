@@ -43,17 +43,26 @@ app.count = 1; // queues another - both flush via microtask
 
 ### Presentation Transitions
 
-Use `transition()` when model writes should present as non-urgent host work:
-
 ```ts
-import { transition } from '@expressive/mvc';
+import { pending } from '@expressive/mvc';
 
-transition(() => {
+await pending(() => {
   app.page = 'settings';
 });
 ```
 
-The callback runs synchronously. Its queued subscriber callbacks retain transition priority through MVC's microtask dispatch; React interprets that priority with `startTransition`. Writes after an `await` are outside the scope and need another `transition()` call. Normal batching still applies, and urgent invalidation wins when the same watcher is already pending at transition priority.
+`pending(work)` runs `work` now and marks the updates it queues non-urgent, resolving once every reader has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement which suspends holds the current screen instead of falling back. A free function, not a method: settlement comes from whichever readers the writes touch, and each replays through the scheduler it subscribed with.
+
+With no host registered there is no priority to apply, but the promise still resolves once every subscriber has replayed - awaiting it is how headless code waits out a whole cascade, not just the first flush. Distinct from `state.set()`, which resolves on the next flush of *that* state (see [set.md](set.md)).
+
+`pending()` with no arguments is the reader half. Called inside a replay it returns a release callback, and settlement waits on that rather than on the replay returning - which is how the React adapter holds until it commits. A hand-written `watch` effect can do the same; outside a deferred replay it returns `undefined`.
+
+```ts
+watch(state, () => {
+  const release = pending();
+  animate().then(release);
+});
+```
 
 ### Value Equality
 

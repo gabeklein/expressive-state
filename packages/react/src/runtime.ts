@@ -1,6 +1,27 @@
 import type { Component } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
+import { pending } from '@expressive/mvc';
 import type { Context } from './context';
+
+interface Settle {
+  waiting: (() => void)[];
+  claim(): void;
+  release(): void;
+}
+
+interface Setup {
+  rendered: number;
+  revision: number;
+  mounted?: boolean;
+  commit?: () => (() => void) | void;
+  release?: (() => void) | void;
+}
+
+interface Hook<T> extends Setup {
+  queued?: boolean;
+  update?: (next: (previous: number) => number) => void;
+  output: T;
+}
 
 export const Runtime = {} as {
   /** Host own-property keys to trap out of observed state; assigned by each adapter. */
@@ -11,6 +32,9 @@ export const Runtime = {} as {
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
+  /** Non-urgent bracket a subscriber replays through; absent where the host
+   *  cannot defer, which keeps normal timing. */
+  transition?(work: () => void): void;
   /** Consumed for pre-commit revision validation; absent where commits
    *  cannot interleave with writes. */
   useSyncExternalStore?(
@@ -33,49 +57,54 @@ export function useFactory<T extends Function>(factory: () => T) {
 }
 
 /**
- * Mount-effect with a refreshable return value, safe under React StrictMode.
- *
- * @param callback Setup handler, run on creation; receives a setter, plus a
- *   reset which invalidates the rendered value so in-flight render attempts
- *   revalidate, and returns a mount handler, which in turn returns a cleanup.
- *   All share this hook's render counter, so a StrictMode remount repeats
- *   none of them.
- * @returns Latest value published via the setter (`undefined` until set).
+ * Returns a claim on the update being replayed, held until this hook commits
+ * carrying it - or until unmount, where it never will. Keyed on `tick` so an
+ * urgent commit in the meantime, which leaves the deferred update queued, does
+ * not release it.
  */
-export function useHook<T = void>(
-  callback: (
-    refresh: (next: T) => void,
-    reset: () => void
-  ) => () => (() => void) | void
-) {
-  const { current } = Runtime.useRef(
-    { rendered: 0, revision: 0 } as {
-      rendered: number;
-      revision: number;
-      mounted?: boolean;
-      pending?: boolean;
-      commit?: () => (() => void) | void;
-      release?: (() => void) | void;
-      update?: (next: (previous: number) => number) => void;
-      output: T;
-    }
-  );
+export function useSettle(tick: number) {
+  const ref = Runtime.useRef<Settle | null>(null);
+  const settle = ref.current || (ref.current = {
+    waiting: [],
+    claim() {
+      const held = pending();
 
-  current.update = Runtime.useState(() => {
+      if (held) settle.waiting.push(held);
+    },
+    release() {
+      for (const held of settle.waiting.splice(0)) held();
+    }
+  });
+
+  Runtime.useEffect(() => {
+    settle.release();
+    return settle.release;
+  }, [tick]);
+
+  return settle.claim;
+}
+
+/**
+ * Run `init` once for the life of a hook and clean up when it unmounts, safe
+ * under React StrictMode - a remount shares the render counter, so neither the
+ * setup nor its cleanup repeats. `reset` invalidates the rendered value so
+ * in-flight render attempts revalidate.
+ *
+ * @returns The hook's own record, plus the render counter and its setter.
+ */
+export function useSetup<T extends Setup>(
+  init: (self: T, reset: () => void) => () => (() => void) | void
+) {
+  const { current } = Runtime.useRef({ rendered: 0, revision: 0 } as T);
+
+  const [tick, update] = Runtime.useState(() => {
     if (!current.rendered)
-      current.commit = callback(
-        (next) => {
-          current.output = next;
-          if (current.mounted) current.update?.((x) => x + 1);
-          else if (current.update) current.pending = true;
-        },
-        () => {
-          current.revision++;
-        }
-      );
+      current.commit = init(current, () => {
+        current.revision++;
+      });
 
     return current.rendered++;
-  })[1];
+  });
 
   const getRevision = () => current.revision;
 
@@ -89,15 +118,53 @@ export function useHook<T = void>(
       current.commit = undefined;
     }
 
-    if (current.pending) {
-      current.pending = false;
-      current.update!((x) => x + 1);
-    }
-
     return () => {
       if (--current.rendered <= 0) current.release?.();
     }
   }, []);
+
+  return [current, tick, update] as const;
+}
+
+/**
+ * Mount-effect with a refreshable return value. Publishing a value before mount
+ * defers the update to it, and one published after claims the update being
+ * replayed until this hook commits carrying it.
+ *
+ * @returns Latest value published via the setter (`undefined` until set).
+ */
+export function useHook<T = void>(
+  callback: (
+    refresh: (next: T) => void,
+    reset: () => void
+  ) => () => (() => void) | void
+) {
+  const [current, tick, update] = useSetup<Hook<T>>((self, reset) => {
+    const mount = callback((next) => {
+      self.output = next;
+
+      if (self.mounted) {
+        claim();
+        self.update?.((x) => x + 1);
+      }
+      else if (self.update) self.queued = true;
+    }, reset);
+
+    return () => {
+      const cleanup = mount();
+
+      if (self.queued) {
+        self.queued = false;
+        self.update!((x) => x + 1);
+      }
+
+      return cleanup;
+    };
+  });
+
+  const claim = useSettle(tick);
+
+  current.update = update;
 
   return current.output;
 }
@@ -113,7 +180,7 @@ export function useWatch<T extends object>(
       return (update) => {
         if (update === true) reset();
       };
-    });
+    }, undefined, Runtime.transition);
 
     return () => {
       const cleanup = mount?.();

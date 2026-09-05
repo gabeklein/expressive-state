@@ -143,13 +143,12 @@ function createFrame(from: Component, context: Context, children: unknown) {
 function render(from: Component, context: Context) {
   const { createElement } = Runtime;
   const { commit, remove } = Runtime.dedupe(from, context);
+  const { is: owner, render } = from;
 
-  const self = from;
-  const content = from.render;
-  const Render = () => content.call(from, from.props);
+  const Render = () => render.call(from, from.props);
   const Component = () => {
     from = useWatch(from, () => {
-      const release = self.mount?.();
+      const release = owner.mount?.();
 
       commit();
 

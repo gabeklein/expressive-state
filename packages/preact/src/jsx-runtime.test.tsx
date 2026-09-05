@@ -3,7 +3,7 @@ import './jsx-runtime';
 import { describe, expect, it, vi } from 'vitest';
 import { createElement, Fragment as PreactFragment } from 'preact';
 import { childrenOf, Fragment, isElement, jsx, propsOf, typeOf } from '@expressive/mvc/runtime';
-import { transition } from '.';
+import { pending } from '@expressive/mvc';
 
 const element = createElement('div', { id: 'foo' });
 
@@ -25,7 +25,7 @@ describe('host registration', () => {
   it('will expose transition scheduling', () => {
     const work = vi.fn();
 
-    transition(work);
+    pending(work);
 
     expect(work).toHaveBeenCalledOnce();
   });

@@ -10,7 +10,7 @@ For examples and patterns see `patterns.md`.
 
 ```ts
 export { State, State as default }; // Reexported after augmentation with React features
-export { Context, def, get, ref, set, transition }; // re-exported from @expressive/mvc
+export { Context, def, get, ref, set }; // re-exported from @expressive/mvc
 export { has, map }; // collection instructions, React-aware facades
 export { Component }; // React Component class
 export { Provider, Consumer }; // Explicit context components

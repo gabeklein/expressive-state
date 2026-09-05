@@ -4,7 +4,7 @@ import React, { Suspense } from 'react';
 
 import { mockError, mockPromise } from '../test.setup';
 import { Component, Consumer, Provider, State, get, has, map } from '.';
-import { transition } from '@expressive/mvc/runtime';
+import { pending } from '@expressive/mvc';
 
 describe('instance element', () => {
   class Control extends Component {
@@ -752,13 +752,13 @@ describe('map element', () => {
   });
 
   it('will transition a direct map subscriber', async () => {
-    const pending = mockPromise<void>();
+    const gate = mockPromise<void>();
 
     class Suspends extends Component {
       label = '';
 
       render() {
-        if (this.label === 'wait') throw pending;
+        if (this.label === 'wait') throw gate;
         return <span>{this.key}={this.label};</span>;
       }
     }
@@ -776,7 +776,7 @@ describe('map element', () => {
     const element = render(<>{store}</>);
 
     await act(async () => {
-      transition(() => {
+      pending(() => {
         store.items.set('b', Suspends.new({ key: 'b', label: 'wait' }));
       });
       await Promise.resolve();
@@ -785,7 +785,7 @@ describe('map element', () => {
     expect(element.container.textContent).toBe('a=ready;');
 
     store.items.delete('b');
-    pending.resolve();
+    gate.resolve();
     await act(async () => {});
   });
 });
@@ -883,13 +883,13 @@ describe('collection element', () => {
   });
 
   it('will transition a direct list subscriber', async () => {
-    const pending = mockPromise<void>();
+    const gate = mockPromise<void>();
 
     class Suspends extends Component {
       label = '';
 
       render() {
-        if (this.label === 'wait') throw pending;
+        if (this.label === 'wait') throw gate;
         return <span>{this.key}={this.label};</span>;
       }
     }
@@ -906,7 +906,7 @@ describe('collection element', () => {
     const element = render(<>{store}</>);
 
     await act(async () => {
-      transition(() => {
+      pending(() => {
         store.items.push(Suspends.new({ key: 'b', label: 'wait' }));
       });
       await Promise.resolve();
@@ -915,7 +915,7 @@ describe('collection element', () => {
     expect(element.container.textContent).toBe('a=ready;');
 
     store.items.pop();
-    pending.resolve();
+    gate.resolve();
     await act(async () => {});
   });
 

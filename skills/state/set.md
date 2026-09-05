@@ -12,7 +12,9 @@ All write-side operations share this one verb so the library's instance surface 
 set(): State.Updated<this>
 ```
 
-Returns a promise-like array of keys updated in the current batch. Resolves when flush completes. If no update is pending, resolves to an empty array.
+Returns a promise-like array of keys updated in the current batch. Resolves when flush completes. If no update is outstanding, resolves to an empty array.
+
+This is one state's next flush. To wait on the whole cascade a write sets off - every subscriber, including readers of other states - use `pending(work)` ([state.md](state.md#presentation-transitions)).
 
 Also triggers activation if state was created with `new` (not `State.new()`).
 
