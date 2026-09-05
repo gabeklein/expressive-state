@@ -50,6 +50,21 @@ describe('Route', () => {
     expect(view.container.textContent).toBe('id: foo');
   });
 
+  it('will own a fallback router when none is in context', () => {
+    router.current.set(null);
+
+    const route = Route.new();
+    const fallback = route.router;
+
+    expect(fallback).toBeInstanceOf(Router);
+    expect(fallback).not.toBe(router.current);
+    expect(fallback.get(null)).toBe(false);
+
+    route.set(null);
+
+    expect(fallback.get(null)).toBe(true);
+  });
+
   it('exposes the router query', () => {
     const route = Route.new();
     route.router.goto('/posts?q=hi&page=2');

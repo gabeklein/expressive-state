@@ -360,6 +360,23 @@ describe('fetch mode', () => {
     });
   });
 
+  it('will not register upstream into own context', () => {
+    class Parent extends State {
+      child = new Child();
+    }
+    class Child extends State {
+      parent = get(Parent);
+    }
+    class Stranger extends State {
+      parent = get(Parent, false);
+    }
+
+    const parent = Parent.new();
+
+    expect(parent.child.parent).toBe(parent);
+    expect(Stranger.new().parent).toBeUndefined();
+  });
+
   describe('subscription', () => {
     it('will update when implicit upstream is replaced', async () => {
       class Peer extends State {}
@@ -483,6 +500,21 @@ describe('fetch mode', () => {
         new Context(parent).push({ child1, child2 });
 
         expect(parent.children).toEqual([child1, child2]);
+      });
+
+      it('will not collect self through a consumer', () => {
+        class Node extends State {
+          peers = get(Node, true);
+          up = get(Node, false);
+        }
+
+        const parent = new Node();
+        const child = new Node();
+
+        new Context(parent).push(child);
+
+        expect(child.up).toBe(parent);
+        expect(parent.peers).toEqual([child]);
       });
 
       it('will not be enumerable', () => {
