@@ -1,6 +1,6 @@
 # Router
 
-Runnable source: the [`router`](https://expressive.dev/examples/router/overview) section - [`overview`](https://expressive.dev/examples/router/overview), [`params`](https://expressive.dev/examples/router/params), [`query`](https://expressive.dev/examples/router/query), [`guards`](https://expressive.dev/examples/router/guards), [`nav`](https://expressive.dev/examples/router/nav). Complete programs, served as HTML.
+Runnable source: the [`router`](https://expressive.dev/examples/router/overview) section - [`overview`](https://expressive.dev/examples/router/overview), [`params`](https://expressive.dev/examples/router/params), [`query`](https://expressive.dev/examples/router/query), [`guards`](https://expressive.dev/examples/router/guards), [`transitions`](https://expressive.dev/examples/router/transitions), [`nav`](https://expressive.dev/examples/router/nav). Complete programs, served as HTML.
 
 `@expressive/router` is a host-agnostic, class-based router built on Expressive MVC. Routes are declared as nested JSX, matching is lexical (computed from the JSX tree, not a separate config), and navigation state lives on a reactive `Router` State that any component can read or drive.
 
@@ -80,7 +80,7 @@ A `default` always needs an authored parent scope - a root `default` is the app 
 | `''` / `undefined` / `false` | allow normal render |
 | `null` | **force-404**: cede the path so the scope falls through to its nearest `default` |
 
-The guard may be **async** (return a `Promise`); the route's `fallback` shows while it pends. The verdict is cached for navigation within the matched space and re-evaluated on re-entry.
+The guard may be **async** (return a `Promise`); while it pends, the route's `fallback` shows on cold load, and in-app navigation holds the current screen (see [Deferred presentation](#deferred-presentation)). The verdict is cached for navigation within the matched space and re-evaluated on re-entry.
 
 ```tsx
 <Route to="document/:id"
@@ -99,7 +99,7 @@ Force-404 is path-keyed: it marks only the concrete URL that was declined, so na
 
 ## Code-split pages
 
-`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` is its own suspense boundary: `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive.
+`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` is its own suspense boundary: on cold load `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive. On in-app navigation the previous screen holds instead (see [Deferred presentation](#deferred-presentation)).
 
 ```tsx
 const Document = lazy(() => import('./Document'));
@@ -108,6 +108,25 @@ const Document = lazy(() => import('./Document'));
 ```
 
 A lazy *layout* suspends its whole scope - child routes register only after its module resolves. Navigating away mid-load abandons the page; it never mounts. A failed chunk is an error, not a suspension - handle it with `catch` on a `Route` subclass, or it propagates to the nearest ancestor boundary.
+
+## Deferred presentation
+
+Every navigation (`goto`, `Link`, `back`/`forward`, popstate) commits through `Router.transition`, a protected seam whose default marks the commit non-urgent via the host scheduler (React `startTransition`). In-app navigation to a page that isn't ready - a loading chunk, a pending entry guard - holds the current screen until the next resolves, instead of flashing `fallback`. Cold load (initial mount, no prior screen) still shows `fallback`. The URL updates immediately either way; only presentation defers.
+
+Override `transition(commit)` on a subclass to stage the swap differently - `commit` applies the navigation state and must run:
+
+```ts
+class MyRouter extends BrowserRouter {
+  static global = true;   // subclasses re-declare global explicitly
+
+  protected transition(commit: () => void) {
+    // bracket the swap (e.g. View Transitions), then defer as usual
+    super.transition(commit);
+  }
+}
+```
+
+Hosts without a scheduler (no `HostRuntime.transition`) apply navigation at normal priority - same timing as before the seam.
 
 ## Reading match state inside a page
 

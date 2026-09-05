@@ -1,0 +1,77 @@
+.address {
+  display: block;
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--muted);
+}
+
+.nav {
+  display: flex;
+  gap: var(--s3);
+  width: 100%;
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--accent-soft);
+}
+
+.nav a {
+  cursor: pointer;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 7rem;
+}
+
+.room {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.room h2 {
+  margin: 0 0 var(--s2);
+}
+
+.room p {
+  margin: 0;
+}
+
+.room.rose {
+  background: oklch(0.62 0.18 20 / 0.1);
+  border-color: oklch(0.62 0.18 20 / 0.4);
+}
+
+.room.gold {
+  background: oklch(0.7 0.14 85 / 0.1);
+  border-color: oklch(0.7 0.14 85 / 0.4);
+}
+
+.room.teal {
+  background: oklch(0.65 0.12 190 / 0.1);
+  border-color: oklch(0.65 0.12 190 / 0.4);
+}
+
+.gate {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  width: 100%;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--r);
+  color: var(--muted);
+}
+
+.mode {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+}

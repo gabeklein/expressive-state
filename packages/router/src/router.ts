@@ -1,4 +1,4 @@
-import { Component, map, State } from '@expressive/mvc';
+import { Component, map, State, transition as scheduleTransition } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 
 import { Route } from './route';
@@ -82,19 +82,34 @@ export class Router extends Component {
     assertAbsolute(to);
     const url = normalize(to);
 
-    if (replace) this.entries[this.index] = url;
-    else pushEntry(this, url);
+    this.transition(() => {
+      if (replace) this.entries[this.index] = url;
+      else pushEntry(this, url);
 
-    this.locate(url);
+      this.locate(url);
+    });
   }
 
   back() {
-    if (this.index > 0) this.locate(this.entries[--this.index]);
+    if (this.index > 0)
+      this.transition(() => this.locate(this.entries[--this.index]));
   }
 
   forward() {
     if (this.index < this.entries.length - 1)
-      this.locate(this.entries[++this.index]);
+      this.transition(() => this.locate(this.entries[++this.index]));
+  }
+
+  /**
+   * Presentation bracket around every navigation commit. The default marks the
+   * commit non-urgent through the host scheduler (React `startTransition`), so
+   * in-app navigation to a not-yet-ready page holds the current screen instead
+   * of flashing a fallback. Override to stage the swap differently (e.g.
+   * `document.startViewTransition`); `commit` applies the navigation and must
+   * run.
+   */
+  protected transition(commit: () => void) {
+    scheduleTransition(commit);
   }
 
   /** Apply a normalized url (path + optional `?query`) to state, reconciling `query` in place. */
@@ -157,7 +172,9 @@ export class BrowserRouter extends Router {
     if (typeof window == 'undefined') return () => {};
 
     const sync = () => {
-      this.locate(window.location.pathname + window.location.search);
+      this.transition(() => {
+        this.locate(window.location.pathname + window.location.search);
+      });
     };
     sync();
     window.addEventListener('popstate', sync);

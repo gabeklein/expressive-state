@@ -121,15 +121,18 @@ Rejected alternatives:
 
 ## 7. Plan (in order)
 
-1. **`transition(commit)` seam** on Router; `goto` routes through it; default =
-   deferred presentation.
+1. **`transition(commit)` seam (DONE)** on Router; every navigation commit
+   (goto/back/forward, and BrowserRouter's popstate/pushState sync) routes
+   through it; default = deferred presentation via mvc `transition()`.
 2. **MVC transition dispatch** (the core, done): normal path updates carry
-   non-urgent priority through batched subscriber dispatch. Verify router
-   computeds (`matched`/`match`) and Route presentation use that contract.
+   non-urgent priority through batched subscriber dispatch. Router
+   computeds (`matched`/`match`) and Route presentation verified against
+   that contract in tests.
 3. **`pending`** flag via a hook-resident `useTransition` member on Router.
-4. **Verify** against page-level loading: a suspending page holds the old screen
-   on in-app nav, shows its own `fallback` on cold load. Dogfood by making one
-   example's `as` suspend.
+4. **Verify (tests DONE)** against page-level loading: a suspending page (lazy
+   chunk or pending guard) holds the old screen on in-app nav, shows its own
+   `fallback` on cold load - covered in route.test.tsx. Example dogfood still
+   open.
 5. **fallback realignment (DONE)** - §6 option A: no-match branch is now the
    `default` prop; `fallback` reverts to Component's Suspense/error meaning.
 

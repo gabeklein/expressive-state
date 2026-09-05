@@ -347,3 +347,80 @@ describe('BrowserRouter', () => {
     }
   });
 });
+
+describe('transition seam', () => {
+  it('brackets goto, back and forward', () => {
+    const log: string[] = [];
+
+    class Test extends Router {
+      static global = false;
+
+      protected transition(commit: () => void) {
+        log.push('bracket');
+        commit();
+      }
+    }
+
+    const router = Test.new();
+    router.goto('/a');
+    router.goto('/b');
+    router.back();
+    router.forward();
+
+    expect(log).toEqual(['bracket', 'bracket', 'bracket', 'bracket']);
+    expect(router.path).toBe('/b');
+  });
+
+  it('applies navigation only once the bracket runs commit', () => {
+    let staged!: () => void;
+
+    class Test extends Router {
+      static global = false;
+
+      protected transition(commit: () => void) {
+        staged = commit;
+      }
+    }
+
+    const router = Test.new();
+    router.goto('/next');
+
+    expect(router.path).toBe('/');
+    expect(router.entries).toEqual(['/']);
+
+    staged();
+
+    expect(router.path).toBe('/next');
+    expect(router.entries).toEqual(['/', '/next']);
+  });
+
+  it('brackets browser navigation, popstate included', () => {
+    window.history.replaceState(null, '', '/');
+    const log: string[] = [];
+
+    class Test extends BrowserRouter {
+      static global = false;
+
+      protected transition(commit: () => void) {
+        log.push('bracket');
+        commit();
+      }
+    }
+
+    const router = Test.new();
+    expect(log.length).toBe(1);
+
+    router.goto('/a');
+    expect(router.path).toBe('/a');
+    expect(log.length).toBe(2);
+
+    act(() => {
+      window.history.pushState(null, '', '/b');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(router.path).toBe('/b');
+    expect(log.length).toBe(4);
+
+    router.set(null);
+  });
+});

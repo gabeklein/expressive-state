@@ -54,9 +54,10 @@ const Frame = (props: { children?: ReactNode }) => (
     <div className="view">{props.children}</div>
     <small>
       Signed out, both vault links land on the sign-in page. The verdict is cached
-      for the space it was decided in, so return to the lobby between attempts -
-      and since the check is async, the route’s <code>fallback</code> covers the
-      wait.
+      for the space it was decided in, so return to the lobby between attempts.
+      While an async check runs, navigation holds your current page; the route’s{' '}
+      <code>fallback</code> appears only when there is nothing to hold (a cold
+      load).
     </small>
   </div>
 );

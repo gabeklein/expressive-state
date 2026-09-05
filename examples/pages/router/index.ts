@@ -3,5 +3,6 @@ export default {
   params: 'Params',
   query: 'Query',
   guards: 'Guards',
+  transitions: 'Transitions',
   nav: 'Navigation'
 };

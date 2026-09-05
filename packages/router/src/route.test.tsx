@@ -1174,7 +1174,7 @@ describe('Route', () => {
 
           gate = mockPromise<string | void>();
           await act(async () => router.current.goto('/admin/secret'));
-          expect(screen.getByText('checking')).toBeDefined();
+          expect(screen.getByText('open')).toBeDefined();
           expect(ran).toBe(2);
 
           await act(async () => gate.resolve(undefined));
@@ -2030,5 +2030,53 @@ describe('a lazy page as `as`', () => {
 
     expect(view.container.textContent).toBe('about');
     expect(page).not.toHaveBeenCalled();
+  });
+});
+
+describe('deferred presentation', () => {
+  it('holds the current screen while the next page loads', async () => {
+    location('/');
+    const module = mockPromise<{ default: () => any }>();
+
+    const view = await renderAct(
+      <>
+        <Route to="/" as={Home} />
+        <Route to="/next" fallback={<span>loading</span>} as={lazy(() => module)} />
+      </>
+    );
+    expect(view.container.textContent).toBe('Home');
+
+    await act(async () => router.current.goto('/next'));
+
+    expect(window.location.pathname).toBe('/next');
+    expect(view.container.textContent).toBe('Home');
+
+    await act(async () => {
+      module.resolve({ default: () => <h1>next</h1> });
+      await module;
+    });
+
+    expect(view.container.textContent).toBe('next');
+  });
+
+  it('holds the current screen while an entry guard pends', async () => {
+    location('/');
+    const gate = mockPromise<string | void>();
+
+    const view = await renderAct(
+      <>
+        <Route to="/" as={Home} />
+        <Route to="/secret" fallback={<span>checking</span>} redirect={() => gate} as={() => <h1>secret</h1>} />
+      </>
+    );
+    expect(view.container.textContent).toBe('Home');
+
+    await act(async () => router.current.goto('/secret'));
+
+    expect(view.container.textContent).toBe('Home');
+
+    await act(async () => gate.resolve(undefined));
+
+    expect(view.container.textContent).toBe('secret');
   });
 });

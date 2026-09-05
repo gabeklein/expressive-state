@@ -29,12 +29,13 @@ Style:
 
 ## Runtime smoke pass
 
-A page that type-checks and builds can still be broken. Run every new or edited batch through a throwaway harness, then delete the file before committing (this package ships no test script):
+A page that type-checks and builds can still be broken. Run every new or edited batch through a throwaway harness, then delete both files before committing (this package ships no test script):
 
 ```bash
-cd examples && bun test --preload ../packages/react/test.dom.ts smoke.test.tsx
+cd examples && bun test --preload ./smoke.dom.ts smoke.test.tsx
 ```
 
+- `smoke.dom.ts` is a two-line throwaway: import `GlobalRegistrator` from `@happy-dom/global-registrator` and `register()` it, so `document` exists before `@testing-library/*` evaluates. (The old `packages/react/test.dom.ts` preload was deleted in the vitest migration.)
 - `import.meta.glob` is Vite-only and undefined under `bun test` - enumerate `pages/<group>/<example>/App.tsx` with `readdirSync` and `await import()` each. CSS imports resolve fine.
 - A render-only pass catches crashes, not dead reactivity. Drive interactions with `fireEvent` and assert on `container.textContent`.
 - Flush pattern: `await act(async () => fireEvent.click(x)); await settle()` where `settle = ms => act(() => new Promise(r => setTimeout(r, ms)))`. Nesting the settle *inside* the same `act` callback reports the previous render's DOM and invents phantom bugs.
