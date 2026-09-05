@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
+import { put } from './field/put';
 
 it('will default fallback to null', () => {
   const foo = Component.new({});
@@ -92,6 +93,22 @@ it('will merge state when props reassigned', async () => {
   await foo.set();
 
   expect(foo.value).toBe(7);
+});
+
+it('will apply props to unmanaged field', async () => {
+  class Foo extends Component {
+    value = put<number>();
+  }
+
+  const foo = Foo.new({ value: 5 });
+
+  expect(foo.value).toBe(5);
+
+  (foo as any).props = { value: 7 };
+  await foo.set();
+
+  expect(foo.value).toBe(7);
+  await expect(foo).not.toHaveUpdated('value');
 });
 
 it('will reset omitted props on reassignment', async () => {
