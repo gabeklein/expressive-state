@@ -1,5 +1,45 @@
 # @expressive/react
 
+## 0.85.0
+
+### Minor Changes
+
+- [#294](https://github.com/gabeklein/expressive-mvc/pull/294) [`8860645`](https://github.com/gabeklein/expressive-mvc/commit/88606452917a67308e7e5201eb4f7b45bb5ad573) Raise the React peer range floor to 16.14.
+
+  `>=16.8.0` was never accurate: the adapter imports `react/jsx-runtime`, which
+  does not exist before 16.14, so installs on 16.8-16.13 resolved without warning
+  and then failed at import. The range now states the version that actually works.
+
+  Documented alongside it: revision validation for concurrent rendering applies on
+  React 18+, and is skipped on 16.14-17 because those renderers cannot interrupt a
+  render and so have no interleaving to protect against.
+
+### Patch Changes
+
+- [#309](https://github.com/gabeklein/expressive-mvc/pull/309) [`6b57bb2`](https://github.com/gabeklein/expressive-mvc/commit/6b57bb221584ba2435c9e3cfb7668da4f108ea77) Keep context consumers attached to their nearest upstream Provider when nested
+  Providers render in sibling branches, including during server rendering.
+
+- [#305](https://github.com/gabeklein/expressive-mvc/pull/305) [`1341292`](https://github.com/gabeklein/expressive-mvc/commit/1341292a185830f02635ecd6dd0269c057052142) Accept assignment to subcomponent fields, so a Component override such as `Sidebar = Sidebar` no longer throws `TypeError: Cannot set property ... which has only a getter` when built with `useDefineForClassFields: false` (the default for any `target` below ES2022).
+
+- [#297](https://github.com/gabeklein/expressive-mvc/pull/297) [`018c15a`](https://github.com/gabeklein/expressive-mvc/commit/018c15a54ea5f01d45b65c236b5c50ccd16002c0) Document React Native and Expo support, and add `react-native` / `expo` keywords.
+
+  No code change - the adapter imports only `react` and `react/jsx-runtime`, so Metro resolves and runs it as published. Releases gate on `native-check.ts`, which installs the published tarballs into a throwaway Expo app (SDK 57, React Native 0.86) and asserts Metro resolution for iOS and Android, a Hermes bytecode build, and class-field semantics under both of Metro's transform paths. A gauntlet exercises the adapter on the iOS simulator and an Android emulator in both Debug and Release builds - on `react-native`-labeled PRs, monthly, or on demand.
+
+  Three boundaries: `jest-expo` needs `@expressive` in `transformIgnorePatterns` because the build is ESM-only, `BrowserRouter` is the browser binding - use `Router` on native - and `Link`/`NavLinks` render DOM elements, so drive navigation from `Router` until canonical elements ([#128](https://github.com/gabeklein/expressive-mvc/issues/128)) give them a native host.
+
+- [#308](https://github.com/gabeklein/expressive-mvc/pull/308) [`f0ea5e5`](https://github.com/gabeklein/expressive-mvc/commit/f0ea5e5d5e7ff9ac68e74f72c23310577834bcbe) Fix an unloadable published dist: `import '@expressive/react'` threw
+  `ERR_MODULE_NOT_FOUND` under native Node ESM.
+
+  The build declared `./adapter` external, so `dist/index.js` shipped an
+  extensionless `from "./adapter"`. Bundlers tolerate that; Node's ESM resolver
+  does not, which broke plain-node and native-ESM SSR consumers - the package
+  could only be imported through a bundler. The adapter is already its own entry,
+  so dropping the external emits `./adapter.js` with no change to chunking or
+  public surface.
+
+- Updated dependencies [[`ae97d53`](https://github.com/gabeklein/expressive-mvc/commit/ae97d531e7f1988d9d0e6956db4485505f03c398), [`37ef4e9`](https://github.com/gabeklein/expressive-mvc/commit/37ef4e95ae19285ca902bafdccdbe9bd6304176a), [`0bdb45f`](https://github.com/gabeklein/expressive-mvc/commit/0bdb45f294f77970569747262bae4fd8bbc35071), [`6b34ad5`](https://github.com/gabeklein/expressive-mvc/commit/6b34ad5d967f3aa678cf47820140a6e81fb5f3e2), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`1ff6c32`](https://github.com/gabeklein/expressive-mvc/commit/1ff6c32b0b4dd44a21d32f6231671e15be21a6f4), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`6c9a626`](https://github.com/gabeklein/expressive-mvc/commit/6c9a62612d34b3dc460676cf788723e72c1cd493), [`519c800`](https://github.com/gabeklein/expressive-mvc/commit/519c8003e6a1cefdad4bb025b11d1d1a3717d4e7), [`139e338`](https://github.com/gabeklein/expressive-mvc/commit/139e3388a9375b4159ec520cfeca34c98f10784d)]:
+  - @expressive/mvc@0.84.0
+
 ## 0.84.1
 
 ### Patch Changes

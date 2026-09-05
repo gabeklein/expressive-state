@@ -1,5 +1,110 @@
 # @expressive/mvc
 
+## 0.84.0
+
+### Minor Changes
+
+- [#334](https://github.com/gabeklein/expressive-mvc/pull/334) [`1ff6c32`](https://github.com/gabeklein/expressive-mvc/commit/1ff6c32b0b4dd44a21d32f6231671e15be21a6f4) Pools can shape or decline what `add` produces.
+
+  `has(Player, 'id')` names a field to receive `add`'s argument, covering the common transposition without a function. A lone instance is still admitted rather than constructed.
+
+  A factory returning `undefined` or `null` now adds nothing and `add` yields it back - so a factory may look a member up, filter one out, or build it. Member type excludes nullish, so only `add` widens.
+
+- [#330](https://github.com/gabeklein/expressive-mvc/pull/330) [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9) A `State` constructed with plain `new` must activate before the end of the tick - by `State.new()`, adoption by an owner, or placement with `new Context(state)`. One that does not now warns, naming the instance and the three remedies. `set(null)` releases an instance you decide against, exempting it.
+
+  This makes an existing tacit rule enforceable. A bare `new` that nothing adopts produced an inert instance whose instructions never ran and whose properties were never managed, with no signal at all - the same deadline, wired in as a probe, is what found the `set()` factory adoption bug fixed in [#324](https://github.com/gabeklein/expressive-mvc/issues/324).
+
+  Two defects surfaced by the invariant are fixed alongside it:
+
+  Destroying a `State` that never activated threw instead of releasing it. Terminal dispatch synthesized the activation signal for a never-ready instance, running its init against an already-terminated observer.
+
+  ```ts
+  const state = new MyState();
+  state.set(null); // threw: "was destroyed - cannot be rendered, watched or updated"
+  ```
+
+  A host constructs a `Component` per render attempt, and the constructor resolves duplicates by props object - returning the first instance and abandoning the second. That twin never activated and was never released, so it outlived the render attempt which created it. Under React StrictMode this happened on every mount.
+
+  Deferring activation past the tick is no longer supported. `new Context(state)` still claims a home before activation locks it to root, but the placement must happen in the same tick as construction.
+
+- [#319](https://github.com/gabeklein/expressive-mvc/pull/319) [`6c9a626`](https://github.com/gabeklein/expressive-mvc/commit/6c9a62612d34b3dc460676cf788723e72c1cd493) `has(Type)` pools now admit a ready-made member. `add(value)` with a lone instance of the pool's class (or a subclass) holds that value instead of forwarding it to the constructor, so one field both spawns and injects - a second pool over members of a first (`selected = has(Item)`) and fetch hydration (`items.add(new Item(data))`) no longer need an identity factory. Ownership is unchanged and still follows freshness: a fresh instance is adopted and destroyed with the pool, an already-activated one is a guest. Only a single argument is treated this way, so multi-argument constructors are unaffected, and factory pools never admit - their arguments are their own.
+
+### Patch Changes
+
+- [#324](https://github.com/gabeklein/expressive-mvc/pull/324) [`ae97d53`](https://github.com/gabeklein/expressive-mvc/commit/ae97d531e7f1988d9d0e6956db4485505f03c398) A `State` stored by an owning writer is now adopted regardless of how it arrives, not only by direct assignment at define time. A child produced by a `set()` factory, or assigned to a property which started empty - including a `Component` prop - is parented, registered in its owner's context, activated, and destroyed with its owner.
+
+  Ownership still follows freshness: an already-active `State` is registered as a guest and outlives the property, matching `map()`. Values a state only reads - a getter, a computed, or a type resolved from context by `get(Type)` - are not adopted; reading a reference does not confer ownership.
+
+  Fixes the `Route.router` fallback in `@expressive/router`, where a `Router` constructed for a route with none in context was never activated.
+
+- [#325](https://github.com/gabeklein/expressive-mvc/pull/325) [`37ef4e9`](https://github.com/gabeklein/expressive-mvc/commit/37ef4e95ae19285ca902bafdccdbe9bd6304176a) Fix `State.on()` handlers being silently skipped when an anonymous class sits in the prototype chain.
+
+  Bootstrap walked the chain until it hit a class with a falsy `name`, which terminated correctly only because `Object.getPrototypeOf(State)` is `Function.prototype`. Any intermediate class with an empty `name` ended the walk early and every ancestor above it was dropped - their per-class `type` hooks, per-instance `before`/`after` setup, and the teardowns those return never ran, with no error.
+
+  The ordinary mixin idiom produces exactly that: a class expression which is returned or passed rather than assigned gets no inferred name.
+
+  ```ts
+  const Timestamped = (Base) =>
+    class extends Base {
+      stamp = Date.now();
+    };
+
+  class Doc extends Timestamped(State) {} // handlers on State were lost
+  ```
+
+  The walk now ends on `State` itself rather than on a name check.
+
+- [#321](https://github.com/gabeklein/expressive-mvc/pull/321) [`0bdb45f`](https://github.com/gabeklein/expressive-mvc/commit/0bdb45f294f77970569747262bae4fd8bbc35071) Instruction tokens are now held weakly, so an instruction that never lands on an activated instance (shadowed by a subclass initializer, or constructed without activation) no longer retains its factory for the process lifetime.
+
+- [#306](https://github.com/gabeklein/expressive-mvc/pull/306) [`6b34ad5`](https://github.com/gabeklein/expressive-mvc/commit/6b34ad5d967f3aa678cf47820140a6e81fb5f3e2) Fix two error paths that reported internals instead of the mistake.
+
+  An enumerable property declared on a State subclass's prototype crashed
+  activation with `undefined is not an object (evaluating 'property.value')`.
+  `for-in` enumerates such a key but `getOwnPropertyDescriptor` returns nothing for
+  it, and the `def` and `observe` sweeps assumed a descriptor. Keys with no own
+  descriptor are now skipped - prototype members are unmanaged by design, the same
+  as methods.
+
+  Using a destroyed state threw `Object is not observable (terminated).`, naming an
+  internal slot rather than the error. It now names the state and what cannot be
+  done with it: `Foo-a1b2c3 was destroyed - cannot be rendered, watched or
+updated.`
+
+- [#330](https://github.com/gabeklein/expressive-mvc/pull/330) [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9) An instruction token which cannot be applied now throws at activation instead of persisting as a value. A token minted outside a construction - hoisted to a module binding, or shared between classes - is consumed by whichever instance activates first, and every later instance silently kept the raw `Symbol('field-<uid>')` in place of its value.
+
+  ```ts
+  const shared = set(() => 42);
+  class Thing extends State {
+    value = shared;
+  }
+
+  Thing.new().value; // 42
+  Thing.new().value; // Symbol(field-WZJHFS) - now throws
+  ```
+
+  A single-instance app shipped this and worked; the failure appeared only once a second instance was constructed.
+
+- [#330](https://github.com/gabeklein/expressive-mvc/pull/330) [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9) Instructions work again on React Native. The token registry is now a plain `Map` cleared at the end of each tick, so no `WeakMap` is ever keyed by a symbol - Hermes does not implement ES2023 symbol keys for `WeakMap`, and keying on one made every instruction throw. This supersedes the `WeakMap` introduced to stop unconsumed tokens retaining their factories; a per-tick registry bounds that retention instead.
+
+  Creating an instruction outside a construction now throws:
+
+  ```ts
+  const shared = set(() => 42); // Error - no State under construction
+  ```
+
+  An instruction is per-instance, so a token minted ahead of one had no possible claimant - it was consumed by whichever instance activated first, leaving every later instance with the raw symbol. This is sound only because a State must now activate in the tick it was constructed.
+
+- [#312](https://github.com/gabeklein/expressive-mvc/pull/312) [`519c800`](https://github.com/gabeklein/expressive-mvc/commit/519c8003e6a1cefdad4bb025b11d1d1a3717d4e7) Tracking proxies now carry `is` as an own writable property.
+
+  Value is unchanged - `is` still resolves to the subject instance - but the
+  property no longer comes from the non-writable one on the instance. Test runners
+  that diff a proxy (the value handed to effects and renders) against a State
+  crashed while building the diff: vitest clones both sides through the prototype
+  chain and assigns onto the clone, which threw `Cannot assign to read only
+property 'is'` and replaced the real assertion failure with a TypeError.
+
+- [#335](https://github.com/gabeklein/expressive-mvc/pull/335) [`139e338`](https://github.com/gabeklein/expressive-mvc/commit/139e3388a9375b4159ec520cfeca34c98f10784d) Resolve upstream `get()` between siblings regardless of field order. A child's `get(Type)` no longer throws when the matching sibling is declared after it on the same parent, and `get(Type, false)` and the callback form backfill when the sibling arrives. States added to a context now notify upstream consumers registered in that same context.
+
 ## 0.83.1
 
 ### Patch Changes
