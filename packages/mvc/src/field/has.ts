@@ -27,7 +27,7 @@ function has<T extends State>(
 
 function has<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
-  key: K
+  fromKey: K
 ): Pool<T, [T[K]] | [T]>;
 
 function has<R, A extends unknown[]>(
@@ -36,11 +36,11 @@ function has<R, A extends unknown[]>(
 
 function has(
   arg?: Iterable<unknown> | Function | false | null,
-  key?: string
+  fromKey?: string
 ): unknown {
   return def((_key, subject) => {
     const value =
-      typeof arg == 'function' ? new Pool(arg, key) : new List(arg);
+      typeof arg == 'function' ? new Pool(arg, fromKey) : new List(arg);
 
     parent(value, subject);
     listener(subject, () => value.clear(), null);
@@ -173,13 +173,13 @@ class List<T> {
 }
 
 class Pool<T, A extends unknown[] = unknown[], R = T> {
-  constructor(make: Function, key?: string) {
+  constructor(make: Function, fromKey?: string) {
     if (State.is(make)) {
       const Type = make as unknown as State.Type;
 
       make = (...args: State.Args) =>
         args.length == 1 && args[0] instanceof Type ? args[0] :
-        key ? new Type({ [key]: args[0] }) :
+        fromKey ? new Type({ [fromKey]: args[0] }) :
         new Type(...args);
     }
 

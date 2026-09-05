@@ -13,7 +13,7 @@ function reactive<T extends State>(
 
 function reactive<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
-  key: K
+  fromKey: K
 ): has.Pool<T, [T[K]] | [T]>;
 
 function reactive<R, A extends unknown[]>(

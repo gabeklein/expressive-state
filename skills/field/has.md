@@ -18,7 +18,7 @@ The argument selects the mode:
 | call | interface | insert | identity |
 | --- | --- | --- | --- |
 | `has<T>()` / `has(values)` | `has.List<T>` | `push` / `put` / `set(index)` | position |
-| `has(StateClass)` / `has(StateClass, key)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns, `add(value)` admits | the value itself |
+| `has(StateClass)` / `has(StateClass, fromKey)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns, `add(value)` admits | the value itself |
 
 A list stores values you give it, in order, addressed by index. A pool spawns its members - `add` returns the member, the call site holds the reference, and the value is its own identity for `has`, `delete`, and eviction. A class-mode pool also takes a ready-made instance.
 
@@ -226,7 +226,7 @@ function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
 function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T> | [T]>;
 function has<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
-  key: K
+  fromKey: K
 ): has.Pool<T, [T[K]] | [T]>;
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
