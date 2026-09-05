@@ -1178,6 +1178,18 @@ it('will traverse deeply nested contexts', () => {
   expect(cb).toBeCalledWith(foo, true);
 });
 
+it('will notify upstream consumer when type is added to same context', () => {
+  const context = new Context();
+  const cb = vi.fn();
+
+  context.get(Example, cb, false);
+
+  const foo = Example.new();
+  context.add(foo);
+
+  expect(cb).toBeCalledWith(foo, false);
+});
+
 it('will skip consumer if filter does not match downstream', () => {
   const parent = new Context();
   const child = parent.push();

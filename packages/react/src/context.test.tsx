@@ -268,6 +268,36 @@ describe('Provider', () => {
     );
   });
 
+  it('will resolve siblings regardless of declaration order', () => {
+    const didRender = vi.fn();
+
+    class Peer extends State {}
+    class Child extends State {
+      peer = get(Peer);
+    }
+    class Parent extends State {
+      child = new Child();
+      peer = new Peer();
+    }
+
+    render(
+      <Provider for={Parent}>
+        <Consumer for={Parent}>
+          {(parent) => {
+            didRender(parent.child.peer.is, parent.peer.is);
+          }}
+        </Consumer>
+      </Provider>
+    );
+
+    expect(didRender).toBeCalledTimes(1);
+
+    const [peer, sibling] = didRender.mock.calls[0];
+
+    expect(peer).toBeInstanceOf(Peer);
+    expect(peer).toBe(sibling);
+  });
+
   it('will destroy created model on unmount', async () => {
     const willDestroy = vi.fn();
 

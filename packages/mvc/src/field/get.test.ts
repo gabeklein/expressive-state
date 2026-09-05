@@ -261,6 +261,105 @@ describe('fetch mode', () => {
     expect(Object.keys(test)).toMatchObject(['foo']);
   });
 
+  describe('siblings', () => {
+    class Peer extends State {}
+    class Required extends State {
+      peer = get(Peer);
+    }
+    class Optional extends State {
+      peer = get(Peer, false);
+    }
+
+    it('will resolve optional sibling declared earlier', () => {
+      class Parent extends State {
+        peer = new Peer();
+        child = new Optional();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will resolve optional sibling declared later', () => {
+      class Parent extends State {
+        child = new Optional();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will resolve required sibling declared later', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will run callback for sibling declared later', () => {
+      const callback = vi.fn();
+
+      class Child extends State {
+        peer = get(Peer, callback);
+      }
+      class Parent extends State {
+        child = new Child();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalledWith(parent.peer, parent.child);
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will resolve siblings within explicit context', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const context = new Context(Parent);
+      const parent = context.get(Parent);
+
+      expect(parent.child.peer).toBe(parent.peer);
+      expect(context.get(Peer)).toBe(parent.peer);
+    });
+
+    it('will resolve through an activating grandparent', () => {
+      class Middle extends State {
+        child = new Required();
+      }
+      class Parent extends State {
+        middle = new Middle();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.middle.child.peer).toBe(parent.peer);
+    });
+
+    it('will throw if sibling never arrives', () => {
+      class Parent extends State {
+        child = new Required();
+        other = new Optional();
+      }
+
+      expect(() => Parent.new()).toThrow(
+        /Required Peer not found in context for Required-[\w-]+\./
+      );
+    });
+  });
+
   describe('subscription', () => {
     it('will update when implicit upstream is replaced', async () => {
       class Peer extends State {}
