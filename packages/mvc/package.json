@@ -1,6 +1,6 @@
 {
   "name": "@expressive/mvc",
-  "version": "0.83.1",
+  "version": "0.84.0",
   "description": "Class-based reactive state management - framework-agnostic core of Expressive MVC.",
   "sideEffects": false,
   "keywords": [

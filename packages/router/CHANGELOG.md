@@ -1,5 +1,18 @@
 # @expressive/router
 
+## 0.7.1
+
+### Patch Changes
+
+- [#324](https://github.com/gabeklein/expressive-mvc/pull/324) [`ae97d53`](https://github.com/gabeklein/expressive-mvc/commit/ae97d531e7f1988d9d0e6956db4485505f03c398) A `State` stored by an owning writer is now adopted regardless of how it arrives, not only by direct assignment at define time. A child produced by a `set()` factory, or assigned to a property which started empty - including a `Component` prop - is parented, registered in its owner's context, activated, and destroyed with its owner.
+
+  Ownership still follows freshness: an already-active `State` is registered as a guest and outlives the property, matching `map()`. Values a state only reads - a getter, a computed, or a type resolved from context by `get(Type)` - are not adopted; reading a reference does not confer ownership.
+
+  Fixes the `Route.router` fallback in `@expressive/router`, where a `Router` constructed for a route with none in context was never activated.
+
+- Updated dependencies [[`ae97d53`](https://github.com/gabeklein/expressive-mvc/commit/ae97d531e7f1988d9d0e6956db4485505f03c398), [`37ef4e9`](https://github.com/gabeklein/expressive-mvc/commit/37ef4e95ae19285ca902bafdccdbe9bd6304176a), [`0bdb45f`](https://github.com/gabeklein/expressive-mvc/commit/0bdb45f294f77970569747262bae4fd8bbc35071), [`6b34ad5`](https://github.com/gabeklein/expressive-mvc/commit/6b34ad5d967f3aa678cf47820140a6e81fb5f3e2), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`1ff6c32`](https://github.com/gabeklein/expressive-mvc/commit/1ff6c32b0b4dd44a21d32f6231671e15be21a6f4), [`968f596`](https://github.com/gabeklein/expressive-mvc/commit/968f596f217d39b78b2568b4171a96d110b493f9), [`6c9a626`](https://github.com/gabeklein/expressive-mvc/commit/6c9a62612d34b3dc460676cf788723e72c1cd493), [`519c800`](https://github.com/gabeklein/expressive-mvc/commit/519c8003e6a1cefdad4bb025b11d1d1a3717d4e7), [`139e338`](https://github.com/gabeklein/expressive-mvc/commit/139e3388a9375b4159ec520cfeca34c98f10784d)]:
+  - @expressive/mvc@0.84.0
+
 ## 0.7.0
 
 ### Minor Changes
