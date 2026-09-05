@@ -225,6 +225,45 @@ it('will adopt child assigned after undefined', () => {
   expect(child!.get(null)).toBe(true);
 });
 
+it('will destroy owned child when replaced', () => {
+  class Child extends State {}
+
+  class Parent extends State {
+    child?: Child = undefined;
+  }
+
+  const parent = Parent.new();
+  const first = new Child();
+
+  parent.child = first;
+
+  const second = new Child();
+
+  parent.child = second;
+
+  expect(first.get(null)).toBe(true);
+  expect(second.get(null)).toBe(false);
+});
+
+it('will not own active child from set factory', () => {
+  class Child extends State {}
+
+  const held = Child.new();
+
+  class Parent extends State {
+    child = set(() => held);
+  }
+
+  const parent = Parent.new();
+
+  expect(parent.child).toBe(held);
+  expect(Context.get(parent).get(Child)).toBe(held);
+
+  parent.set(null);
+
+  expect(held.get(null)).toBe(false);
+});
+
 it('will not adopt child derived by getter', () => {
   class Child extends State {
     value = 1;
