@@ -8,9 +8,10 @@ const SHAPE = Symbol('shape');
 
 const ITEMS = new WeakMap<object, unknown[]>();
 const MEMBERS = new WeakMap<object, Set<unknown>>();
-const MAKE = new WeakMap<object, Function>();
 const OWNED = new WeakMap<object, Map<unknown, () => void>>();
+const MAKE = new WeakMap<object, Make>();
 
+type Make = (...args: unknown[]) => unknown;
 type Predicate<T> = (value: T, index: number, self: unknown) => boolean;
 type Mapper<T, U> = (value: T, index: number, self: unknown) => U;
 
@@ -24,13 +25,22 @@ function has<T extends State>(
   Type: new (...args: State.Args<T>) => T
 ): Pool<T, State.Args<T> | [T]>;
 
-function has<T, A extends unknown[]>(
-  make: (...args: A) => T
-): Pool<T, A>;
+function has<T extends State, K extends State.Field<T>>(
+  Type: new (...args: State.Args<T>) => T,
+  fromKey: K
+): Pool<T, [T[K]] | [T]>;
 
-function has(arg?: Iterable<unknown> | Function | false | null): unknown {
+function has<R, A extends unknown[]>(
+  make: (...args: A) => R
+): Pool<Exclude<R, null | undefined>, A, R>;
+
+function has(
+  arg?: Iterable<unknown> | Function | false | null,
+  fromKey?: string
+): unknown {
   return def((_key, subject) => {
-    const value = typeof arg == 'function' ? new Pool(arg) : new List(arg);
+    const value =
+      typeof arg == 'function' ? new Pool(arg, fromKey) : new List(arg);
 
     parent(value, subject);
     listener(subject, () => value.clear(), null);
@@ -81,7 +91,7 @@ class List<T> {
 
   set(index: number, value: T) {
     const target = source(this);
-    const values = ITEMS.get(target)! as T[];
+    const values = ITEMS.get(target) as T[];
     const at = index < 0 ? values.length + index : index;
 
     if (at < 0 || at >= values.length || values[at] === value) return;
@@ -94,7 +104,7 @@ class List<T> {
     if (!values.length) return;
 
     const target = source(this);
-    const arr = ITEMS.get(target)! as T[];
+    const arr = ITEMS.get(target) as T[];
     const at =
       index < 0
         ? Math.max(arr.length + index, 0)
@@ -116,7 +126,7 @@ class List<T> {
   pop(index: number, count: number): T[];
   pop(index = -1, count?: number): T | T[] | undefined {
     const target = source(this);
-    const values = ITEMS.get(target)! as T[];
+    const values = ITEMS.get(target) as T[];
     const before = values.length;
     const start =
       index < 0 ? Math.max(before + index, 0) : Math.min(index, before);
@@ -162,10 +172,19 @@ class List<T> {
   }
 }
 
-class Pool<T, A extends unknown[] = unknown[]> {
-  constructor(make: Function) {
+class Pool<T, A extends unknown[] = unknown[], R = T> {
+  constructor(make: Function, fromKey?: string) {
+    if (State.is(make)) {
+      const Type = make as unknown as State.Type;
+
+      make = (...args: State.Args) =>
+        args.length == 1 && args[0] instanceof Type ? args[0] :
+        fromKey ? new Type({ [fromKey]: args[0] }) :
+        new Type(...args);
+    }
+
     MEMBERS.set(this, new Set());
-    MAKE.set(this, make);
+    MAKE.set(this, make as Make);
     OWNED.set(this, new Map());
 
     event(this);
@@ -175,28 +194,22 @@ class Pool<T, A extends unknown[] = unknown[]> {
     return touch(this, SHAPE, members<T>(this).size);
   }
 
-  add(...args: A): T {
+  add(...args: A): R {
     const target = source(this);
-    const values = MEMBERS.get(target)! as Set<T>;
-    const make = MAKE.get(target)!;
+    const made = MAKE.get(target)!(...args) as T | null | undefined;
 
-    const value = (
-      !State.is(make)
-        ? make(...args)
-        : args.length == 1 && args[0] instanceof make
-          ? args[0]
-          : new (make as State.Type)(...(args as State.Args))
-    ) as T;
+    if (made == null) return made as R;
 
-    if (!values.has(value)) {
-      values.add(value);
-      adopt(target, value, value);
+    const values = MEMBERS.get(target) as Set<T>;
 
-      event(target, value as never);
+    if (!values.has(made)) {
+      values.add(made);
+      adopt(target, made, made);
+      event(target, made as never);
       event(target, SHAPE);
     }
 
-    return value;
+    return made as R;
   }
 
   get(): State.Export<T>[];
@@ -213,7 +226,7 @@ class Pool<T, A extends unknown[] = unknown[]> {
 
   delete(value: T): boolean {
     const target = source(this);
-    const values = MEMBERS.get(target)! as Set<T>;
+    const values = MEMBERS.get(target) as Set<T>;
 
     if (!values.has(value)) return false;
 
@@ -228,7 +241,7 @@ class Pool<T, A extends unknown[] = unknown[]> {
 
   clear() {
     const target = source(this);
-    const values = MEMBERS.get(target)! as Set<T>;
+    const values = MEMBERS.get(target) as Set<T>;
 
     if (!values.size) return;
 

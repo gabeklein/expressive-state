@@ -11,15 +11,20 @@ function reactive<T extends State>(
   Type: new (...args: State.Args<T>) => T
 ): has.Pool<T, State.Args<T> | [T]>;
 
-function reactive<T, A extends unknown[]>(
-  make: (...args: A) => T
-): has.Pool<T, A>;
+function reactive<T extends State, K extends State.Field<T>>(
+  Type: new (...args: State.Args<T>) => T,
+  fromKey: K
+): has.Pool<T, [T[K]] | [T]>;
+
+function reactive<R, A extends unknown[]>(
+  make: (...args: A) => R
+): has.Pool<Exclude<R, null | undefined>, A, R>;
 
 function reactive(...args: any[]): any {
   const arg = args[0];
 
   return typeof arg == 'function'
-    ? new has.Pool(arg)
+    ? new has.Pool(arg, args[1])
     : new has.List(arg);
 }
 
@@ -564,6 +569,14 @@ describe('pool', () => {
     expect(pool.size).toBe(0);
   });
 
+  it('will create pool for class without keys', () => {
+    const pool = new has.Pool<Item>(Item);
+    const item = pool.add({ value: 3 });
+
+    expect(item.value).toBe(3);
+    expect(pool.size).toBe(1);
+  });
+
   it('will create pool for factory', () => {
     const pool = reactive(() => ({ value: 0 }));
 
@@ -612,6 +625,14 @@ describe('pool', () => {
     const item = pool.add(3);
 
     expect(item.n).toBe(3);
+  });
+
+  it('will not add if factory returns nothing', () => {
+    const pool = reactive((n: number) => (n > 0 ? { n } : undefined));
+
+    expect(pool.add(1)).toEqual({ n: 1 });
+    expect(pool.add(0)).toBeUndefined();
+    expect(pool.size).toBe(1);
   });
 
   it('will pass through guest from factory', () => {
@@ -776,6 +797,126 @@ describe('pool', () => {
     await flush();
 
     expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+describe('pool lookup', () => {
+  class Item extends State {
+    id = '';
+  }
+
+  it('will adopt instance returned by factory', () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id) || new Item({ id }));
+
+    expect(pool.add('abc')).toBe(known.get('abc'));
+    expect(pool.add('xyz')).not.toBe(known.get('abc'));
+    expect(pool.size).toBe(2);
+  });
+
+  it('will not add member returned twice', async () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id));
+    const fn = vi.fn();
+
+    pool.add('abc');
+
+    watch(pool, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(pool.add('abc')).toBe(known.get('abc'));
+    await flush();
+
+    expect(fn).not.toHaveBeenCalled();
+    expect(pool.size).toBe(1);
+  });
+
+  it('will not add if factory declines', async () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id));
+    const fn = vi.fn();
+
+    watch(pool, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(pool.add('nope')).toBeUndefined();
+    await flush();
+
+    expect(fn).not.toHaveBeenCalled();
+    expect(pool.size).toBe(0);
+  });
+
+  it('will not add if factory returns null', async () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id) || null);
+    const fn = vi.fn();
+
+    watch(pool, ($) => {
+      void $.size;
+      fn();
+    });
+    fn.mockClear();
+
+    expect(pool.add('nope')).toBeNull();
+    await flush();
+
+    expect(fn).not.toHaveBeenCalled();
+    expect(pool.size).toBe(0);
+  });
+
+  it('will exclude nullish from member type', () => {
+    const known = new Map([['abc', Item.new({ id: 'abc' })]]);
+    const pool = reactive((id: string) => known.get(id) || null);
+
+    pool.add('abc');
+
+    expect(pool.map((item) => item.id)).toEqual(['abc']);
+  });
+});
+
+describe('pool key', () => {
+  class Cell extends State {
+    at = '';
+    color = 'white';
+  }
+
+  it('will assign argument to named property', () => {
+    const pool = reactive(Cell, 'at');
+    const cell = pool.add('a1');
+
+    expect(cell.at).toBe('a1');
+    expect(cell.color).toBe('white');
+  });
+
+  it('will still admit instance of class', () => {
+    const pool = reactive(Cell, 'at');
+    const guest = Cell.new({ at: 'b2' });
+
+    expect(pool.add(guest)).toBe(guest);
+    expect(pool.size).toBe(1);
+  });
+
+  it('will own member spawned through key', () => {
+    class Member extends State {
+      id = '';
+      owner = get(Owner);
+    }
+
+    class Owner extends State {
+      members = has(Member, 'id');
+    }
+
+    const owner = Owner.new();
+    const member = owner.members.add('abc');
+
+    expect(member.owner).toBe(owner);
+    expect(member.id).toBe('abc');
   });
 });
 
