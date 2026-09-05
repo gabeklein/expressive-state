@@ -363,6 +363,41 @@ class DataView extends Component {
 
 `fallback={false}` declines the component's own boundary so suspension bubbles to an ancestor - valid only when the pending value is owned **above** the boundary that catches it. A boundary rebuilds the subtree it retries, so state owned below is reconstructed on every retry and requests again: a silent infinite retry loop.
 
+## Transitions
+
+`act()` marks work non-urgent, so React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary - the designation rides with the subscriber updates they queue, for state this component does not own included.
+
+```tsx
+class Shell extends Component {
+  busy = false;
+
+  go(to: string) {
+    this.busy = true;
+    this.act(() => {
+      data.page = to;
+    }).then(() => {
+      this.busy = false;
+    });
+  }
+}
+```
+
+The returned promise settles once the work is **presented** - after a suspended replacement commits, not when the write lands. Before mount, or on a host without `useTransition`, work still defers and the promise settles on dispatch.
+
+**Where the flag is read matters.** Writes are immediate; only notification defers. A component which re-renders urgently and *rebuilds* the deferred content therefore rebuilds it against the value already written, so it suspends and the fallback replaces the screen the deferral existed to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` - both leave its element untouched, so it holds.
+
+```tsx
+const Status = () => <b>{Shell.get().busy ? 'loading' : 'idle'}</b>;
+
+class Shell extends Component {
+  render() {
+    return <><Status /><Screen /></>;   // Status re-renders; Screen is untouched
+  }
+}
+```
+
+Reading `busy` in `Shell` itself would rebuild `<Screen />` on the same urgent pass, which is the one arrangement that does not work.
+
 ## Error Boundaries
 
 Override `catch()` to handle child render errors:

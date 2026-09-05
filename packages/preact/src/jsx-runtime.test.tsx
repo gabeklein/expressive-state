@@ -3,7 +3,7 @@ import './jsx-runtime';
 import { describe, expect, it, vi } from 'vitest';
 import { createElement, Fragment as PreactFragment } from 'preact';
 import { childrenOf, Fragment, isElement, jsx, propsOf, typeOf } from '@expressive/mvc/runtime';
-import { transition } from '.';
+import { transition } from '@expressive/mvc/runtime';
 
 const element = createElement('div', { id: 'foo' });
 

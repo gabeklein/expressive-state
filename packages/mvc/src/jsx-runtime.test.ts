@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, transition, typeOf } from './runtime';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, owns, propsOf, transition, typeOf } from './runtime';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as compat from './jsx-runtime';
 import type { HostRuntime } from './runtime';
@@ -139,5 +139,26 @@ describe('jsx-runtime module', () => {
     expect(compat.jsx).toBe(jsx);
     expect(compat.jsxs).toBe(jsxs);
     expect(compat.Fragment).toBe(Fragment);
+  });
+
+  it('will prefer an owner scheduler over the ambient one', () => {
+    const owner = {};
+    const own = vi.fn((work: () => void) => work());
+
+    runtime.transition = vi.fn((work: () => void) => work());
+    host(runtime);
+
+    const release = owns(owner, own);
+    const work = vi.fn();
+
+    transition(work, owner);
+
+    expect(own).toHaveBeenCalledWith(work);
+    expect(runtime.transition).not.toHaveBeenCalled();
+
+    release();
+    transition(work, owner);
+
+    expect(runtime.transition).toHaveBeenCalledWith(work);
   });
 });

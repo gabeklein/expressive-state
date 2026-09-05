@@ -52,7 +52,7 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 ## Concurrent validation is separate from presentation
 
-React adapter does not store model values in `useSyncExternalStore` - external-store updates are blocking, which would forfeit deferred rendering. Subscriber dispatch publishes through ordinary useState, so `transition()` updates keep host priority and may retain prior content while a replacement suspends.
+React adapter does not store model values in `useSyncExternalStore` - external-store updates are blocking, which would forfeit deferred rendering. Subscriber dispatch publishes through ordinary useState, so `act()` updates keep host priority and may retain prior content while a replacement suspends.
 
 Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts instead of committing mixed model revisions. A racing write costs that attempt its time-slicing, never consistency. Hosts without `useSyncExternalStore` (React below 18, preact) cannot yield mid-render and skip validation.
 

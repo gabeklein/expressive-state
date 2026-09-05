@@ -5,7 +5,6 @@ import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
 import { Component, Consumer, set } from '.';
-import { transition } from '@expressive/mvc/runtime';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -94,7 +93,7 @@ it('will transition Component dispatch', async () => {
   );
 
   await act(async () => {
-    transition(() => {
+    instance.act(() => {
       setLocal('b');
       instance.value = 'b';
     });

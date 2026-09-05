@@ -2,6 +2,7 @@ import { Context } from './context';
 import { set } from './field/set';
 import { State, unbind } from './state';
 
+import { transition } from './runtime';
 import type { Host } from './runtime';
 
 const PENDING = new WeakMap<object, Component>();
@@ -68,6 +69,21 @@ declare namespace Component {
 }
 
 class Component extends State {
+  /**
+   * Run `work` as non-urgent, so React can keep current content on screen while
+   * a replacement gets ready rather than falling back. Writes inside are
+   * ordinary - the designation rides with the subscriber updates they queue,
+   * for state this component does not own included.
+   *
+   * Resolves once that work is presented, so a caller can hold a flag across
+   * the wait. Read such a flag *above* the deferred content: one component
+   * carries one update at one priority, so reading it beside the deferred value
+   * takes the flag's urgent priority for both and the fallback wins.
+   */
+  act(work: () => void): Promise<void> {
+    return transition(work, this.is);
+  }
+
   /**
    * All JSX attributes passed to this component.
    * Includes state-derived props, render props, and built-in props like `is` and `fallback`.

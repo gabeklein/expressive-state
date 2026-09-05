@@ -30,6 +30,7 @@ Object.assign(Runtime, {
   useState,
   useRef,
   useSyncExternalStore: React.useSyncExternalStore,
+  useTransition: React.useTransition,
   Suspense,
   ignore: [
     'updater',
@@ -40,6 +41,6 @@ Object.assign(Runtime, {
 });
 
 export { State, State as default, Consumer, Provider } from './adapter';
-export { Component, Context, def, get, ref, set, transition } from '@expressive/mvc';
+export { Component, Context, def, get, ref, set } from '@expressive/mvc';
 export { has } from './has';
 export { map } from './map';

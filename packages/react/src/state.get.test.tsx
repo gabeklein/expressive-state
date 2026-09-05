@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
-import { Component, Context, get, State, Provider, set, transition } from '.';
+import { Component, Context, get, State, Provider, set } from '.';
+import { transition } from '@expressive/mvc/runtime';
 import {
   vi,
   expect,
@@ -91,7 +92,9 @@ describe('State.get', () => {
     );
 
     await act(async () => {
-      transition(() => void (test.value = 'b'));
+      transition(() => {
+        test.value = 'b';
+      });
       test.urgent = 1;
       await Promise.resolve();
     });

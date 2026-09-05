@@ -39,8 +39,10 @@ export interface HostRuntime {
   jsxs(type: unknown, props: object, key?: unknown): Component.Node;
   propsOf(node: unknown): Record<string, unknown>;
   typeOf(node: unknown): unknown;
-  /** Non-urgent update bracket (e.g. React `startTransition`). Optional - see {@link transition}. */
-  transition?(work: () => void): void;
+  /** Non-urgent update bracket (e.g. React `startTransition`). Optional. Return
+   * a promise settling when the bracketed work is presented to report progress;
+   * return nothing to opt out. */
+  transition?(work: () => void): void | Promise<void>;
   Fragment: unknown;
 }
 
@@ -141,11 +143,26 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
+const OWNED = new WeakMap<object, HostRuntime['transition']>();
+
+/**
+ * Give `owner` a scheduler of its own, which {@link Component.act} will
+ * prefer over the ambient one. An adapter installs this from a render, the only
+ * place a host can observe its own deferred work.
+ */
+export function owns(owner: object, transition: HostRuntime['transition']) {
+  OWNED.set(owner, transition);
+  return () => void OWNED.delete(owner);
+}
+
 /**
  * Mark synchronous work as non-urgent. `work` runs inline through the host
  * scheduler; queued subscriber updates inherit the designation and replay it
  * after dispatch. Without a host scheduler, normal timing is retained.
+ *
+ * Resolves when those updates have been presented - on dispatch where the host
+ * (or `owner`) cannot report it.
  */
-export function transition(work: () => void): void {
-  schedule(work, HOST.transition);
+export function transition(work: () => void, owner?: object): Promise<void> {
+  return schedule(work, (owner && OWNED.get(owner)) || HOST.transition);
 }

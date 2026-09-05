@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { flushMicrotasks, mockError } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise } from '../test.setup';
 import { watch } from './observable';
 import { enqueue, schedule } from './dispatch';
 import { State } from './state';
@@ -165,5 +165,122 @@ describe('dispatch', () => {
 
     expect(error).toHaveBeenCalledWith(expected);
     expect(after).toHaveBeenCalledOnce();
+  });
+
+  it('will settle when the host reports the replay presented', async () => {
+    const presented = mockPromise<void>();
+    const log: string[] = [];
+
+    const settled = schedule(() => {
+      enqueue(() => log.push('dispatch'));
+    }, (work) => {
+      work();
+      return presented;
+    });
+
+    let done = false;
+    settled.then(() => (done = true));
+
+    await flushMicrotasks();
+
+    expect(log).toEqual(['dispatch']);
+    expect(done).toBe(false);
+
+    presented.resolve();
+    await flushMicrotasks();
+
+    expect(done).toBe(true);
+  });
+
+  it('will settle a second transition when its own replay is presented', async () => {
+    const presented = mockPromise<void>();
+    const host = (work: () => void) => {
+      work();
+      return presented;
+    };
+
+    const handler = vi.fn();
+    const done: string[] = [];
+
+    schedule(() => enqueue(handler), host).then(() => done.push('first'));
+    schedule(() => enqueue(handler), host).then(() => done.push('second'));
+
+    await flushMicrotasks();
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(done).toEqual([]);
+
+    presented.resolve();
+    await flushMicrotasks();
+
+    expect(done).toEqual(['first', 'second']);
+  });
+
+  it('will await updates cascading from a replay', async () => {
+    const gates: ReturnType<typeof mockPromise<void>>[] = [];
+    const host = (work: () => void) => {
+      work();
+
+      const gate = mockPromise<void>();
+      gates.push(gate);
+      return gate;
+    };
+
+    const log: string[] = [];
+
+    schedule(() => enqueue(() => {
+      log.push('source');
+      enqueue(() => log.push('derived'));
+    }), host).then(() => log.push('settled'));
+
+    await flushMicrotasks();
+
+    // gates: [0] the scheduling bracket, [1] source replay, [2] derived replay
+    gates[1].resolve();
+    await flushMicrotasks();
+
+    expect(log).toEqual(['source', 'derived']);
+
+    gates[2].resolve();
+    await flushMicrotasks();
+
+    expect(log).toEqual(['source', 'derived', 'settled']);
+  });
+
+  it('will release every claim on a handler urgency strips', async () => {
+    const host = (work: () => void) => {
+      work();
+      return mockPromise<void>();
+    };
+
+    const handler = () => {};
+    const settled: string[] = [];
+
+    schedule(() => enqueue(handler), host).then(() => settled.push('first'));
+    schedule(() => enqueue(handler), host).then(() => settled.push('second'));
+    enqueue(handler);
+
+    await flushMicrotasks();
+
+    expect(settled).toEqual(['first', 'second']);
+  });
+
+  it('will settle when the host reports a failed replay', async () => {
+    const presented = mockPromise<void>();
+
+    const settled = schedule(() => {
+      enqueue(() => {});
+    }, (work) => {
+      work();
+      return presented;
+    });
+
+    let done = false;
+    settled.then(() => (done = true));
+
+    presented.reject(new Error('abandoned'));
+    await flushMicrotasks();
+
+    expect(done).toBe(true);
   });
 });

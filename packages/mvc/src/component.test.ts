@@ -348,3 +348,23 @@ describe('props (static types)', () => {
     expect(props).toBeDefined();
   });
 });
+
+describe('transition', () => {
+  it('will run work and resolve where nothing observes', async () => {
+    class Test extends Component {
+      value = 'a';
+    }
+
+    const test = Test.new();
+    let settled = false;
+
+    await test.act(() => {
+      test.value = 'b';
+    }).then(() => {
+      settled = true;
+    });
+
+    expect(test.value).toBe('b');
+    expect(settled).toBe(true);
+  });
+});

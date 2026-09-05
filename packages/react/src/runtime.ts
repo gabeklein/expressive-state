@@ -11,6 +11,8 @@ export const Runtime = {} as {
   useState<S>(initial: S | (() => S)): [S, (next: (previous: S) => S) => void];
   useEffect(effect: () => (() => void) | void, deps?: any[]): void;
   useRef<T>(initial: T): { current: T };
+  /** Consumed to observe deferred work; absent where the host cannot report it. */
+  useTransition?(): [boolean, (work: () => void) => void];
   /** Consumed for pre-commit revision validation; absent where commits
    *  cannot interleave with writes. */
   useSyncExternalStore?(
