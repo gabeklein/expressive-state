@@ -1,6 +1,6 @@
 import { capture, listener, observer } from '../observable';
 import { Context } from '../context';
-import { State, parent, update } from '../state';
+import { State, children, parent, STORE, update } from '../state';
 import { def } from './def';
 
 declare namespace get {
@@ -101,6 +101,8 @@ function above<T extends State>(
         : undefined;
 
     function assign(value: T) {
+      if (STORE.get(subject)![key] === value) return;
+
       if (callback) {
         const result = callback(value, subject);
         if (typeof result === 'function') subject.set(null, result);
@@ -113,13 +115,33 @@ function above<T extends State>(
       return {};
     }
 
-    const ctx = Context.get(subject);
     let found = false;
+    let depth = Infinity;
+    let level = 0;
 
-    ctx.get(Type, (state) => {
-      found = true;
-      assign(state);
-    }, false, subject);
+    for (let p: State | null | undefined = hasParent; p; p = parent(p), level++) {
+      const at = level;
+
+      const remove = children(p, (child) => {
+        if (child !== subject && child instanceof Type && at <= depth) {
+          found = true;
+          depth = at;
+          assign(child as T);
+        }
+      });
+
+      subject.set(null, () => { remove(); });
+    }
+
+    if (!found) {
+      const remove = Context.get(subject).get(Type, (state) => {
+        if (depth !== Infinity) return;
+        found = true;
+        assign(state);
+      }, false, subject) as () => void;
+
+      subject.set(null, () => { remove(); });
+    }
 
     if (!found && argument !== false) {
       const missing = () =>
