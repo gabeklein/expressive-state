@@ -3,6 +3,7 @@ import { mockPromise } from '../../test.setup';
 import { Context } from '../context';
 import { State } from '../state';
 import { get } from './get';
+import { has } from './has';
 import { set } from './set';
 
 // is this desirable?
@@ -357,6 +358,123 @@ describe('fetch mode', () => {
       expect(() => Parent.new()).toThrow(
         /Required Peer not found in context for Required-[\w-]+\./
       );
+    });
+
+    it('will resolve within own parent when several exist', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const p1 = Parent.new();
+      const p2 = Parent.new();
+      const p3 = Parent.new();
+
+      expect(p1.child.peer).toBe(p1.peer);
+      expect(p2.child.peer).toBe(p2.peer);
+      expect(p3.child.peer).toBe(p3.peer);
+    });
+
+    it('will resolve own sibling declared earlier when another parent exists', () => {
+      class Parent extends State {
+        peer = new Peer();
+        child = new Required();
+      }
+
+      const p1 = Parent.new();
+      const p2 = Parent.new();
+
+      expect(p1.child.peer).toBe(p1.peer);
+      expect(p2.child.peer).toBe(p2.peer);
+    });
+
+    it('will not notify a destroyed child when a later parent activates', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      const p1 = Parent.new();
+      p1.set(null);
+
+      const p2 = Parent.new();
+
+      expect(p2.child.peer).toBe(p2.peer);
+    });
+
+    it('will not notify a replaced child when sibling is reassigned', () => {
+      class Parent extends State {
+        child = new Optional();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+      const { child, peer } = parent;
+
+      parent.child = new Optional();
+      parent.peer = new Peer();
+
+      expect(child.peer).toBe(peer);
+      expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will prefer sibling over grandparent sibling', () => {
+      class Middle extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+      class Parent extends State {
+        middle = new Middle();
+        peer = new Peer();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.middle.child.peer).toBe(parent.middle.peer);
+    });
+
+    it('will not resolve a sibling that was cleared', () => {
+      class Parent extends State {
+        peer: Peer | null = new Peer();
+        child?: Optional = undefined;
+      }
+
+      const parent = Parent.new();
+
+      parent.peer = null;
+      parent.child = new Optional();
+
+      expect(parent.child.peer).toBeUndefined();
+    });
+
+    it('will resolve through context for a pool member', () => {
+      class Theme extends State {}
+      class Item extends State {
+        theme = get(Theme);
+      }
+      class Store extends State {
+        items = has(Item);
+      }
+
+      const context = new Context({ Theme, Store });
+      const item = context.get(Store).items.add();
+
+      expect(item.theme).toBe(context.get(Theme));
+    });
+
+    it('will not resolve to itself', () => {
+      class Node extends State {
+        peer = get(Node, false);
+      }
+      class Parent extends State {
+        a = new Node();
+        b = new Node();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.a.peer).toBe(parent.b);
+      expect(parent.b.peer).toBe(parent.a);
     });
   });
 
