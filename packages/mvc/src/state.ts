@@ -45,6 +45,7 @@ let QUEUED = false;
 
 /** Adopters for managed properties which have held a child State. */
 const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
+const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -849,7 +850,32 @@ function child(state: State) {
     }
 
     event(value);
+
+    CHILDREN.get(state)?.forEach((cb) => cb(value));
   };
+}
+
+/**
+ * Report States adopted by a parent - those already held, then each one
+ * claimed later. Returns a callback to stop watching.
+ */
+function children(state: State, callback: (child: State) => void) {
+  const store = STORE.get(state)!;
+  const keys = ADOPT.get(state);
+
+  if (keys)
+    for (const key of keys.keys()) {
+      const value = store[key as string];
+      if (value instanceof State) callback(value);
+    }
+
+  let set = CHILDREN.get(state);
+
+  if (!set) CHILDREN.set(state, (set = new Set()));
+
+  set.add(callback);
+
+  return () => set!.delete(callback);
 }
 
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
@@ -1033,4 +1059,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, PENDING, STORE, uid, access, update, apply, compute };
+export { event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute };

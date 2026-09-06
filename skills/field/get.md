@@ -103,7 +103,7 @@ type get.Callback<T> = (state: T, subject: State) => void | boolean | (() => voi
 ## Behavior
 
 - All `get()` properties are **non-enumerable** (hidden from `Object.keys()`, spread, and `ref(this)`).
-- Upstream lookups check direct parent first, then context hierarchy.
+- Upstream lookups check direct parent first, then siblings under each ancestor (nearest wins), then context hierarchy.
 - Siblings under one parent resolve regardless of field order - a required lookup waits for the parent to finish activating before throwing.
 - Will not resolve self as own instance.
 - Upstream callback is not reactive - it runs once per mount, not on value changes.

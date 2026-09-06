@@ -223,7 +223,7 @@ form = get(FormState, true, false); // T | undefined
 ### Behavior notes
 
 - All `get()` properties are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`.
-- Upstream lookups check the direct parent first, then walk the context hierarchy.
+- Upstream lookups check the direct parent first, then siblings under each ancestor (nearest wins), then walk the context hierarchy.
 - Siblings under one parent resolve each other regardless of field order - a required lookup waits for the parent to finish activating before throwing.
 - A state does not resolve itself.
 - Upstream callbacks are not reactive - they fire once per mount.
